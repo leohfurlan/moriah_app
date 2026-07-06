@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PRD — Plataforma de Gestão Moriah</title>
+  <style>
+    :root {
+      --navy:#2C2F3C;
+      --navy2:#3D4155;
+      --gold:#DCA539;
+      --gold2:#FBF3DC;
+      --bg:#F4F3EF;
+      --text:#1A1B22;
+      --muted:#6B6B7A;
+      --border:#DDD9D0;
+      --white:#FEFEFE;
+      --green:#1A7A52;
+      --red:#B83030;
+      --amber:#A06800;
+      --shadow:0 8px 24px rgba(44,47,60,.08);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+    header{background:linear-gradient(135deg,var(--navy),#1d1f29);color:white;padding:56px 28px 46px;position:relative;overflow:hidden}
+    header:after{content:"";position:absolute;right:-90px;bottom:-100px;width:330px;height:330px;background:rgba(220,165,57,.13);border-radius:50%}
+    .hero{max-width:1040px;margin:0 auto;position:relative;z-index:1}
+    .brand{display:flex;align-items:center;gap:18px;margin-bottom:24px}
+    .logo{width:70px;height:56px;background:var(--gold);clip-path:polygon(50% 0,100% 100%,0 100%);position:relative;box-shadow:0 10px 26px rgba(0,0,0,.2)}
+    .logo:after{content:"";position:absolute;left:24px;top:14px;width:22px;height:18px;background:rgba(255,255,255,.7);clip-path:polygon(50% 0,100% 100%,0 100%)}
+    .brand h1{font-size:42px;letter-spacing:1px;margin:0;line-height:1}
+    .brand small{color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:700}
+    .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.48);font-weight:700}
+    .title{font-size:36px;max-width:760px;margin:8px 0 12px;font-weight:800;line-height:1.15}
+    .subtitle{max-width:800px;color:rgba(255,255,255,.72);font-size:16px}
+    nav{position:sticky;top:0;background:var(--white);z-index:10;border-bottom:2px solid var(--gold);box-shadow:0 2px 10px rgba(44,47,60,.06);overflow:auto;white-space:nowrap}
+    nav .inner{max-width:1040px;margin:0 auto;display:flex;gap:2px}
+    nav a{display:block;padding:14px 14px;text-decoration:none;color:var(--muted);font-weight:700;font-size:13px}
+    nav a:hover{color:var(--navy);background:#faf9f5}
+    main{max-width:1040px;margin:0 auto;padding:42px 20px 80px}
+    section{margin-bottom:44px;scroll-margin-top:70px}
+    h2{font-size:24px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;margin:0 0 20px;text-transform:uppercase;letter-spacing:.4px}
+    h3{font-size:18px;color:var(--navy2);margin:26px 0 10px}
+    p{margin:0 0 14px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+    .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+    .card h3{margin-top:0}
+    .highlight{background:var(--gold2);border:1px solid var(--gold);border-radius:var(--radius);padding:18px 20px;margin:18px 0}
+    .decision{background:#ECEEF4;border-left:5px solid var(--navy);padding:16px 20px;border-radius:0 12px 12px 0}
+    table{width:100%;border-collapse:collapse;background:var(--white);box-shadow:var(--shadow);border-radius:12px;overflow:hidden;font-size:14px}
+    th{background:var(--navy);color:white;text-align:left;padding:12px}
+    td{border-bottom:1px solid var(--border);padding:11px 12px;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    ul{padding-left:20px}
+    li{margin:5px 0}
+    code{background:#ececec;padding:2px 5px;border-radius:5px}
+    pre{background:#11131a;color:#f3f3f3;padding:20px;border-radius:14px;overflow:auto;font-size:13px;line-height:1.55;box-shadow:var(--shadow)}
+    .tag{display:inline-block;background:var(--gold2);border:1px solid var(--gold);color:var(--amber);font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px}
+    .ok{color:var(--green);font-weight:800}
+    .no{color:var(--red);font-weight:800}
+    .phase{border-top:5px solid var(--navy)}
+    .phase:nth-child(2){border-top-color:var(--gold)}
+    .phase:nth-child(3){border-top-color:var(--green)}
+    .phase:nth-child(4){border-top-color:var(--muted)}
+    footer{background:var(--navy);color:rgba(255,255,255,.55);text-align:center;padding:28px}
+    @media(max-width:700px){.title{font-size:28px}.brand h1{font-size:34px}nav .inner{padding:0 8px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>MORIAH</h1>
+          <small>Igreja em Células</small>
+        </div>
+      </div>
+      <div class="eyebrow">Documento de Produto · PRD v1.0</div>
+      <div class="title">Plataforma de Gestão Moriah</div>
+      <p class="subtitle">MVP replanejado para gestão de membresia, contribuições, células, eventos e escalas ministeriais, com foco em simplicidade, segurança e uso real pela igreja.</p>
+    </div>
+  </header>
+  <nav>
+    <div class="inner">
+      <a href="#resumo">Resumo</a>
+      <a href="#mvp">MVP</a>
+      <a href="#modulos">Módulos</a>
+      <a href="#stack">Stack</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#plano">Plano</a>
+      <a href="#seguranca">Segurança</a>
+      <a href="#prompt">Prompt Claude</a>
+    </div>
+  </nav>
+  <main>
+    <section id="resumo">
+      <h2>1. Resumo Executivo</h2>
+      <div class="decision"><strong>Decisão principal:</strong> começar com um app interno da Igreja Moriah, sem tentar copiar todos os recursos de uma solução grande logo no início.</div>
+      <p>A plataforma será composta por painel web administrativo e app mobile. O objetivo é reduzir WhatsApp, planilhas, fichas físicas e controles dispersos.</p>
+      <div class="grid">
+        <div class="card"><h3>Fonte única</h3><p>Membros, famílias, células, ministérios, escalas e contribuições em uma base central.</p></div>
+        <div class="card"><h3>Financeiro organizado</h3><p>Membros enviam comprovantes pelo app e o tesoureiro valida em fluxo estruturado.</p></div>
+        <div class="card"><h3>Escalas reais</h3><p>Escalas por ministério, função, evento e status de confirmação.</p></div>
+      </div>
+    </section>
+
+    <section id="mvp">
+      <h2>2. Escopo do MVP</h2>
+      <div class="grid">
+        <div class="card">
+          <h3 class="ok">Incluído</h3>
+          <ul>
+            <li>Autenticação e permissões</li>
+            <li>Membresia e famílias</li>
+            <li>Células e relatórios simples</li>
+            <li>Financeiro manual com comprovante</li>
+            <li>Extrato individual do membro</li>
+            <li>Escalas de ministérios</li>
+            <li>Django Admin como painel inicial</li>
+            <li>App mobile básico</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 class="no">Fora do MVP</h3>
+          <ul>
+            <li>OCR automático</li>
+            <li>Pix dinâmico por API</li>
+            <li>Cartão de crédito</li>
+            <li>Conciliação bancária</li>
+            <li>Moriah Kids completo</li>
+            <li>Escola Bíblica completa</li>
+            <li>Chat interno</li>
+            <li>Dashboards avançados</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="modulos">
+      <h2>3. Módulos</h2>
+      <h3>Membresia</h3><p>Cadastro de membros, famílias, vínculo com célula, ministérios, status e dados básicos.</p>
+      <h3>Financeiro</h3><p>Envio de comprovante Pix, preenchimento manual de valor/data/categoria, validação por tesoureiro e extrato individual.</p>
+      <h3>Células</h3><p>Cadastro de células, líderes, membros, reunião, presença, visitantes e observações.</p>
+      <h3>Escalas</h3><p>Ministérios, funções, eventos, escala por função, confirmação, recusa e histórico simples.</p>
+      <h3>Eventos</h3><p>No MVP, eventos servem como base para cultos e escalas. Inscrições e pagamentos ficam para depois.</p>
+    </section>
+
+    <section id="stack">
+      <h2>4. Stack Recomendada</h2>
+      <table>
+        <thead><tr><th>Camada</th><th>Stack</th></tr></thead>
+        <tbody>
+          <tr><td>Backend</td><td>Django + Django REST Framework</td></tr>
+          <tr><td>Banco</td><td>PostgreSQL</td></tr>
+          <tr><td>Painel administrativo</td><td>Django Admin customizado</td></tr>
+          <tr><td>Mobile</td><td>React Native com Expo + TypeScript</td></tr>
+          <tr><td>Auth mobile</td><td>JWT com djangorestframework-simplejwt</td></tr>
+          <tr><td>Storage</td><td>S3 compatível: AWS S3, Cloudflare R2 ou MinIO em dev</td></tr>
+          <tr><td>Infra local</td><td>Docker Compose</td></tr>
+          <tr><td>Fila futura</td><td>Celery + Redis</td></tr>
+          <tr><td>OCR futuro</td><td>Google Cloud Vision + Tesseract fallback</td></tr>
+          <tr><td>Pagamentos futuro</td><td>Efí, Pagar.me ou Mercado Pago</td></tr>
+        </tbody>
+      </table>
+      <div class="highlight"><strong>Motivo:</strong> o projeto é CRUD administrativo, permissões, relatórios, anexos e workflows. Django acelera muito mais o MVP do que montar tudo manualmente com FastAPI.</div>
+    </section>
+
+    <section id="arquitetura">
+      <h2>5. Arquitetura Inicial</h2>
+      <pre>moriah-app/
+├── backend/
+│   ├── config/
+│   ├── apps/
+│   │   ├── accounts/
+│   │   ├── members/
+│   │   ├── cells/
+│   │   ├── ministries/
+│   │   ├── events/
+│   │   ├── schedules/
+│   │   ├── finance/
+│   │   └── audit/
+│   └── manage.py
+├── mobile/
+│   ├── app/
+│   └── src/
+├── docs/
+├── docker-compose.yml
+├── .env.example
+└── README.md</pre>
+    </section>
+
+    <section id="plano">
+      <h2>6. Plano de Desenvolvimento</h2>
+      <div class="grid">
+        <div class="card phase"><span class="tag">Fase 0</span><h3>Preparação</h3><p>Repo, Docker, Django, Expo, .env e README.</p></div>
+        <div class="card phase"><span class="tag">Fase 1</span><h3>Backend Base</h3><p>Models, auth JWT, permissões, admin e APIs iniciais.</p></div>
+        <div class="card phase"><span class="tag">Fase 2</span><h3>Membresia e Células</h3><p>Membros, famílias, células, vínculos e relatórios simples.</p></div>
+        <div class="card phase"><span class="tag">Fase 3</span><h3>Financeiro</h3><p>Contribuições, upload de comprovante, validação e extrato.</p></div>
+        <div class="card phase"><span class="tag">Fase 4</span><h3>Mobile MVP</h3><p>Login, perfil, extrato, nova contribuição e minha célula.</p></div>
+        <div class="card phase"><span class="tag">Fase 5</span><h3>Escalas</h3><p>Ministérios, funções, cultos, confirmação e recusa.</p></div>
+        <div class="card phase"><span class="tag">Fase 6</span><h3>Piloto</h3><p>Teste real, ajuste de UX, backup, logs e treinamento.</p></div>
+      </div>
+    </section>
+
+    <section id="seguranca">
+      <h2>7. Segurança e LGPD</h2>
+      <ul>
+        <li>HTTPS obrigatório em produção.</li>
+        <li>Controle de acesso por perfil.</li>
+        <li>Auditoria de alterações financeiras.</li>
+        <li>Backup automático.</li>
+        <li>Consentimento para armazenamento de dados.</li>
+        <li>Restrição forte sobre dados financeiros individuais.</li>
+        <li>Evitar ranking ou exposição indevida de contribuições.</li>
+      </ul>
+    </section>
+
+    <section id="prompt">
+      <h2>8. Prompt para Claude Code</h2>
+      <p>Prompt pronto para iniciar o desenvolvimento:</p>
+      <pre>Você é um engenheiro full-stack sênior. Quero que você desenvolva o MVP de uma plataforma chamada Moriah App, para gestão interna da Igreja Moriah.
+
+Contexto do produto:
+A plataforma precisa centralizar membros, famílias, células, ministérios, eventos, escalas e contribuições financeiras com envio de comprovantes Pix. O objetivo do MVP é reduzir o uso de WhatsApp, planilhas e fichas manuais.
+
+Stack obrigatória:
+- Backend: Django + Django REST Framework
+- Banco: PostgreSQL
+- Admin: Django Admin customizado
+- Autenticação mobile: JWT com djangorestframework-simplejwt
+- Mobile: React Native com Expo + TypeScript
+- Infra local: Docker Compose
+- Uploads: armazenamento local em desenvolvimento, com camada preparada para S3 no futuro
+
+Não implementar agora:
+- OCR automático
+- Pix dinâmico
+- Pagamento por cartão
+- Conciliação bancária
+- Chat interno
+- Push notifications avançadas
+- Next.js
+
+Estrutura desejada do repositório:
+
+moriah-app/
+├── backend/
+│   ├── config/
+│   ├── apps/
+│   │   ├── accounts/
+│   │   ├── members/
+│   │   ├── cells/
+│   │   ├── ministries/
+│   │   ├── events/
+│   │   ├── schedules/
+│   │   ├── finance/
+│   │   └── audit/
+│   ├── manage.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── mobile/
+│   ├── app/
+│   ├── src/
+│   │   ├── screens/
+│   │   ├── components/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   └── types/
+│   ├── app.json
+│   └── package.json
+├── docker-compose.yml
+├── .env.example
+└── README.md
+
+Entregue primeiro um esqueleto funcional com:
+
+1. Backend Django
+- Projeto Django configurado.
+- Apps separados por domínio.
+- PostgreSQL via Docker Compose.
+- Variáveis de ambiente via .env.
+- Django REST Framework configurado.
+- SimpleJWT configurado.
+- CORS configurado para o app mobile.
+- Admin habilitado.
+
+2. Models iniciais
+Crie os models abaixo com campos essenciais, timestamps e relacionamento com Church quando fizer sentido:
+
+- Church
+- User customizado ou Profile vinculado ao User do Django
+- Member
+- Family
+- FamilyRelationship
+- Cell
+- CellMeeting
+- CellAttendance
+- Ministry
+- MinistryRole
+- Event
+- Schedule
+- ScheduleAssignment
+- Contribution
+- ContributionAttachment
+- AuditLog
+
+3. Regras básicas
+- Um membro pode pertencer a uma célula.
+- Um membro pode servir em vários ministérios.
+- Um evento pode ter uma ou mais escalas.
+- Uma escala possui assignments por função.
+- Um assignment pode ter status: pending, confirmed, declined.
+- Uma contribuição pode ter status: pending, approved, rejected, needs_review.
+- Uma contribuição pode ter um ou mais anexos.
+- O membro só pode visualizar o próprio extrato.
+- Tesoureiro e admin podem validar contribuições.
+
+4. APIs REST
+Crie endpoints para:
+- Login JWT.
+- Perfil do usuário logado.
+- Listar dados do membro logado.
+- Listar extrato do membro logado.
+- Criar contribuição com upload de comprovante.
+- Listar escalas do membro logado.
+- Confirmar escala.
+- Recusar escala com justificativa.
+- Líder de célula listar membros da sua célula.
+- Líder de célula registrar reunião e presença.
+
+5. Django Admin
+Configure o Django Admin para permitir gestão de:
+- Igrejas
+- Usuários
+- Membros
+- Famílias
+- Células
+- Ministérios
+- Funções
+- Eventos
+- Escalas
+- Contribuições
+- Anexos
+
+No admin de contribuições, destaque status pendente e permita filtro por status, período, membro e categoria.
+
+6. App Mobile Expo
+Crie um app mobile simples com:
+- Tela de login.
+- Tela inicial.
+- Tela Meu Perfil.
+- Tela Meu Extrato.
+- Tela Nova Contribuição.
+- Upload de comprovante por imagem ou documento.
+- Tela Minha Escala.
+- Ação de confirmar escala.
+- Ação de recusar escala com justificativa.
+
+7. Qualidade
+- Código organizado.
+- Tipagem no mobile.
+- Serializers claros no backend.
+- Permissões explícitas no DRF.
+- README com instruções para rodar tudo localmente.
+- .env.example completo.
+- Dados seed simples para teste local.
+
+8. Primeiro objetivo técnico
+A primeira entrega deve permitir o seguinte fluxo funcionando localmente:
+
+- Admin cria um membro no Django Admin.
+- Admin cria uma célula e vincula o membro.
+- Admin cria um evento/culto.
+- Admin cria uma escala e escala o membro em uma função.
+- Membro faz login no app.
+- Membro vê sua escala.
+- Membro confirma ou recusa.
+- Membro envia uma contribuição com comprovante.
+- Tesoureiro vê a contribuição pendente no admin.
+- Tesoureiro aprova a contribuição.
+- Membro visualiza a contribuição aprovada no extrato.
+
+Comece criando a estrutura do projeto, arquivos de configuração e models. Depois implemente APIs e telas mobile. Priorize funcionamento real do fluxo acima antes de qualquer refinamento visual.</pre>
+    </section>
+  </main>
+  <footer>PRD Moriah App · v1.0 · Junho/2026</footer>
+</body>
+</html>

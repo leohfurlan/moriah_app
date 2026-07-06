@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+*.sqlite3
+backend/media/
+backend/staticfiles/
+
+# Env
+.env
+.venv/
+venv/
+
+# Node / Expo
+node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

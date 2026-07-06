@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD — App Moriah Igreja em Células</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Barlow+Condensed:wght@700;800&family=Lora:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Brand Moriah */
+    --navy:      #2C2F3C;
+    --navy-lt:   #3D4155;
+    --navy-xs:   #ECEEF4;
+    --gold:      #DCA539;
+    --gold-dk:   #B8891F;
+    --gold-lt:   #FBF3DC;
+    --white:     #FEFEFE;
+    --bg:        #F4F3EF;
+    --text:      #1A1B22;
+    --muted:     #6B6B7A;
+    --border:    #DDD9D0;
+    --green:     #1A7A52;
+    --green-lt:  #E2F4EC;
+    --amber:     #A06800;
+    --amber-lt:  #FFF4DC;
+    --red:       #B83030;
+    --red-lt:    #FDEAEA;
+    --radius:    10px;
+    --shadow:    0 2px 14px rgba(44,47,60,0.09);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.65}
+
+  /* ── HEADER ── */
+  .site-header{background:var(--navy);color:#fff;padding:56px 48px 44px;position:relative;overflow:hidden}
+  .site-header::before{content:'';position:absolute;right:-80px;bottom:-80px;width:380px;height:380px;border-radius:50%;background:rgba(220,165,57,0.07);pointer-events:none}
+  .site-header::after{content:'';position:absolute;right:60px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(220,165,57,0.04);pointer-events:none}
+
+  /* Mountain SVG logo area */
+  .header-brand{display:flex;align-items:center;gap:20px;margin-bottom:28px}
+  .mountain-svg{width:64px;height:44px;flex-shrink:0}
+  .brand-text{}
+  .brand-name{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:#fff;letter-spacing:1px;line-height:1}
+  .brand-sub{font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-top:3px}
+
+  .header-doc-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:10px}
+  .header-title{font-family:'Lora',serif;font-style:italic;font-size:clamp(22px,3.5vw,34px);color:#fff;line-height:1.22;max-width:560px}
+  .header-meta{margin-top:18px;display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:rgba(255,255,255,0.5)}
+  .header-slogan{margin-top:20px;display:inline-block;font-size:13px;font-style:italic;color:var(--gold);border-left:3px solid var(--gold);padding-left:12px}
+
+  /* ── TOC ── */
+  .toc{background:var(--white);border-bottom:2px solid var(--gold);padding:0 40px;position:sticky;top:0;z-index:100;display:flex;gap:0;overflow-x:auto;box-shadow:0 2px 8px rgba(44,47,60,0.06)}
+  .toc a{display:block;padding:14px 15px;font-size:12.5px;font-weight:600;color:var(--muted);text-decoration:none;white-space:nowrap;border-bottom:3px solid transparent;transition:color .18s,border-color .18s}
+  .toc a:hover{color:var(--navy);border-bottom-color:var(--gold)}
+
+  /* ── LAYOUT ── */
+  .container{max-width:920px;margin:0 auto;padding:52px 40px 90px}
+  section{margin-bottom:60px;scroll-margin-top:58px}
+
+  h2{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:.5px;color:var(--navy);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--gold);display:flex;align-items:center;gap:10px;text-transform:uppercase}
+  h2 .sec-num{font-size:11px;font-weight:700;color:var(--gold);background:var(--navy);padding:2px 8px;border-radius:4px;letter-spacing:1px;font-family:'Inter',sans-serif;text-transform:uppercase}
+  h3{font-size:15px;font-weight:700;color:var(--navy-lt);margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+  p{margin-bottom:14px;color:var(--text)}
+
+  /* ── CARDS ── */
+  .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-bottom:16px}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .card-sm{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+  .card-sm h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:7px}
+  .card-sm p{font-size:13px;color:var(--muted);margin:0}
+
+  .highlight-box{background:var(--navy-xs);border-left:4px solid var(--navy);border-radius:0 var(--radius) var(--radius) 0;padding:16px 20px;margin-bottom:18px;font-size:14px}
+  .highlight-box strong{color:var(--navy)}
+  .gold-box{background:var(--gold-lt);border:1px solid var(--gold);border-radius:var(--radius);padding:18px 22px;margin-bottom:16px}
+  .gold-box .lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+
+  /* ── TABLE ── */
+  .tbl-wrap{overflow-x:auto;margin-bottom:20px;border-radius:var(--radius);box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:var(--navy);color:#fff}
+  thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.5px}
+  tbody tr{border-bottom:1px solid var(--border)}
+  tbody tr:nth-child(even){background:#FAFAF7}
+  tbody td{padding:10px 14px;color:var(--text);vertical-align:top}
+  tbody td:first-child{font-weight:600}
+
+  /* ── FEAT LIST ── */
+  ul.feat-list{list-style:none;padding:0}
+  ul.feat-list li{padding:7px 0 7px 22px;position:relative;font-size:14px;border-bottom:1px solid var(--border)}
+  ul.feat-list li:last-child{border:none}
+  ul.feat-list li::before{content:'✓';position:absolute;left:0;color:var(--green);font-weight:700}
+  ul.feat-list li.nice::before{content:'◇';color:var(--gold)}
+  ul.feat-list li.star::before{content:'★';color:var(--gold)}
+
+  /* ── ROADMAP ── */
+  .roadmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .phase{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;border-top:4px solid var(--navy)}
+  .phase.p2{border-top-color:var(--gold)}
+  .phase.p3{border-top-color:var(--green)}
+  .phase.p4{border-top-color:var(--muted)}
+  .phase-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .phase-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px}
+  .phase ul{list-style:none;padding:0}
+  .phase ul li{font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:5px}
+  .phase ul li::before{content:'□';flex-shrink:0}
+
+  /* ── RISK PILLS ── */
+  .risk-h{background:var(--red-lt);color:var(--red);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
+  .risk-m{background:var(--amber-lt);color:var(--amber);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
+  .risk-l{background:var(--green-lt);color:var(--green);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
+
+  /* ── KPI ── */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:13px}
+  .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:800;color:var(--navy);line-height:1}
+  .kpi-unit{font-size:14px;color:var(--gold);font-weight:700}
+  .kpi-label{font-size:12px;color:var(--muted);margin-top:5px}
+
+  footer{background:var(--navy);color:rgba(255,255,255,0.4);text-align:center;padding:24px;font-size:12px}
+  footer span{color:var(--gold)}
+
+  /* ══════════════════════════════════
+     MOCKUP SECTION
+  ══════════════════════════════════ */
+  .mockup-wrap{background:var(--navy);border-radius:16px;padding:40px;margin-bottom:0}
+  .mockup-wrap h2{color:#fff;border-bottom-color:var(--gold)}
+  .mockup-wrap h2 .sec-num{background:var(--gold);color:var(--navy)}
+  .mockup-desc{color:rgba(255,255,255,0.65);font-size:13.5px;margin-bottom:30px;line-height:1.6}
+
+  .phones-row{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .phone-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .phone-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold)}
+
+  .phone{width:260px;background:#0D0E12;border-radius:38px;padding:13px;box-shadow:0 24px 60px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.08);position:relative}
+  .phone-notch{width:88px;height:22px;background:#0D0E12;border-radius:0 0 14px 14px;margin:0 auto 7px;position:relative;z-index:2}
+  .phone-screen{background:var(--bg);border-radius:26px;overflow:hidden;min-height:500px;display:flex;flex-direction:column}
+
+  /* App header */
+  .app-bar{background:var(--navy);padding:14px 14px 18px;flex-shrink:0}
+  .app-bar .a-eyebrow{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase}
+  .app-bar .a-title{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:#fff;letter-spacing:.5px;margin-top:2px}
+  .app-bar .a-sub{font-size:10px;color:rgba(255,255,255,0.55);margin-top:1px}
+
+  /* Hero strip */
+  .hero-strip{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-lt) 100%);padding:16px 14px;flex-shrink:0}
+  .hero-strip .h-name{color:rgba(255,255,255,0.75);font-size:11px;font-weight:600}
+  .hero-strip .h-total-lbl{color:rgba(255,255,255,0.5);font-size:9.5px;margin-top:6px}
+  .hero-strip .h-total-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--gold);letter-spacing:-0.5px;line-height:1.1}
+  .hero-strip .h-total-sub{color:rgba(255,255,255,0.5);font-size:9px}
+
+  /* Regularidade */
+  .reg-bar{background:var(--white);margin:0 10px;border-radius:10px;padding:11px 12px;margin-top:-9px;box-shadow:0 4px 14px rgba(0,0,0,0.13);position:relative;z-index:2;flex-shrink:0}
+  .reg-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:7px;text-transform:uppercase}
+  .reg-months{display:flex;gap:3px;flex-wrap:nowrap}
+  .rdot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0}
+  .rdot.ok{background:var(--green)}
+  .rdot.part{background:var(--amber)}
+  .rdot.miss{background:#ddd;color:#999}
+  .rdot.cur{background:var(--navy);outline:2px solid var(--gold)}
+  .reg-status{font-size:10px;font-weight:700;color:var(--green);margin-top:7px}
+
+  /* Transactions */
+  .tx-list{padding:12px 10px;display:flex;flex-direction:column;gap:7px;flex:1;overflow:hidden}
+  .tx-group-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:3px 0 2px}
+  .tx-item{background:var(--white);border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:8px;border:1px solid var(--border)}
+  .tx-ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .tx-ico.d{background:var(--navy-xs)}
+  .tx-ico.o{background:var(--gold-lt)}
+  .tx-ico.c{background:var(--green-lt)}
+  .tx-info{flex:1;min-width:0}
+  .tx-tipo{font-size:11.5px;font-weight:600;color:var(--text)}
+  .tx-date{font-size:9.5px;color:var(--muted)}
+  .tx-right{text-align:right;flex-shrink:0}
+  .tx-val{font-size:12.5px;font-weight:700;color:var(--green)}
+  .tx-comp{font-size:9px;color:var(--muted);margin-top:1px}
+  .tx-comp.pix{color:var(--navy);font-weight:600;cursor:pointer}
+  .tx-comp.pix::before{content:'📎 '}
+
+  /* Form screen */
+  .form-screen{display:flex;flex-direction:column;gap:9px;padding:12px 11px;flex:1;overflow:hidden}
+  .form-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--navy);letter-spacing:.3px}
+  .f-field{display:flex;flex-direction:column;gap:3px}
+  .f-field label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+  .f-input{background:var(--white);border:1.5px solid var(--border);border-radius:7px;padding:8px 11px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;width:100%}
+  .tipo-row{display:flex;gap:5px}
+  .tipo-btn{flex:1;text-align:center;background:var(--white);border:1.5px solid var(--border);border-radius:7px;padding:7px 3px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer}
+  .tipo-btn.sel{background:var(--navy-xs);border-color:var(--navy);color:var(--navy)}
+
+  .upload-zone{background:var(--white);border:2px dashed var(--navy-lt);border-radius:9px;padding:14px;text-align:center;cursor:pointer}
+  .upload-zone .u-ico{font-size:20px;margin-bottom:4px}
+  .upload-zone .u-title{font-size:11px;font-weight:700;color:var(--navy)}
+  .upload-zone .u-sub{font-size:9px;color:var(--muted);margin-top:1px}
+  .upload-zone .u-badge{margin-top:6px;display:inline-block;font-size:9px;background:var(--gold-lt);color:var(--amber);border-radius:5px;padding:2px 7px;font-weight:700}
+
+  .pix-prev{background:var(--green-lt);border:1.5px solid var(--green);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+  .pix-prev .pp-ico{font-size:20px}
+  .pix-prev .pp-info{flex:1}
+  .pix-prev .pp-name{font-size:11px;font-weight:700;color:var(--green)}
+  .pix-prev .pp-size{font-size:9px;color:var(--muted)}
+  .pix-prev .pp-del{font-size:14px;color:var(--red);cursor:pointer}
+
+  .ocr-banner{background:var(--green-lt);border:1.5px solid var(--green);border-radius:7px;padding:8px 10px;display:flex;align-items:center;gap:7px}
+  .ocr-banner .ob-pct{font-size:10px;font-weight:700;color:var(--green)}
+  .ocr-banner .ob-info{flex:1}
+  .ocr-banner .ob-title{font-size:10.5px;font-weight:700;color:var(--green)}
+  .ocr-banner .ob-sub{font-size:8.5px;color:var(--muted)}
+
+  .submit-btn{background:var(--navy);color:#fff;border:none;border-radius:9px;padding:12px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;width:100%;transition:background .15s}
+  .submit-btn:hover{background:var(--navy-lt)}
+  .submit-btn.disabled{background:var(--border);color:var(--muted);cursor:default}
+
+  /* Scan screen */
+  .scan-receipt{background:linear-gradient(135deg,#f0f0f0,#e6e6e6);padding:11px;font-size:8px;color:#aaa;font-family:monospace;line-height:1.6;position:relative;overflow:hidden;border-radius:8px;filter:blur(.8px)}
+  .scan-line{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);animation:scanline 1.4s ease-in-out infinite}
+  .scan-spinner{width:16px;height:16px;border:2px solid var(--navy);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  .shimmer-box{background:linear-gradient(90deg,#ececec 25%,#e0e0e0 50%,#ececec 75%);background-size:200% 100%;animation:shimmer 1.2s ease infinite;border-radius:7px;height:30px;width:100%}
+
+  /* Pastor screen */
+  .pastor-screen{padding:12px 10px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .sum-cards{display:flex;gap:5px}
+  .sum-card{flex:1;background:var(--white);border:1px solid var(--border);border-radius:9px;padding:9px 6px;text-align:center}
+  .sum-card .sc-val{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--navy)}
+  .sum-card .sc-lbl{font-size:8.5px;color:var(--muted);margin-top:1px}
+  .p-filter{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px}
+  .pf-btn{white-space:nowrap;font-size:9.5px;font-weight:600;padding:4px 9px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;flex-shrink:0}
+  .pf-btn.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .mem-row{background:var(--white);border:1px solid var(--border);border-radius:9px;padding:9px 10px;display:flex;align-items:center;gap:8px}
+  .mem-av{width:30px;height:30px;border-radius:50%;background:var(--navy-xs);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .mem-info{flex:1;min-width:0}
+  .mem-name{font-size:11.5px;font-weight:600;color:var(--text)}
+  .mem-cell{font-size:9.5px;color:var(--muted)}
+  .mem-right{text-align:right}
+  .mem-val{font-size:12px;font-weight:700;color:var(--green)}
+  .mem-st{font-size:8.5px;font-weight:600;margin-top:1px}
+  .st-ok{color:var(--green)}
+  .st-late{color:var(--amber)}
+  .st-miss{color:var(--red)}
+
+  /* Bottom nav */
+  .bot-nav{background:var(--white);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:9px 0 5px;flex-shrink:0}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+  .nav-item .n-ico{font-size:17px}
+  .nav-item .n-lbl{font-size:8.5px;color:var(--muted)}
+  .nav-item.active .n-lbl{color:var(--navy);font-weight:700}
+
+  /* Demo controls */
+  .demo-ctrl{background:rgba(255,255,255,0.07);border-radius:12px;padding:22px;margin-top:30px}
+  .demo-ctrl h3{color:var(--gold);font-size:13px;font-weight:700;margin-bottom:14px;letter-spacing:.3px}
+  .ctrl-row{display:flex;gap:10px;flex-wrap:wrap}
+  .ctrl-btn{background:rgba(255,255,255,0.09);color:#fff;border:1.5px solid rgba(255,255,255,0.18);border-radius:7px;padding:7px 14px;font-size:11.5px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all .18s}
+  .ctrl-btn:hover,.ctrl-btn.active{background:var(--gold);color:var(--navy);border-color:var(--gold)}
+  .fluxo-desc{margin-top:14px;background:rgba(255,255,255,0.09);border-radius:8px;padding:13px;font-size:12.5px;color:rgba(255,255,255,0.82);line-height:1.65}
+
+  /* OCR state tabs */
+  .ocr-tabs{display:flex;gap:5px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+  .ocr-tab{font-size:9.5px;padding:4px 10px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.55);cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:all .15s}
+  .ocr-tab.active{background:rgba(220,165,57,0.2);color:var(--gold);border-color:var(--gold)}
+
+  /* ── OCR Feature box ── */
+  .ocr-feature{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-top:10px}
+  .ocr-feature-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+  .ocr-feature-ico{font-size:28px;line-height:1}
+  .ocr-feature-title{font-size:16px;font-weight:700;color:var(--navy)}
+  .ocr-feature-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .step-list{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+  .step-item{display:flex;gap:10px;align-items:flex-start}
+  .step-num{background:var(--navy);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:13.5px;color:var(--text)}
+  .step-text strong{color:var(--navy)}
+  .fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;margin-bottom:18px}
+  .field-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px}
+  .field-card .fc-lbl{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .field-card .fc-desc{font-size:12.5px;color:var(--text)}
+  .security-box{background:var(--amber-lt);border:1px solid var(--gold);border-radius:8px;padding:13px 15px;font-size:13px}
+  .security-box strong{color:var(--amber)}
+
+  /* ── animations ── */
+  @keyframes scanline{0%{top:0;opacity:1}50%{top:90%;opacity:1}100%{top:0;opacity:.3}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  @media(max-width:640px){
+    .container{padding:32px 18px 70px}
+    .site-header{padding:36px 20px 32px}
+    .toc{padding:0 10px}
+    .mockup-wrap{padding:22px 14px}
+    .phones-row{flex-direction:column;align-items:center}
+    h2{font-size:20px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="site-header">
+  <div class="header-brand">
+    <!-- Mountain SVG — fiel ao símbolo Moriah -->
+    <svg class="mountain-svg" viewBox="0 0 120 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="60,4 110,78 10,78" fill="#DCA539"/>
+      <polygon points="60,4 80,36 40,36" fill="#2C2F3C" opacity=".45"/>
+      <polygon points="45,28 60,4 75,28 65,22 60,30 55,22" fill="#FEFEFE" opacity=".7"/>
+      <polygon points="28,56 44,28 60,56 50,48 44,58 38,48" fill="#FEFEFE" opacity=".45"/>
+    </svg>
+    <div class="brand-text">
+      <div class="brand-name">MORIAH</div>
+      <div class="brand-sub">— Igreja em Células —</div>
+    </div>
+  </div>
+  <div class="header-doc-label">Documento de Produto · PRD v0.2</div>
+  <div class="header-title">Plataforma de Gestão Moriah</div>
+  <div class="header-meta">
+    <span>📅 Junho 2026</span>
+    <span>📋 Uso interno</span>
+    <span>👤 Leonardo Furlan</span>
+  </div>
+  <div class="header-slogan">"Uma família para pertencer e ser amado!"</div>
+</header>
+
+<!-- ═══════════════════ TOC ═══════════════════ -->
+<nav class="toc">
+  <a href="#contexto">Contexto</a>
+  <a href="#publico">Público</a>
+  <a href="#modulos">Módulos</a>
+  <a href="#mockup">✦ Mockup</a>
+  <a href="#roadmap">Roadmap</a>
+  <a href="#riscos">Riscos</a>
+  <a href="#kpis">KPIs</a>
+  <a href="#stack">Stack</a>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════ 1. CONTEXTO ═══════════════════ -->
+<section id="contexto">
+  <h2><span class="sec-num">01</span> Contexto e Problema</h2>
+
+  <p>A Moriah Igreja em Células opera com uma base ativa de células, ministérios criativos (louvor, dança, teatro) e equipes operacionais (recepção, técnica, Moriah Kids). Toda a administração ainda é manual: fichas de membros em papel, escalas pelo WhatsApp e controle de dízimos por mensagem.</p>
+
+  <div class="highlight-box">
+    <strong>O problema central é visível no próprio adesivo de Dízimos da Moriah:</strong> a chave Pix está exposta fisicamente, e o membro é orientado a enviar o comprovante pelo WhatsApp do tesoureiro. Não há registro estruturado, extrato individual nem confirmação formal. O app resolve exatamente isso.
+  </div>
+
+  <div class="card-grid">
+    <div class="card-sm">
+      <h4>💸 Dízimos sem rastreamento</h4>
+      <p>Comprovantes chegam via WhatsApp, sem vínculo ao membro, sem histórico de regularidade, sem carta anual para IRPF.</p>
+    </div>
+    <div class="card-sm">
+      <h4>🗂️ Membresia fragmentada</h4>
+      <p>Fichas físicas, dados desatualizados, sem visão unificada de células, ministérios e histórico pastoral.</p>
+    </div>
+    <div class="card-sm">
+      <h4>📅 Escalas pelo WhatsApp</h4>
+      <p>Louvor, dança, teatro, recepção e equipe técnica sem confirmação formal, sem histórico, sem substituição automática.</p>
+    </div>
+    <div class="card-sm">
+      <h4>👶 Moriah Kids sem controle</h4>
+      <p>Crianças sem check-in seguro, professores sem escala formal, responsáveis sem comunicação direta durante o culto.</p>
+    </div>
+    <div class="card-sm">
+      <h4>📖 Escola Bíblica manual</h4>
+      <p>Turmas de EBM e Timóteos sem lista de presença digital, sem histórico de aulas, sem controle de apostilas.</p>
+    </div>
+    <div class="card-sm">
+      <h4>🔔 Comunicação dispersa</h4>
+      <p>Avisos em múltiplos grupos de WhatsApp, sem segmentação por ministério ou célula, sem confirmação de leitura.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 2. PÚBLICO ═══════════════════ -->
+<section id="publico">
+  <h2><span class="sec-num">02</span> Público-alvo e Níveis de Acesso</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Perfil</th><th>Necessidade principal</th><th>Plataforma</th></tr></thead>
+      <tbody>
+        <tr><td>Pastor / Liderança</td><td>Visão geral, extrato de dízimos por membro, saúde da membresia, relatórios pastorais</td><td>Web + App</td></tr>
+        <tr><td>Tesoureiro</td><td>Lançar contribuições, validar comprovantes Pix com OCR, balancete, relatórios</td><td>Web + App</td></tr>
+        <tr><td>Secretária</td><td>Cadastro de membros, eventos, documentos, certificados</td><td>Web</td></tr>
+        <tr><td>Líder de Célula</td><td>Relatório de reunião, frequência, visitantes, discipulado</td><td>App</td></tr>
+        <tr><td>Coordenador de Ministério</td><td>Escala de equipe, confirmação de participação, histórico</td><td>App + Web</td></tr>
+        <tr><td>Professor EBM / Timóteos</td><td>Lista de presença, registro de aula, apostilas digitais</td><td>App</td></tr>
+        <tr><td>Membro</td><td>Extrato pessoal, lançar dízimo com comprovante Pix, agenda, escala própria</td><td>App</td></tr>
+        <tr><td>Líder Moriah Kids</td><td>Check-in de crianças, controle de turmas, comunicação com responsáveis</td><td>App (tablet)</td></tr>
+        <tr><td>Visitante</td><td>Autocadastro, agenda pública, informações de culto</td><td>App</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ 3. MÓDULOS ═══════════════════ -->
+<section id="modulos">
+  <h2><span class="sec-num">03</span> Módulos e Funcionalidades</h2>
+
+  <!-- ── M1: Membresia ── -->
+  <h3>👤 Módulo 1 — Membresia</h3>
+  <ul class="feat-list">
+    <li>Ficha completa: nome, foto, CPF, data de nascimento, endereço, contato, estado civil, cônjuge</li>
+    <li>Situação: ativo, inativo, visitante, transferido, disciplinado, falecido</li>
+    <li>Histórico eclesiástico: data de batismo, membresia, consagrações, nomeações</li>
+    <li>Cadastro de família — vínculos entre membros (cônjuge, filhos)</li>
+    <li>Autocadastro por link/QR Code com aprovação do admin</li>
+    <li>Aniversariantes do dia/mês com alerta automático para a liderança</li>
+    <li>Busca rápida, filtros avançados, exportação CSV/PDF</li>
+    <li class="nice">Credencial digital — carteirinha de membro com QR Code</li>
+    <li class="nice">Histórico pastoral sigiloso — visível apenas a pastores</li>
+    <li class="nice">Envio de mensagem em lote via WhatsApp por segmento</li>
+  </ul>
+
+  <!-- ── M2: Financeiro ── -->
+  <h3>🌟 Módulo 2 — Financeiro (feature principal)</h3>
+  <ul class="feat-list">
+    <li>Plano de contas: receitas (dízimo, oferta livre, oferta especial, campanha, aluguel) e despesas</li>
+    <li>Lançamento de contribuição vinculado ao membro — data, culto, categoria, forma de pagamento</li>
+    <li class="star"><strong>Leitura automática de comprovante Pix</strong> — membro anexa imagem ou PDF, o app extrai valor, data e chave automaticamente (ver subseção)</li>
+    <li>Tesoureiro valida o comprovante e confirma com um toque</li>
+    <li>Extrato individual por membro com status mensal de regularidade (regular / parcial / ausente)</li>
+    <li>Carta/comprovante anual de doações para declaração de IRPF</li>
+    <li>Extrato geral da tesouraria: saldo, entradas, saídas por período</li>
+    <li>Painel pastoral sigiloso: ranking de regularidade, alertas de membro irregular por célula</li>
+    <li>Centro de custo: sede, missões, obras, ministérios</li>
+    <li class="nice">Conciliação bancária (importação OFX)</li>
+    <li class="nice">QR Pix gerado no app para doação direta — substituindo o adesivo físico</li>
+    <li class="nice">Doação online com cartão (Pagar.me)</li>
+  </ul>
+
+  <!-- OCR Feature -->
+  <div class="ocr-feature">
+    <div class="ocr-feature-header">
+      <div class="ocr-feature-ico">🔍</div>
+      <div>
+        <div class="ocr-feature-title">Leitura Automática de Comprovante Pix</div>
+        <div class="ocr-feature-sub">Subfeature do Módulo Financeiro — OCR + Parser estruturado por banco</div>
+      </div>
+    </div>
+
+    <p style="font-size:14px;margin-bottom:16px;">O membro não precisa digitar nada. Ao anexar o comprovante, o app extrai os campos automaticamente e pré-preenche o formulário. O tesoureiro recebe o lançamento já estruturado, com o arquivo arquivado — eliminando completamente o fluxo atual via WhatsApp.</p>
+
+    <div class="highlight-box" style="font-size:13px;">
+      <strong>Formatos aceitos:</strong> foto tirada com a câmera do celular, screenshot salvo na galeria (JPEG/PNG) ou PDF exportado pelo app do banco. PDFs são rasterizados no backend antes do OCR. Fallback gracioso: se a extração falhar, o formulário fica em branco para preenchimento manual — o arquivo fica anexado do mesmo jeito.
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;">Campos extraídos automaticamente:</div>
+    <div class="fields-grid">
+      <div class="field-card"><div class="fc-lbl">Valor (R$)</div><div class="fc-desc">Campo "Valor da transferência". Normalizado para decimal brasileiro.</div></div>
+      <div class="field-card"><div class="fc-lbl">Data e hora</div><div class="fc-desc">Data real da transação, não do upload. Usada para associar ao culto mais próximo.</div></div>
+      <div class="field-card"><div class="fc-lbl">Chave Pix destino</div><div class="fc-desc">Validada contra o CNPJ <strong>31.136.285/0001-16</strong> da Moriah. Alerta se divergir.</div></div>
+      <div class="field-card"><div class="fc-lbl">Banco de origem</div><div class="fc-desc">Identificado pelo cabeçalho ou logo. Exibido no extrato do tesoureiro.</div></div>
+      <div class="field-card"><div class="fc-lbl">ID da transação (E2E)</div><div class="fc-desc">EndToEndId quando visível. Constraint de unicidade — bloqueia duplicatas automaticamente.</div></div>
+      <div class="field-card"><div class="fc-lbl">Nome do pagador</div><div class="fc-desc">Confrontado com o nome do membro logado. Alerta se divergir.</div></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;">Pipeline técnico (6 etapas):</div>
+    <div class="step-list">
+      <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Pré-processamento mobile:</strong> redimensionamento para max 1920px, compressão JPEG 85%, correção de orientação EXIF.</div></div>
+      <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>OCR:</strong> Google Cloud Vision API (primário, alta precisão em português) + Tesseract (fallback local, zero custo variável).</div></div>
+      <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Parser por banco:</strong> regex + heurísticas calibradas por layout de cada banco (Nubank, Bradesco, Itaú, Caixa, BB, Inter, C6, Santander, Sicredi).</div></div>
+      <div class="step-item"><div class="step-num">4</div><div class="step-text"><strong>Validação cruzada:</strong> chave Pix confrontada com o CNPJ cadastrado da Moriah; ID de transação verificado contra lançamentos anteriores.</div></div>
+      <div class="step-item"><div class="step-num">5</div><div class="step-text"><strong>Score de confiança:</strong> cada campo recebe um score 0–100%. Campos abaixo de 80% ficam marcados em âmbar para revisão do membro antes de enviar.</div></div>
+      <div class="step-item"><div class="step-num">6</div><div class="step-text"><strong>Fallback gracioso:</strong> extração total inválida → formulário vazio + mensagem explicativa. O arquivo fica sempre anexado para o tesoureiro visualizar manualmente.</div></div>
+    </div>
+
+    <div class="security-box">
+      <strong>Segurança e anti-fraude:</strong> comprovante armazenado no servidor (não apenas no dispositivo); ID de transação com constraint UNIQUE por Igreja; nome do pagador confrontado com o cadastro do membro logado. Qualquer divergência gera alerta visual no painel do tesoureiro — o lançamento não é bloqueado, mas fica sinalizado para revisão humana.
+    </div>
+  </div>
+
+  <!-- ── M3: Células ── -->
+  <h3>🏘️ Módulo 3 — Células / Pequenos Grupos</h3>
+  <ul class="feat-list">
+    <li>Cadastro de célula: tipo, líder(es) até 4, endereço, dia e horário regular</li>
+    <li>Vínculo de membros — transferência entre células registrada com histórico</li>
+    <li>Relatório de reunião pelo líder: data, presentes, visitantes, tema, observações, selfie opcional</li>
+    <li>Alerta pastoral automático: membros com 2+ ausências consecutivas destacados para o supervisor</li>
+    <li>Consolidado por setor/região para supervisores e pastores</li>
+    <li>Dashboard de crescimento: meta de visitantes vs. realizado por célula</li>
+    <li class="nice">Chat interno da célula no app</li>
+    <li class="nice">Plano de discipulado com metas por membro e acompanhamento por etapas</li>
+  </ul>
+
+  <!-- ── M4: Escola Bíblica ── -->
+  <h3>📖 Módulo 4 — Escola de Ensino Bíblico Moriah</h3>
+  <p style="font-size:13.5px;color:var(--muted);margin-bottom:12px;">Inclui a <strong>Classe de Timóteos</strong> — programa dedicado a adolescentes e jovens —, as turmas regulares da EBM para adultos e quaisquer outros cursos ou escolas criados pela liderança.</p>
+  <ul class="feat-list">
+    <li>Cadastro de escola: nome (ex: EBM Adultos, Timóteos, Escola de Líderes), responsável, descrição</li>
+    <li>Cadastro de turmas dentro de cada escola: nome, professor(es), horário, faixa etária</li>
+    <li class="star"><strong>Classe de Timóteos:</strong> turma específica para adolescentes e jovens, com campo de faixa etária, temas de aula alinhados ao contexto jovem, e integração com o módulo de escalas (Timóteos na equipe de louvor, teatro, etc.)</li>
+    <li>Lista de presença digital por aula — professor lança via app</li>
+    <li>Histórico de frequência por aluno com % de presença por semestre</li>
+    <li>Biblioteca de estudos: upload de apostilas, PDFs e materiais de aula por turma</li>
+    <li>Certificados de conclusão gerados automaticamente ao final do semestre</li>
+    <li>Alerta de infrequência: aluno com mais de 3 faltas gera notificação para o professor/coordenador</li>
+    <li class="nice">Prova ou questionário digital por módulo</li>
+    <li class="nice">Integração com módulo de discipulado de células (frequência na Escola conta no acompanhamento)</li>
+  </ul>
+
+  <!-- ── M5: Escalas ── -->
+  <h3>🎵 Módulo 5 — Escalas de Ministérios</h3>
+  <p style="font-size:13.5px;color:var(--muted);margin-bottom:12px;">Diferencial da plataforma: escalas com granularidade de função dentro de cada ministério — sem equivalente nos concorrentes brasileiros.</p>
+  <ul class="feat-list">
+    <li>Ministérios configuráveis: Louvor (vocal, guitarra, baixo, bateria, teclado, violão), Dança, Teatro, Recepção</li>
+    <li>Equipe Técnica: Mesa de Som, Projeção/Multimídia, Mídia/Live (câmera, direção, edição), Iluminação</li>
+    <li>Intercessão, Comunicação/Design, Café e Hospitalidade</li>
+    <li>Criação de escala por culto/evento com drag-and-drop de membros para cada função</li>
+    <li>Membro recebe notificação push e confirma ou recusa com justificativa no app</li>
+    <li>Bloqueio de disponibilidade: membro informa datas indisponíveis com antecedência</li>
+    <li>Sugestão de substituição automática ao coordenador em caso de recusa</li>
+    <li>Histórico de participação por membro por ministério</li>
+    <li>Relatório de frequência: quem mais serve, quem sumiu, distribuição por função</li>
+    <li class="nice">Checklist técnico pré-culto para equipe de som/mídia</li>
+    <li class="nice">Partituras e playback de músicas para equipe de louvor</li>
+  </ul>
+
+  <!-- ── M6: Kids ── -->
+  <h3>👶 Módulo 6 — Moriah Kids</h3>
+  <ul class="feat-list">
+    <li>Cadastro de crianças com vínculo a responsável(is) membro(s)</li>
+    <li>Turmas por faixa etária: Berçário, Maternal, Infantil I e II, Pré-adolescente</li>
+    <li>Check-in de entrada: QR Code gerado no app do responsável — recepção escaneia</li>
+    <li>Etiqueta de identificação com número de chamada — impressa na recepção</li>
+    <li>Saída controlada: responsável apresenta QR ou etiqueta para retirar a criança</li>
+    <li>Professores e auxiliares integrados ao Módulo 5 de Escalas</li>
+    <li>Comunicado push urgente para o responsável durante o culto sem ele sair do auditório</li>
+    <li>Relatório de presença por turma e histório de frequência da criança</li>
+    <li class="nice">Foto da turma e registro de atividades por aula</li>
+  </ul>
+
+  <!-- ── M7: Eventos ── -->
+  <h3>📅 Módulo 7 — Eventos e Agenda</h3>
+  <ul class="feat-list">
+    <li>Calendário da Moriah: cultos, conferências, encontros, retiros, ensaios</li>
+    <li>Inscrição com formulário customizável, controle de vagas e lista de espera</li>
+    <li>Cobrança de taxa de inscrição opcional</li>
+    <li>Check-in no dia por QR Code com controle de presença</li>
+    <li>Push notifications segmentadas por ministério, célula ou toda a Igreja</li>
+    <li>Feed/mural de avisos da Moriah no app</li>
+    <li>Pedidos de oração — membro submete, equipe de intercessão recebe</li>
+    <li class="nice">Embed de transmissão ao vivo (YouTube Live)</li>
+    <li class="nice">Certificados de participação em eventos</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ MOCKUP ═══════════════════ -->
+<section id="mockup">
+  <div class="mockup-wrap">
+    <h2><span class="sec-num">✦</span> Mockup — Extrato de Dízimos Moriah</h2>
+    <p class="mockup-desc">Telas do app com identidade visual da Moriah. A tela do meio simula os 3 estados do fluxo de OCR — toque nos botões ① ② ③ para alternar. Os controles abaixo descrevem cada etapa do ciclo completo.</p>
+
+    <div class="phones-row">
+
+      <!-- TELA 1: Extrato do membro -->
+      <div class="phone-wrap">
+        <div class="phone-label">Meu Extrato</div>
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="app-bar">
+              <div class="a-eyebrow">Moriah Igreja em Células</div>
+              <div class="a-title">Meu Extrato</div>
+              <div class="a-sub">Janeiro – Junho 2026</div>
+            </div>
+            <div class="hero-strip">
+              <div class="h-name">👤 Ana Carolina Mendes</div>
+              <div class="h-total-lbl">Total contribuído em 2026</div>
+              <div class="h-total-val">R$ 2.840,00</div>
+              <div class="h-total-sub">Dízimos + Ofertas + Campanhas</div>
+            </div>
+            <div class="reg-bar">
+              <div class="reg-lbl">Regularidade 2026</div>
+              <div class="reg-months">
+                <div class="rdot ok">J</div><div class="rdot ok">F</div>
+                <div class="rdot ok">M</div><div class="rdot part">A</div>
+                <div class="rdot ok">M</div><div class="rdot cur">J</div>
+                <div class="rdot miss">J</div><div class="rdot miss">A</div>
+                <div class="rdot miss">S</div><div class="rdot miss">O</div>
+                <div class="rdot miss">N</div><div class="rdot miss">D</div>
+              </div>
+              <div class="reg-status">🟢 Regular — 5 de 6 meses</div>
+            </div>
+            <div class="tx-list">
+              <div class="tx-group-lbl">Junho 2026</div>
+              <div class="tx-item">
+                <div class="tx-ico d">🙏</div>
+                <div class="tx-info"><div class="tx-tipo">Dízimo</div><div class="tx-date">01 Jun · Culto Domingo Manhã</div></div>
+                <div class="tx-right"><div class="tx-val">R$ 420,00</div><div class="tx-comp pix">Comprovante Pix</div></div>
+              </div>
+              <div class="tx-item">
+                <div class="tx-ico o">💛</div>
+                <div class="tx-info"><div class="tx-tipo">Oferta Especial</div><div class="tx-date">08 Jun · Missões</div></div>
+                <div class="tx-right"><div class="tx-val">R$ 100,00</div><div class="tx-comp">Dinheiro</div></div>
+              </div>
+              <div class="tx-group-lbl">Maio 2026</div>
+              <div class="tx-item">
+                <div class="tx-ico d">🙏</div>
+                <div class="tx-info"><div class="tx-tipo">Dízimo</div><div class="tx-date">04 Mai · Culto Domingo</div></div>
+                <div class="tx-right"><div class="tx-val">R$ 420,00</div><div class="tx-comp pix">Comprovante Pix</div></div>
+              </div>
+              <div class="tx-item">
+                <div class="tx-ico c">🌱</div>
+                <div class="tx-info"><div class="tx-tipo">Campanha Construção</div><div class="tx-date">11 Mai</div></div>
+                <div class="tx-right"><div class="tx-val">R$ 200,00</div><div class="tx-comp pix">Comprovante Pix</div></div>
+              </div>
+            </div>
+            <div class="bot-nav">
+              <div class="nav-item"><div class="n-ico">🏠</div><div class="n-lbl">Início</div></div>
+              <div class="nav-item active"><div class="n-ico">💰</div><div class="n-lbl">Extrato</div></div>
+              <div class="nav-item"><div class="n-ico">📅</div><div class="n-lbl">Agenda</div></div>
+              <div class="nav-item"><div class="n-ico">🎵</div><div class="n-lbl">Escala</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 2: Lançar dízimo — 3 estados OCR -->
+      <div class="phone-wrap">
+        <div class="ocr-tabs">
+          <button class="ocr-tab active" onclick="setOcr('vazio',this)">① Antes</button>
+          <button class="ocr-tab" onclick="setOcr('scan',this)">② Escaneando</button>
+          <button class="ocr-tab" onclick="setOcr('ok',this)">③ Preenchido</button>
+        </div>
+        <div class="phone-label">Lançar Contribuição</div>
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="app-bar">
+              <div class="a-eyebrow">Moriah Igreja em Células</div>
+              <div class="a-title">Nova Contribuição</div>
+            </div>
+
+            <!-- STATE 1: vazio -->
+            <div id="ocr-vazio" class="form-screen">
+              <div class="form-title">Dízimo ou Oferta</div>
+              <div class="f-field">
+                <label>Tipo</label>
+                <div class="tipo-row">
+                  <div class="tipo-btn sel">🙏 Dízimo</div>
+                  <div class="tipo-btn">💛 Oferta</div>
+                  <div class="tipo-btn">🌱 Camp.</div>
+                </div>
+              </div>
+              <div class="f-field">
+                <label>Comprovante Pix</label>
+                <div class="upload-zone">
+                  <div class="u-ico">📎</div>
+                  <div class="u-title">Anexar comprovante</div>
+                  <div class="u-sub">Foto, print ou PDF</div>
+                  <div class="u-badge">✨ Preenchimento automático</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;margin:2px 0">
+                <div style="flex:1;height:1px;background:var(--border)"></div>
+                <span style="font-size:10px;color:var(--muted)">ou preencha manualmente</span>
+                <div style="flex:1;height:1px;background:var(--border)"></div>
+              </div>
+              <div class="f-field"><label>Valor (R$)</label><input class="f-input" value="" placeholder="0,00" readonly style="color:var(--muted)"></div>
+              <div class="f-field"><label>Data</label><input class="f-input" value="" placeholder="Selecionar data" readonly style="color:var(--muted)"></div>
+              <div class="f-field"><label>Culto</label><input class="f-input" value="" placeholder="Selecionar culto" readonly style="color:var(--muted)"></div>
+              <button class="submit-btn disabled">Preencha os campos</button>
+            </div>
+
+            <!-- STATE 2: escaneando -->
+            <div id="ocr-scan" class="form-screen" style="display:none">
+              <div class="form-title">Dízimo ou Oferta</div>
+              <div class="f-field">
+                <label>Tipo</label>
+                <div class="tipo-row">
+                  <div class="tipo-btn sel">🙏 Dízimo</div>
+                  <div class="tipo-btn">💛 Oferta</div>
+                  <div class="tipo-btn">🌱 Camp.</div>
+                </div>
+              </div>
+              <div class="scan-receipt" style="border-radius:8px;overflow:hidden;position:relative">
+                COMPROVANTE PIX — BRADESCO<br>
+                17/06/2026 09:14:32<br>
+                Valor: R$ 420,00<br>
+                De: Ana Carolina Mendes<br>
+                Para: Moriah Igreja Cristã<br>
+                Chave: 31.136.285/0001-16<br>
+                ID: E99000191202606172...
+                <div class="scan-line"></div>
+              </div>
+              <div style="background:var(--navy-xs);border-radius:8px;padding:10px;display:flex;align-items:center;gap:9px">
+                <div class="scan-spinner"></div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--navy)">Lendo comprovante...</div>
+                  <div style="font-size:9.5px;color:var(--muted);margin-top:1px">Extraindo valor, data e chave Pix</div>
+                </div>
+              </div>
+              <div class="f-field"><label>Valor (R$)</label><div class="shimmer-box"></div></div>
+              <div class="f-field"><label>Data</label><div class="shimmer-box" style="animation-delay:.15s"></div></div>
+              <button class="submit-btn disabled" style="cursor:wait">Processando...</button>
+            </div>
+
+            <!-- STATE 3: preenchido -->
+            <div id="ocr-ok" class="form-screen" style="display:none">
+              <div class="form-title">Dízimo ou Oferta</div>
+              <div class="f-field">
+                <label>Tipo</label>
+                <div class="tipo-row">
+                  <div class="tipo-btn sel">🙏 Dízimo</div>
+                  <div class="tipo-btn">💛 Oferta</div>
+                  <div class="tipo-btn">🌱 Camp.</div>
+                </div>
+              </div>
+              <div class="ocr-banner">
+                <span style="font-size:16px">✅</span>
+                <div class="ob-info">
+                  <div class="ob-title">Preenchido automaticamente</div>
+                  <div class="ob-sub">Bradesco · ID E9900019... · Revise e confirme</div>
+                </div>
+                <div class="ob-pct">100%</div>
+              </div>
+              <div class="f-field">
+                <label>Valor (R$) <span style="background:var(--green-lt);color:var(--green);font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700">✓ OCR</span></label>
+                <input class="f-input" value="420,00" readonly style="border-color:var(--green);background:#f9fff9">
+              </div>
+              <div class="f-field">
+                <label>Data <span style="background:var(--green-lt);color:var(--green);font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700">✓ OCR</span></label>
+                <input class="f-input" value="17/06/2026 · 09:14" readonly style="border-color:var(--green);background:#f9fff9">
+              </div>
+              <div class="f-field">
+                <label>Culto sugerido <span style="background:var(--amber-lt);color:var(--amber);font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700">⚠ Confirmar</span></label>
+                <input class="f-input" value="Culto Domingo Manhã – 15/06" readonly style="border-color:var(--gold);background:#fffdf5">
+              </div>
+              <div class="pix-prev">
+                <div class="pp-ico">🧾</div>
+                <div class="pp-info">
+                  <div class="pp-name">comprovante_pix.png</div>
+                  <div class="pp-size">148 KB · Bradesco · Chave CNPJ ✓</div>
+                </div>
+                <div class="pp-del">✕</div>
+              </div>
+              <button class="submit-btn">✓ Enviar para Tesoureiro</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 3: Visão pastor/tesoureiro -->
+      <div class="phone-wrap">
+        <div class="phone-label">Painel Tesouraria</div>
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="app-bar">
+              <div class="a-eyebrow">Moriah Igreja em Células</div>
+              <div class="a-title">Tesouraria</div>
+              <div class="a-sub">Junho 2026</div>
+            </div>
+            <div class="pastor-screen">
+              <div class="sum-cards">
+                <div class="sum-card"><div class="sc-val">R$14.820</div><div class="sc-lbl">Arrecadado</div></div>
+                <div class="sum-card"><div class="sc-val">78%</div><div class="sc-lbl">Regulares</div></div>
+                <div class="sum-card"><div class="sc-val">12</div><div class="sc-lbl">⚠ Alertas</div></div>
+              </div>
+              <div class="p-filter">
+                <div class="pf-btn sel">Todos</div>
+                <div class="pf-btn">Regulares</div>
+                <div class="pf-btn">Irregulares</div>
+                <div class="pf-btn">Pix pend.</div>
+              </div>
+              <div class="mem-row">
+                <div class="mem-av">AC</div>
+                <div class="mem-info"><div class="mem-name">Ana Carolina M.</div><div class="mem-cell">Célula Esperança · Louvor</div></div>
+                <div class="mem-right"><div class="mem-val">R$420</div><div class="mem-st st-ok">● Regular</div></div>
+              </div>
+              <div class="mem-row">
+                <div class="mem-av">RF</div>
+                <div class="mem-info"><div class="mem-name">Rafael Ferreira</div><div class="mem-cell">Célula Vitória · Técnica</div></div>
+                <div class="mem-right"><div class="mem-val">R$200</div><div class="mem-st st-late">● 1 mês atraso</div></div>
+              </div>
+              <div class="mem-row">
+                <div class="mem-av">JS</div>
+                <div class="mem-info"><div class="mem-name">Juliana Santos</div><div class="mem-cell">Célula Graça · Timóteos</div></div>
+                <div class="mem-right"><div class="mem-val">—</div><div class="mem-st st-miss">● 3 meses</div></div>
+              </div>
+              <div class="mem-row">
+                <div class="mem-av">LO</div>
+                <div class="mem-info"><div class="mem-name">Luana Oliveira</div><div class="mem-cell">Célula Fé · Moriah Kids</div></div>
+                <div class="mem-right"><div class="mem-val">🧾 pend.</div><div class="mem-st st-late">● Pix aguardando</div></div>
+              </div>
+              <div class="mem-row">
+                <div class="mem-av">PM</div>
+                <div class="mem-info"><div class="mem-name">Pedro Martins</div><div class="mem-cell">Célula Paz · EBM</div></div>
+                <div class="mem-right"><div class="mem-val">R$350</div><div class="mem-st st-ok">● Regular</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /phones-row -->
+
+    <div class="demo-ctrl">
+      <h3>Ciclo completo do comprovante Pix — 5 etapas</h3>
+      <div class="ctrl-row">
+        <button class="ctrl-btn active" onclick="setFluxo('anexa',this)">📱 Membro anexa</button>
+        <button class="ctrl-btn" onclick="setFluxo('ocr',this)">🔍 OCR extrai</button>
+        <button class="ctrl-btn" onclick="setFluxo('revisa',this)">👁 Membro revisa</button>
+        <button class="ctrl-btn" onclick="setFluxo('confirma',this)">✅ Tesoureiro confirma</button>
+        <button class="ctrl-btn" onclick="setFluxo('invalido',this)">❌ Inválido</button>
+      </div>
+      <div class="fluxo-desc" id="fluxo-desc">
+        <strong style="color:var(--gold)">① Membro anexa o arquivo:</strong> toca em "Anexar comprovante" e escolhe um print da galeria, tira foto da tela do celular após o Pix, ou importa o PDF exportado pelo app do banco. JPEG, PNG ou PDF — todos aceitos. O arquivo sobe ao servidor e entra na fila de OCR. Nenhum campo precisa ser digitado ainda. Veja a tela do meio no estado <em>"Antes"</em>.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 5. ROADMAP ═══════════════════ -->
+<section id="roadmap">
+  <h2><span class="sec-num">04</span> Roadmap de Desenvolvimento</h2>
+  <div class="roadmap">
+    <div class="phase">
+      <div class="phase-lbl">Fase 1 · 3–4 meses</div>
+      <div class="phase-title">MVP</div>
+      <ul>
+        <li>Cadastro de membros e famílias</li>
+        <li>Extrato de dízimos + comprovante Pix com OCR</li>
+        <li>Validação pelo tesoureiro</li>
+        <li>Células + relatório do líder</li>
+        <li>Escalas: Louvor e Técnica</li>
+        <li>App mobile iOS + Android</li>
+        <li>RBAC — níveis de acesso</li>
+      </ul>
+    </div>
+    <div class="phase p2">
+      <div class="phase-lbl">Fase 2 · 2–3 meses</div>
+      <div class="phase-title">Expansão</div>
+      <ul>
+        <li>Escola Bíblica Moriah + Timóteos</li>
+        <li>Escalas: Dança, Teatro, Recepção</li>
+        <li>Moriah Kids: check-in + turmas</li>
+        <li>Eventos com inscrição</li>
+        <li>Push notifications</li>
+        <li>Carta anual IRPF</li>
+      </ul>
+    </div>
+    <div class="phase p3">
+      <div class="phase-lbl">Fase 3 · 2 meses</div>
+      <div class="phase-title">Engajamento</div>
+      <ul>
+        <li>QR Pix gerado no app</li>
+        <li>Feed/mural da Moriah</li>
+        <li>Pedidos de oração</li>
+        <li>Conciliação bancária OFX</li>
+        <li>Discipulado com metas</li>
+      </ul>
+    </div>
+    <div class="phase p4">
+      <div class="phase-lbl">Fase 4 · ongoing</div>
+      <div class="phase-title">Maturidade</div>
+      <ul>
+        <li>Certificados automáticos EBM</li>
+        <li>Relatórios pastorais avançados</li>
+        <li>Dashboard de crescimento</li>
+        <li>Backup e exportação completa</li>
+        <li>Refinamentos por feedback</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 6. RISCOS ═══════════════════ -->
+<section id="riscos">
+  <h2><span class="sec-num">05</span> Riscos e Mitigações</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Risco</th><th>Prob.</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+      <tbody>
+        <tr><td>Resistência de lideranças à tecnologia</td><td><span class="risk-m">Média</span></td><td><span class="risk-h">Alto</span></td><td>UX extremamente simples; treinamento presencial; suporte via WhatsApp</td></tr>
+        <tr><td>Dados sensíveis (finanças, disciplina pastoral)</td><td><span class="risk-m">Média</span></td><td><span class="risk-h">Alto</span></td><td>LGPD compliance; criptografia; RBAC granular; auditoria de acessos</td></tr>
+        <tr><td>Scope creep no desenvolvimento</td><td><span class="risk-h">Alta</span></td><td><span class="risk-h">Alto</span></td><td>MVP enxuto; priorizar Extrato Pix + Membresia + Escalas nas primeiras sprints</td></tr>
+        <tr><td>OCR com baixa precisão em fotos ruins</td><td><span class="risk-m">Média</span></td><td><span class="risk-m">Médio</span></td><td>Fallback gracioso para preenchimento manual; guia visual de como tirar foto ideal</td></tr>
+        <tr><td>Adoção baixa pelos membros</td><td><span class="risk-m">Média</span></td><td><span class="risk-m">Médio</span></td><td>Lançamento com ajuda do pastor no culto; notificação de primeiro acesso; extrato imediato como gancho de valor</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ 7. KPIs ═══════════════════ -->
+<section id="kpis">
+  <h2><span class="sec-num">06</span> KPIs de Sucesso</h2>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-val">80<span class="kpi-unit">%</span></div><div class="kpi-label">Membros com ficha completa em 90 dias</div></div>
+    <div class="kpi-card"><div class="kpi-val">90<span class="kpi-unit">%</span></div><div class="kpi-label">Contribuições registradas digitalmente</div></div>
+    <div class="kpi-card"><div class="kpi-val">90<span class="kpi-unit">%</span></div><div class="kpi-label">Escalas confirmadas antes do culto</div></div>
+    <div class="kpi-card"><div class="kpi-val">&lt;5<span class="kpi-unit">min</span></div><div class="kpi-label">Para líder fechar relatório de célula</div></div>
+    <div class="kpi-card"><div class="kpi-val">60<span class="kpi-unit">%</span></div><div class="kpi-label">Adoção do app entre membros em 6 meses</div></div>
+    <div class="kpi-card"><div class="kpi-val">0</div><div class="kpi-label">Comprovantes recebidos via WhatsApp após lançamento</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 8. STACK ═══════════════════ -->
+<section id="stack">
+  <h2><span class="sec-num">07</span> Stack Técnica Recomendada</h2>
+  <div class="card-grid">
+    <div class="card-sm"><h4>Frontend Web</h4><p>Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui</p></div>
+    <div class="card-sm"><h4>App Mobile</h4><p>React Native (Expo) — iOS + Android com máximo reuso de código</p></div>
+    <div class="card-sm"><h4>Backend</h4><p>FastAPI + SQLAlchemy 2.0 + PostgreSQL + Redis/Celery</p></div>
+    <div class="card-sm"><h4>Autenticação</h4><p>Supabase Auth — JWT + OAuth Google + link mágico por e-mail</p></div>
+    <div class="card-sm"><h4>OCR de Comprovantes</h4><p>Google Cloud Vision API (primário) + Tesseract OCR (fallback) + parser regex por banco</p></div>
+    <div class="card-sm"><h4>Armazenamento</h4><p>Supabase Storage — comprovantes Pix, fotos de membros, apostilas EBM</p></div>
+    <div class="card-sm"><h4>Notificações</h4><p>Expo Notifications + Firebase FCM — push segmentado por ministério ou célula</p></div>
+    <div class="card-sm"><h4>Infraestrutura</h4><p>PostgreSQL com schema isolado por Igreja + backup diário automatizado</p></div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  <span>MORIAH</span> — Igreja em Células &nbsp;·&nbsp; App de Gestão Interna &nbsp;·&nbsp; PRD v0.2 &nbsp;·&nbsp; Junho 2026
+  <br><span style="font-size:10px;opacity:.6">"Uma família para pertencer e ser amado!"</span>
+</footer>
+
+<script>
+const fluxos = {
+  anexa:   '<strong style="color:var(--gold)">① Membro anexa o arquivo:</strong> toca em "Anexar comprovante" e escolhe um print da galeria, tira foto da tela do celular após o Pix, ou importa o PDF exportado pelo app do banco. JPEG, PNG ou PDF — todos aceitos. O arquivo sobe ao servidor e entra na fila de OCR. Nenhum campo precisa ser digitado ainda. Veja a tela do meio no estado <em>"Antes"</em>.',
+  ocr:     '<strong style="color:var(--gold)">② OCR extrai os dados:</strong> o backend recebe o arquivo, pré-processa a imagem (redimensionamento, orientação EXIF) e aciona o Google Cloud Vision API. Em 1–3 segundos, o parser identifica o layout do banco — Bradesco, Nubank, Itaú, Caixa, BB, Inter, C6, Santander, Sicredi — e extrai valor, data/hora, chave Pix destino, nome do pagador e ID da transação. Cada campo recebe um score de confiança. Veja o estado <em>"Escaneando"</em> na tela do meio.',
+  revisa:  '<strong style="color:var(--gold)">③ Formulário pré-preenchido — membro revisa:</strong> campos com confiança ≥80% ficam em verde com badge "✓ OCR". Campos abaixo ficam em âmbar pedindo confirmação. O culto é sugerido pela data do comprovante, mas pode ser alterado. O membro confere, ajusta se necessário e toca em <em>"Enviar para Tesoureiro"</em>. Veja o estado <em>"Preenchido"</em> na tela do meio.',
+  confirma:'<strong style="color:var(--gold)">④ Tesoureiro confirma:</strong> recebe push notification. No painel vê o lançamento com comprovante anexado, dados extraídos pelo OCR e alertas de divergência (valor, chave, duplicata). Aprova com um toque. O membro recebe confirmação automática e o valor entra no balancete do mês e no extrato pessoal.',
+  invalido:'<strong style="color:var(--gold)">⑤ Comprovante inválido:</strong> o tesoureiro rejeita e informa o motivo ("valor divergente", "comprovante ilegível", "chave Pix errada"). O membro recebe push com o motivo e pode reenviar. Se o OCR detectou ID de transação duplicado, o sistema bloqueia automaticamente <em>antes</em> de chegar ao tesoureiro, com mensagem clara ao membro: "Este comprovante já foi registrado anteriormente."'
+};
+
+function setFluxo(k, btn) {
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fluxo-desc').innerHTML = fluxos[k];
+}
+
+function setOcr(state, btn) {
+  document.querySelectorAll('.ocr-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['vazio','scan','ok'].forEach(s => {
+    const el = document.getElementById('ocr-' + s);
+    if(el) el.style.display = 'none';
+  });
+  const t = document.getElementById('ocr-' + state);
+  if(t) t.style.display = 'flex';
+}
+</script>
+</body>
+</html>

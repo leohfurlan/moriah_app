@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moriah App — Diagnóstico do Sistema</title>
+<style>
+  :root{
+    --bg:#f7f6f3;
+    --surface:#ffffff;
+    --surface-alt:#f0eee8;
+    --ink:#1e2430;
+    --ink-muted:#5b6472;
+    --border:#e2ded4;
+    --accent:#2f5d62;
+    --accent-soft:#e4eeec;
+    --good:#3c8b5b;
+    --good-soft:#e5f2ea;
+    --warn:#b9812a;
+    --warn-soft:#faf0dd;
+    --pending:#8b93a1;
+    --pending-soft:#eceef1;
+    --bad:#b94a3e;
+    --bad-soft:#fbeae7;
+    --shadow: 0 1px 2px rgba(30,36,48,0.04), 0 6px 20px rgba(30,36,48,0.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#12161c;
+    --surface:#1a2029;
+    --surface-alt:#20262f;
+    --ink:#e8eaed;
+    --ink-muted:#9aa3af;
+    --border:#2a313c;
+    --accent:#7ec3b9;
+    --accent-soft:#1c2c2a;
+    --good:#5fb884;
+    --good-soft:#193025;
+    --warn:#e0ad5c;
+    --warn-soft:#332813;
+    --pending:#8f97a3;
+    --pending-soft:#232830;
+    --bad:#e2786c;
+    --bad-soft:#331f1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12161c;
+      --surface:#1a2029;
+      --surface-alt:#20262f;
+      --ink:#e8eaed;
+      --ink-muted:#9aa3af;
+      --border:#2a313c;
+      --accent:#7ec3b9;
+      --accent-soft:#1c2c2a;
+      --good:#5fb884;
+      --good-soft:#193025;
+      --warn:#e0ad5c;
+      --warn-soft:#332813;
+      --pending:#8f97a3;
+      --pending-soft:#232830;
+      --bad:#e2786c;
+      --bad-soft:#331f1c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.35);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:800px;
+    margin:0 auto;
+    padding:56px 24px 96px;
+  }
+  .mono{
+    font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+
+  header.doc{
+    margin-bottom:40px;
+    padding-bottom:32px;
+    border-bottom:1px solid var(--border);
+  }
+  .eyebrow{
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    font-size:12.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 14px;
+  }
+  h1{
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    font-size:clamp(28px,4vw,38px);
+    font-weight:600;
+    line-height:1.15;
+    margin:0 0 12px;
+    text-wrap:balance;
+    color:var(--ink);
+  }
+  .doc-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 20px;
+    font-size:13.5px;
+    color:var(--ink-muted);
+  }
+  .doc-meta b{color:var(--ink);font-weight:600;}
+
+  section{margin-bottom:44px;}
+  h2{
+    font-family:Georgia,"Iowan Old Style",serif;
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 6px;
+    color:var(--ink);
+  }
+  .section-intro{
+    color:var(--ink-muted);
+    font-size:15px;
+    margin:0 0 20px;
+    max-width:62ch;
+  }
+
+  .phases{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .phase{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 8px;
+    text-align:center;
+  }
+  .phase .n{
+    font-family:ui-monospace,monospace;
+    font-size:11px;
+    color:var(--ink-muted);
+    letter-spacing:0.04em;
+  }
+  .phase .label{
+    font-size:11.5px;
+    font-weight:600;
+    margin:4px 0 8px;
+    line-height:1.25;
+    min-height:28px;
+  }
+  .dot{
+    width:9px;height:9px;border-radius:50%;
+    margin:0 auto;
+  }
+  .dot.done{background:var(--good);}
+  .dot.partial{background:var(--warn);}
+  .dot.pending{background:var(--pending);}
+  .phase-legend{
+    display:flex;gap:18px;flex-wrap:wrap;
+    font-size:12.5px;color:var(--ink-muted);
+    margin-top:14px;
+  }
+  .phase-legend span{display:inline-flex;align-items:center;gap:6px;}
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    padding:3px 9px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .pill.done{background:var(--good-soft);color:var(--good);}
+  .pill.partial{background:var(--warn-soft);color:var(--warn);}
+  .pill.pending{background:var(--pending-soft);color:var(--pending);}
+  .pill.risk{background:var(--bad-soft);color:var(--bad);}
+
+  .modules{display:flex;flex-direction:column;gap:10px;}
+  .module{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px 18px;
+    box-shadow:var(--shadow);
+  }
+  .module-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .module-head .name{
+    font-weight:700;
+    font-size:15px;
+  }
+  .module-head .path{
+    font-family:ui-monospace,monospace;
+    font-size:11.5px;
+    color:var(--ink-muted);
+    margin-left:8px;
+    font-weight:400;
+  }
+  .module p{
+    margin:0;
+    font-size:13.5px;
+    color:var(--ink-muted);
+  }
+  .module ul{
+    margin:8px 0 0;
+    padding-left:18px;
+    font-size:13.5px;
+    color:var(--ink-muted);
+  }
+  .module li{margin-bottom:2px;}
+  .module li b{color:var(--ink);font-weight:600;}
+
+  .stat-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    margin-bottom:24px;
+  }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .stat .num{
+    font-family:ui-monospace,monospace;
+    font-size:24px;
+    font-weight:700;
+    color:var(--accent);
+    font-variant-numeric:tabular-nums;
+  }
+  .stat .label{
+    font-size:12px;
+    color:var(--ink-muted);
+    margin-top:2px;
+  }
+
+  .findings{display:flex;flex-direction:column;gap:10px;}
+  .finding{
+    display:grid;
+    grid-template-columns:22px 1fr;
+    gap:12px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-left:3px solid var(--bad);
+    border-radius:8px;
+    padding:13px 16px;
+  }
+  .finding.warn{border-left-color:var(--warn);}
+  .finding .mark{
+    font-size:15px;
+    line-height:1.4;
+  }
+  .finding .body b{display:block;font-size:14px;margin-bottom:2px;}
+  .finding .body span{font-size:13px;color:var(--ink-muted);}
+
+  .roadmap-group{margin-bottom:22px;}
+  .roadmap-group h3{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--accent);
+    margin:0 0 10px;
+    font-weight:700;
+  }
+  .roadmap-items{display:flex;flex-direction:column;gap:8px;}
+  .roadmap-item{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 15px;
+  }
+  .roadmap-item .chk{
+    width:18px;height:18px;
+    border-radius:5px;
+    border:1.5px solid var(--border);
+    flex-shrink:0;
+    margin-top:2px;
+  }
+  .roadmap-item .txt b{display:block;font-size:14px;margin-bottom:1px;}
+  .roadmap-item .txt span{font-size:12.5px;color:var(--ink-muted);}
+
+  footer{
+    margin-top:56px;
+    padding-top:20px;
+    border-top:1px solid var(--border);
+    font-size:12.5px;
+    color:var(--ink-muted);
+  }
+
+  @media (max-width:640px){
+    .phases{grid-template-columns:repeat(4,1fr);}
+    .phase:nth-child(n+5){grid-column:span 1;}
+    .stat-row{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="doc">
+    <p class="eyebrow">Diagnóstico técnico &middot; Igreja Moriah</p>
+    <h1>Moriah App — Status do sistema e plano de evolução</h1>
+    <div class="doc-meta">
+      <span><b>Data</b> 06 de julho de 2026</span>
+      <span><b>Escopo</b> Backend (Django/DRF), Mobile (Expo/React Native), UX/UI</span>
+      <span><b>Base</b> Comparação com o PRD v1 (Jun/2026)</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Onde o projeto está</h2>
+    <p class="section-intro">O código percorre as fases 0 a 5 do plano do próprio PRD. A Fase 6 (piloto interno) ainda não foi iniciada — é o que separa o sistema de um uso real com a igreja.</p>
+
+    <div class="phases">
+      <div class="phase"><div class="n">FASE 0</div><div class="label">Preparação</div><div class="dot done"></div></div>
+      <div class="phase"><div class="n">FASE 1</div><div class="label">Base do Backend</div><div class="dot done"></div></div>
+      <div class="phase"><div class="n">FASE 2</div><div class="label">Membresia &amp; Células</div><div class="dot done"></div></div>
+      <div class="phase"><div class="n">FASE 3</div><div class="label">Financeiro c/ Comprovantes</div><div class="dot partial"></div></div>
+      <div class="phase"><div class="n">FASE 4</div><div class="label">App Mobile MVP</div><div class="dot partial"></div></div>
+      <div class="phase"><div class="n">FASE 5</div><div class="label">Escalas</div><div class="dot done"></div></div>
+      <div class="phase"><div class="n">FASE 6</div><div class="label">Piloto Interno</div><div class="dot pending"></div></div>
+    </div>
+    <div class="phase-legend">
+      <span><span class="dot done"></span> Concluída</span>
+      <span><span class="dot partial"></span> Parcial — funciona, com lacunas</span>
+      <span><span class="dot pending"></span> Não iniciada</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Backend — Django + DRF</h2>
+    <p class="section-intro">Os 8 apps do domínio previstos no PRD existem e têm models, admin e (na maioria) API própria. A estrutura é fiel ao que foi planejado.</p>
+
+    <div class="modules">
+      <div class="module">
+        <div class="module-head"><span class="name">accounts <span class="path">apps/accounts</span></span><span class="pill done">Implementado</span></div>
+        <p>User customizado por e-mail com 7 papéis (admin, pastor, secretaria, tesoureiro, líder de célula, coordenador, membro), JWT via SimpleJWT, permissões <span class="mono">IsTreasurerOrAdmin</span> e <span class="mono">IsCellLeaderOrAdmin</span>.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">members <span class="path">apps/members</span></span><span class="pill done">Implementado</span></div>
+        <p>Member, Family e FamilyRelationship completos, com status (ativo/visitante/inativo/transferido/falecido) e vínculo a célula. CRUD via Django Admin, conforme decisão do PRD.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">cells <span class="path">apps/cells</span></span><span class="pill done">Implementado</span></div>
+        <p>Cell, CellMeeting, CellAttendance. Endpoint do líder para listar membros da própria célula e registrar reunião com presença.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">finance <span class="path">apps/finance</span></span><span class="pill partial">Parcial</span></div>
+        <p>Contribution + ContributionAttachment com as 4 situações do PRD (pending/approved/rejected/needs_review) e 6 categorias. Admin com destaque visual de pendências e upload multi-arquivo funcionando.</p>
+        <ul><li><b>Lacuna:</b> nenhuma validação de tamanho ou tipo de arquivo no serializer — qualquer upload passa.</li></ul>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">ministries <span class="path">apps/ministries</span></span><span class="pill done">Implementado</span></div>
+        <p>Ministry e MinistryRole com M2M para membros. Sem app dedicado de views/serializers — consumido hoje via Django Admin e como referência em schedules.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">events <span class="path">apps/events</span></span><span class="pill done">Implementado</span></div>
+        <p>Event com tipo, data/hora, local — base para escalas, como previsto. Gestão via Admin.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">schedules <span class="path">apps/schedules</span></span><span class="pill done">Implementado</span></div>
+        <p>Schedule + ScheduleAssignment com confirmação/recusa e justificativa. Endpoint do membro para listar e agir sobre suas escalas. Admin com filtro por status e ministério para acompanhamento.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">audit <span class="path">apps/audit</span></span><span class="pill risk">Não conectado</span></div>
+        <p>AuditLog existe como model e está registrado no Admin, mas nenhuma view, signal ou save() em outro app grava nele. O PRD exige trilha de auditoria para dados financeiros e de membros — hoje isso não acontece em nenhum lugar do código.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mobile — Expo + React Native + TypeScript</h2>
+    <p class="section-intro">7 telas cobrindo o fluxo principal do membro. A base de autenticação e chamadas HTTP é simples e direta, sem gerenciamento de estado global — adequado para o tamanho atual do app.</p>
+
+    <div class="stat-row">
+      <div class="stat"><div class="num">6</div><div class="label">telas de fluxo</div></div>
+      <div class="stat"><div class="num">2</div><div class="label">componentes de UI compartilhados</div></div>
+      <div class="stat"><div class="num">0</div><div class="label">testes automatizados</div></div>
+      <div class="stat"><div class="num">0</div><div class="label">refresh automático de token</div></div>
+    </div>
+
+    <div class="modules">
+      <div class="module">
+        <div class="module-head"><span class="name">Login &amp; sessão</span><span class="pill done">Implementado</span></div>
+        <p>Login por e-mail/senha, tokens salvos localmente, hook <span class="mono">useAuth</span> carrega o perfil ao abrir o app. Sem refresh automático de token de acesso — expira e força novo login (já sinalizado como próximo passo pelo próprio README).</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">Home, Perfil</span><span class="pill done">Implementado</span></div>
+        <p>Home com atalhos para as 4 ações do membro. Perfil mostra célula, telefone, e-mail e ministérios — cobre a necessidade da Fase 4 sem uma tela dedicada de "Minha Célula".</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">Nova Contribuição</span><span class="pill partial">Parcial</span></div>
+        <p>Seleção de imagem (câmera/galeria) e documento, múltiplos anexos, envio multipart funcionando de ponta a ponta.</p>
+        <ul><li><b>Lacuna:</b> só expõe 2 das 6 categorias do backend (Dízimo, Oferta) — Campanha, Missões, Evento e Outros ficam inacessíveis pelo app.</li></ul>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">Minha Escala, Extrato</span><span class="pill done">Implementado</span></div>
+        <p>Lista de escalas com confirmação/recusa e campo de justificativa; extrato lista contribuições com status. Fluxo fiel ao critério de aceite da Fase 5 do PRD.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>UX / UI</h2>
+    <p class="section-intro">Existe um sistema visual mínimo consistente — não é "sem estilo", mas também não está pronto para publicação nas lojas.</p>
+    <div class="modules">
+      <div class="module">
+        <div class="module-head"><span class="name">Sistema visual</span><span class="pill done">Consistente</span></div>
+        <p>Paleta neutra clara única, cartões com borda suave, botão primário/secundário padronizado em <span class="mono">Form.tsx</span> e <span class="mono">Screen.tsx</span>. Uso correto de <span class="mono">accessibilityRole</span>/<span class="mono">accessibilityState</span> nos seletores de categoria.</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">Identidade &amp; publicação</span><span class="pill risk">Pendente</span></div>
+        <p><span class="mono">app.json</span> não define ícone, splash screen, nem identificadores de pacote Android/iOS. O app roda no Expo Go, mas não está configurado para build de produção (EAS Build).</p>
+      </div>
+      <div class="module">
+        <div class="module-head"><span class="name">Estados de carregamento e erro</span><span class="pill partial">Básico</span></div>
+        <p>Erros de rede aparecem como <span class="mono">Alert</span> com o texto cru da exceção — funcional, mas não é uma mensagem pensada para o usuário final (ex: "sessão expirada, faça login novamente").</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lacunas e riscos antes de um piloto real</h2>
+    <div class="findings">
+      <div class="finding">
+        <span class="mark">⛔</span>
+        <div class="body"><b>Nenhum teste automatizado</b><span>Zero arquivos de teste no backend e no mobile, e nenhuma pipeline de CI. Qualquer regressão em login, upload de comprovante ou confirmação de escala só é percebida manualmente.</span></div>
+      </div>
+      <div class="finding">
+        <span class="mark">⛔</span>
+        <div class="body"><b>Auditoria exigida pelo PRD não está implementada</b><span>O model AuditLog existe mas nada grava nele. Alterações financeiras e de membros — que o PRD trata como requisito mínimo de segurança/LGPD — não deixam rastro hoje.</span></div>
+      </div>
+      <div class="finding warn">
+        <span class="mark">⚠</span>
+        <div class="body"><b>Sessão expira sem aviso</b><span>Sem refresh automático de token, o membro é derrubado silenciosamente após o tempo configurado (60 min por padrão) e precisa logar de novo sem entender o motivo.</span></div>
+      </div>
+      <div class="finding warn">
+        <span class="mark">⚠</span>
+        <div class="body"><b>Upload sem validação</b><span>Nenhum limite de tipo de arquivo ou verificação de conteúdo no envio de comprovantes — qualquer extensão é aceita pelo serializer.</span></div>
+      </div>
+      <div class="finding warn">
+        <span class="mark">⚠</span>
+        <div class="body"><b>App não está pronto para as lojas</b><span>Falta ícone, splash, identificadores de bundle e configuração de build — hoje só roda via Expo Go em desenvolvimento.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Próximos passos propostos</h2>
+    <p class="section-intro">Organizados por urgência, não por tamanho — o objetivo é chegar à Fase 6 (piloto interno) do PRD com segurança.</p>
+
+    <div class="roadmap-group">
+      <h3>Antes de qualquer piloto com dados reais</h3>
+      <div class="roadmap-items">
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Conectar o AuditLog</b><span>Signals ou save() explícito em Contribution, Member e ScheduleAssignment para gravar quem alterou o quê — requisito de segurança do próprio PRD, não um "nice to have".</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Refresh automático de token</b><span>Interceptar 401 no serviço de API e renovar com o refresh token salvo, sem derrubar a sessão do membro.</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Validação de upload</b><span>Restringir extensão/mimetype e tamanho máximo de comprovantes no serializer do finance.</span></div></div>
+      </div>
+    </div>
+
+    <div class="roadmap-group">
+      <h3>Para fechar o MVP conforme o PRD</h3>
+      <div class="roadmap-items">
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Expor as 6 categorias de contribuição no app</b><span>Hoje só Dízimo e Oferta aparecem na tela de Nova Contribuição; Campanha, Missões, Evento e Outros já existem no backend.</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Testes de API e permissões</b><span>Cobrir ao menos os fluxos críticos: login, criação de contribuição, ação de escala e isolamento de dados entre membros (um membro não pode ver extrato de outro).</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Mensagens de erro voltadas ao usuário</b><span>Substituir o texto cru da exceção nos Alerts por mensagens específicas (sessão expirada, arquivo inválido, sem conexão).</span></div></div>
+      </div>
+    </div>
+
+    <div class="roadmap-group">
+      <h3>Para rodar a Fase 6 (piloto interno) do PRD</h3>
+      <div class="roadmap-items">
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Identidade visual e build de produção</b><span>Ícone, splash screen, bundle identifiers e configuração de EAS Build para gerar um app instalável fora do Expo Go.</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Storage S3/R2 e backup</b><span>Trocar o FileField local por storage compatível com S3 antes de homologação, e definir rotina de backup do Postgres.</span></div></div>
+        <div class="roadmap-item"><div class="chk"></div><div class="txt"><b>Treinamento de secretaria, tesouraria e líderes</b><span>Roteiro curto de uso do Django Admin para quem vai operar o sistema no dia a dia — a interface é funcional, mas não foi pensada para usuário leigo.</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Avaliação baseada em leitura direta do código em <span class="mono">backend/apps/*</span> e <span class="mono">mobile/src|app</span>, comparado ao PRD_Moriah_App_v1.md. Sem execução de testes em runtime nesta rodada.
+  </footer>
+
+</div>
+</body>
+</html>

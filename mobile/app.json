@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Moriah App",
+    "slug": "moriah-app",
+    "scheme": "moriah",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-document-picker",
+      "expo-image-picker"
+    ]
+  }
+}

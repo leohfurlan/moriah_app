@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-moriah}
+      POSTGRES_USER: ${POSTGRES_USER:-moriah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moriah}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    command: sh -c "python manage.py migrate && python manage.py seed_mvp && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - backend_media:/app/media
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  mobile:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npx expo start --web --host lan --port 8081 --clear"
+    volumes:
+      - ./mobile:/app
+    env_file:
+      - .env
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_media:

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moriah App — Plano de Desenvolvimento</title>
+<style>
+  :root{
+    --bg:#f7f6f3;
+    --surface:#ffffff;
+    --ink:#1e2430;
+    --ink-muted:#5b6472;
+    --border:#e2ded4;
+    --accent:#2f5d62;
+    --accent-soft:#e4eeec;
+    --good:#3c8b5b;
+    --good-soft:#e5f2ea;
+    --warn:#b9812a;
+    --warn-soft:#faf0dd;
+    --bad:#b94a3e;
+    --bad-soft:#fbeae7;
+    --shadow: 0 1px 2px rgba(30,36,48,0.04), 0 6px 20px rgba(30,36,48,0.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#12161c; --surface:#1a2029; --ink:#e8eaed; --ink-muted:#9aa3af; --border:#2a313c;
+    --accent:#7ec3b9; --accent-soft:#1c2c2a;
+    --good:#5fb884; --good-soft:#193025;
+    --warn:#e0ad5c; --warn-soft:#332813;
+    --bad:#e2786c; --bad-soft:#331f1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12161c; --surface:#1a2029; --ink:#e8eaed; --ink-muted:#9aa3af; --border:#2a313c;
+      --accent:#7ec3b9; --accent-soft:#1c2c2a;
+      --good:#5fb884; --good-soft:#193025;
+      --warn:#e0ad5c; --warn-soft:#332813;
+      --bad:#e2786c; --bad-soft:#331f1c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.35);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:840px;margin:0 auto;padding:56px 24px 96px;}
+  .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",monospace;}
+
+  header.doc{margin-bottom:36px;padding-bottom:32px;border-bottom:1px solid var(--border);}
+  .eyebrow{
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    font-size:12.5px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px;
+  }
+  h1{
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    font-size:clamp(28px,4vw,36px);font-weight:600;line-height:1.15;
+    margin:0 0 12px;text-wrap:balance;
+  }
+  .doc-meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13.5px;color:var(--ink-muted);}
+  .doc-meta b{color:var(--ink);font-weight:600;}
+
+  .lede{
+    font-size:15.5px;color:var(--ink-muted);max-width:66ch;margin:20px 0 0;
+  }
+  .lede b{color:var(--ink);}
+
+  section{margin-bottom:48px;}
+  h2{font-family:Georgia,"Iowan Old Style",serif;font-size:22px;font-weight:600;margin:0 0 6px;}
+  .section-intro{color:var(--ink-muted);font-size:14.5px;margin:0 0 20px;max-width:64ch;}
+
+  .timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px;}
+  .tl-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:16px 16px 14px;box-shadow:var(--shadow);
+  }
+  .tl-card .num{
+    font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);
+    letter-spacing:0.06em;text-transform:uppercase;font-weight:700;
+  }
+  .tl-card .dates{font-size:12px;color:var(--ink-muted);margin:3px 0 10px;font-variant-numeric:tabular-nums;}
+  .tl-card .theme{font-size:15px;font-weight:700;margin-bottom:4px;}
+  .tl-card .foco{font-size:12.5px;color:var(--ink-muted);}
+
+  .sprint{margin-bottom:40px;}
+  .sprint-head{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding-bottom:14px;margin-bottom:18px;border-bottom:2px solid var(--accent);
+  }
+  .sprint-head .tag{
+    font-family:ui-monospace,monospace;font-size:11.5px;font-weight:700;
+    color:#fff;background:var(--accent);padding:4px 10px;border-radius:6px;
+    letter-spacing:0.03em;
+  }
+  .sprint-head .title{font-family:Georgia,serif;font-size:20px;font-weight:600;}
+  .sprint-head .when{font-size:13px;color:var(--ink-muted);margin-left:auto;font-variant-numeric:tabular-nums;}
+
+  .action{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:16px 18px;margin-bottom:10px;box-shadow:var(--shadow);
+  }
+  .action-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .action-head .title{font-weight:700;font-size:15px;}
+  .tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+  .chip{
+    font-size:10.5px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;
+    padding:2.5px 8px;border-radius:100px;white-space:nowrap;
+  }
+  .chip.urgente{background:var(--bad-soft);color:var(--bad);}
+  .chip.alto-valor{background:var(--warn-soft);color:var(--warn);}
+  .chip.backend{background:var(--accent-soft);color:var(--accent);}
+  .chip.mobile{background:#e8e4f3;color:#6b4fa0;}
+  .chip.infra{background:#e2ecf5;color:#3a6ea5;}
+  .chip.operacao{background:var(--good-soft);color:var(--good);}
+
+  .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13.3px;}
+  .action-grid .field b{
+    display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink-muted);margin-bottom:3px;font-weight:700;
+  }
+  .action-grid .field p{margin:0;color:var(--ink);}
+  .action-grid .full{grid-column:1 / -1;}
+
+  .dod{
+    background:var(--accent-soft);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;margin-top:4px;
+  }
+  .dod b{
+    display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--accent);margin-bottom:6px;
+  }
+  .dod p{margin:0;font-size:13.5px;color:var(--ink);}
+
+  .milestone{
+    background:var(--good-soft);border:1px solid var(--good);border-radius:12px;
+    padding:20px 22px;text-align:center;margin-top:8px;
+  }
+  .milestone .flag{font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--good);font-weight:700;margin-bottom:6px;}
+  .milestone .txt{font-family:Georgia,serif;font-size:18px;font-weight:600;}
+  .milestone .sub{font-size:13px;color:var(--ink-muted);margin-top:4px;}
+
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);font-size:12.5px;color:var(--ink-muted);}
+
+  @media (max-width:680px){
+    .timeline{grid-template-columns:1fr;}
+    .action-grid{grid-template-columns:1fr;}
+    .sprint-head .when{margin-left:0;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="doc">
+    <p class="eyebrow">Plano de desenvolvimento &middot; Igreja Moriah</p>
+    <h1>Do diagnóstico ao piloto interno</h1>
+    <div class="doc-meta">
+      <span><b>Data</b> 06 de julho de 2026</span>
+      <span><b>Base</b> Relatório de status de 06/07/2026</span>
+      <span><b>Horizonte</b> 3 sprints de 2 semanas · 6 semanas</span>
+    </div>
+    <p class="lede">Critério de priorização: primeiro o que <b>reduz risco</b> (segurança, auditoria, sessão), depois o que <b>completa o MVP</b> já prometido no PRD, e por último o que <b>viabiliza operação real</b> com a igreja. Cada sprint entrega algo utilizável — nenhum sprint é só "arrumação".</p>
+  </header>
+
+  <section>
+    <h2>Visão geral</h2>
+    <div class="timeline">
+      <div class="tl-card">
+        <div class="num">Sprint 1</div>
+        <div class="dates">06/07 – 19/07/2026</div>
+        <div class="theme">Confiabilidade e segurança</div>
+        <div class="foco">Fecha os riscos que impedem qualquer piloto com dados reais.</div>
+      </div>
+      <div class="tl-card">
+        <div class="num">Sprint 2</div>
+        <div class="dates">20/07 – 02/08/2026</div>
+        <div class="theme">Completar o MVP</div>
+        <div class="foco">Alinha o app ao que o PRD prometeu e cobre as regras de permissão com testes.</div>
+      </div>
+      <div class="tl-card">
+        <div class="num">Sprint 3</div>
+        <div class="dates">03/08 – 16/08/2026</div>
+        <div class="theme">Pronto para o piloto</div>
+        <div class="foco">Identidade, storage, backup e treinamento — a Fase 6 do PRD.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sprint">
+      <div class="sprint-head">
+        <span class="tag">SPRINT 1</span>
+        <span class="title">Confiabilidade e segurança</span>
+        <span class="when">06/07 – 19/07/2026</span>
+      </div>
+      <p class="section-intro">Estes quatro itens foram os "⛔" e "⚠" do relatório. Nenhum é grande isoladamente, mas juntos removem os riscos que tornariam um piloto real irresponsável de se conduzir.</p>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Conectar o AuditLog</span>
+          <div class="tag-row"><span class="chip urgente">Urgente</span><span class="chip backend">Backend</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Adicionar signals (ou <span class="mono">save()</span> explícito) em <span class="mono">Contribution</span> (mudança de status), <span class="mono">Member</span> (edição de dados) e <span class="mono">ScheduleAssignment</span> (confirmação/recusa) para gravar em <span class="mono">AuditLog</span>: usuário, ação, model, e payload da mudança.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Requisito de segurança do próprio PRD (seção 13) passa a existir de fato — hoje o model está vazio.</p></div>
+          <div class="field"><b>Prazo</b><p>3 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Refresh automático de token</span>
+          <div class="tag-row"><span class="chip urgente">Urgente</span><span class="chip mobile">Mobile</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>No <span class="mono">services/api.ts</span>, interceptar resposta 401, tentar renovar com o refresh token salvo em <span class="mono">storage.ts</span> via <span class="mono">/api/auth/refresh/</span> e repetir a chamada original; só deslogar se o refresh também falhar.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Elimina o principal ponto de atrito hoje: o membro sendo derrubado sem entender por quê.</p></div>
+          <div class="field"><b>Prazo</b><p>2 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Validação de upload de comprovante</span>
+          <div class="tag-row"><span class="chip urgente">Urgente</span><span class="chip backend">Backend</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>No <span class="mono">ContributionSerializer</span>, validar extensão/mimetype (jpg, png, pdf) e tamanho máximo (ex: 8MB) de cada arquivo antes de criar o <span class="mono">ContributionAttachment</span>.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Fecha uma porta aberta de segurança antes de expor o envio de arquivos a usuários reais.</p></div>
+          <div class="field"><b>Prazo</b><p>1 dia útil</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Fundação de testes automatizados</span>
+          <div class="tag-row"><span class="chip alto-valor">Alto valor</span><span class="chip backend">Backend</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Configurar pytest-django e escrever os 2 testes de maior risco: login (credenciais corretas/incorretas) e isolamento de extrato (membro A não acessa contribuição de membro B).</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Cria a rede de segurança mínima antes de qualquer mudança futura — sem isso, todo sprint seguinte é mais arriscado.</p></div>
+          <div class="field"><b>Prazo</b><p>2 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="dod">
+        <b>Critério de conclusão do sprint</b>
+        <p>Uma alteração em membro, contribuição ou escala gera registro de auditoria; o membro não é mais deslogado por expiração de token durante o uso normal; upload rejeita arquivo fora do padrão; existe suíte de testes rodando via <span class="mono">pytest</span> cobrindo login e isolamento de dados.</p>
+      </div>
+    </div>
+
+    <div class="sprint">
+      <div class="sprint-head">
+        <span class="tag">SPRINT 2</span>
+        <span class="title">Completar o MVP do PRD</span>
+        <span class="when">20/07 – 02/08/2026</span>
+      </div>
+      <p class="section-intro">Com a base estabilizada, este sprint fecha as diferenças entre o que o PRD prometeu e o que o app hoje entrega, e estende a cobertura de testes às regras de permissão por papel.</p>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Expor as 6 categorias de contribuição no app</span>
+          <div class="tag-row"><span class="chip alto-valor">Alto valor</span><span class="chip mobile">Mobile</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Em <span class="mono">NewContributionScreen.tsx</span>, adicionar Campanha, Missões, Evento e Outros à lista <span class="mono">contributionCategories</span> — já existem no backend, só faltam na UI.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Evita que o membro categorize errado (ex: registrar campanha como oferta), reduzindo retrabalho da tesouraria — objetivo central do PRD.</p></div>
+          <div class="field"><b>Prazo</b><p>1 dia útil</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Mensagens de erro voltadas ao usuário</span>
+          <div class="tag-row"><span class="chip alto-valor">Alto valor</span><span class="chip mobile">Mobile</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Mapear os erros mais comuns (401, sem rede, arquivo grande/inválido) para mensagens específicas em português, substituindo o texto cru da exceção nos <span class="mono">Alert</span> de cada tela.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Reduz confusão do membro leigo e a tentação de voltar a resolver pelo WhatsApp — o problema que o PRD existe para resolver.</p></div>
+          <div class="field"><b>Prazo</b><p>2 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Testes de permissão por papel</span>
+          <div class="tag-row"><span class="chip alto-valor">Alto valor</span><span class="chip backend">Backend</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Cobrir com testes as regras da seção 6 do PRD: líder de célula só vê membros da própria célula; tesoureiro pode aprovar contribuição, membro comum não; membro só confirma/recusa a própria escala.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>As regras de permissão descritas no PRD hoje não têm nenhuma verificação automatizada — um bug de permissão exporia dados financeiros ou pastorais indevidamente.</p></div>
+          <div class="field"><b>Prazo</b><p>3 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="dod">
+        <b>Critério de conclusão do sprint</b>
+        <p>O membro consegue registrar qualquer uma das 6 categorias de contribuição pelo app; erros comuns aparecem em linguagem clara; testes automatizados comprovam que cada papel (membro, líder, tesoureiro) só acessa o que o PRD permite.</p>
+      </div>
+    </div>
+
+    <div class="sprint">
+      <div class="sprint-head">
+        <span class="tag">SPRINT 3</span>
+        <span class="title">Pronto para o piloto interno</span>
+        <span class="when">03/08 – 16/08/2026</span>
+      </div>
+      <p class="section-intro">Última etapa antes da Fase 6 do PRD: sair do ambiente de desenvolvimento e tornar o sistema operável por pessoas reais, fora da máquina de quem programou.</p>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Identidade visual e build de produção</span>
+          <div class="tag-row"><span class="chip alto-valor">Alto valor</span><span class="chip mobile">Mobile</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Definir ícone e splash screen, configurar <span class="mono">bundleIdentifier</span>/<span class="mono">package</span> Android/iOS em <span class="mono">app.json</span>, e configurar EAS Build para gerar um instalável.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Pré-requisito para qualquer membro instalar o app fora do Expo Go — sem isso não existe piloto mobile real.</p></div>
+          <div class="field"><b>Prazo</b><p>3 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Storage S3/R2 para comprovantes</span>
+          <div class="tag-row"><span class="chip infra">Infra</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Trocar o <span class="mono">FileField</span> local por <span class="mono">django-storages</span> apontando para S3 ou Cloudflare R2 em homologação/produção, mantendo storage local só em dev.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Evita perda de comprovantes em redeploy ou troca de servidor — hoje os arquivos vivem só no disco local.</p></div>
+          <div class="field"><b>Prazo</b><p>2 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Rotina de backup do Postgres</span>
+          <div class="tag-row"><span class="chip infra">Infra</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Script de <span class="mono">pg_dump</span> agendado (cron ou equivalente do provedor) com retenção de pelo menos 30 dias, e um teste manual de restauração.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Mitiga o risco mais grave possível: perda de dados de membros e financeiro sem cópia de segurança.</p></div>
+          <div class="field"><b>Prazo</b><p>1 dia útil</p></div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-head">
+          <span class="title">Roteiro de treinamento operacional</span>
+          <div class="tag-row"><span class="chip operacao">Operação</span></div>
+        </div>
+        <div class="action-grid">
+          <div class="field full"><b>O que fazer</b><p>Documento curto (1-2 páginas) e uma sessão prática de 1h para secretaria, tesouraria e líderes de célula sobre o Django Admin: cadastrar membro, aprovar contribuição, registrar reunião de célula.</p></div>
+          <div class="field"><b>Resultado / impacto</b><p>Critério de aceite explícito da Fase 6 do PRD — a interface é funcional, mas ninguém na igreja foi treinado nela ainda.</p></div>
+          <div class="field"><b>Prazo</b><p>2 dias úteis</p></div>
+        </div>
+      </div>
+
+      <div class="dod">
+        <b>Critério de conclusão do sprint</b>
+        <p>Existe um build instalável do app fora do Expo Go; comprovantes ficam salvos em storage externo; existe backup automático testado; secretaria, tesouraria e ao menos um líder de célula já usaram o Admin com acompanhamento.</p>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="flag">Marco</div>
+      <div class="txt">Piloto interno pode começar</div>
+      <div class="sub">A partir de 17/08/2026 — Fase 6 do PRD: uso real com dados controlados, ajustes de UX e correção de bugs em campo.</div>
+    </div>
+  </section>
+
+  <footer>
+    Plano derivado do relatório de status de 06/07/2026, priorizando risco de segurança/confiabilidade antes de completude, e completude antes de operação. Prazos assumem dedicação de um desenvolvedor full-stack em tempo parcial/integral equivalente a este escopo.
+  </footer>
+
+</div>
+</body>
+</html>
