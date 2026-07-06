@@ -14,6 +14,14 @@ export async function getAccessToken() {
   return AsyncStorage.getItem(ACCESS_KEY);
 }
 
+export async function getRefreshToken() {
+  return AsyncStorage.getItem(REFRESH_KEY);
+}
+
+export async function saveAccessToken(access: string) {
+  await AsyncStorage.setItem(ACCESS_KEY, access);
+}
+
 export async function clearTokens() {
   await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY]);
 }

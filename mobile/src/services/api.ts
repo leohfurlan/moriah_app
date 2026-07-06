@@ -1,8 +1,65 @@
-import { getAccessToken } from "./storage";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveAccessToken,
+} from "./storage";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api";
 
-async function request<T>(path: string, init?: RequestInit, isFormData = false): Promise<T> {
+// Handler chamado quando a sessao expira de vez (refresh invalido/expirado).
+// A camada de UI (useAuth) registra aqui a rotina de logout.
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+// Mutex/single-flight: garante que multiplas chamadas com 401 simultaneo
+// disparem apenas UM refresh; as demais aguardam o mesmo resultado.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function performRefresh(): Promise<string | null> {
+  const refresh = await getRefreshToken();
+  if (!refresh) {
+    return null;
+  }
+  const response = await fetch(`${API_URL}/auth/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const data = (await response.json()) as { access: string };
+  await saveAccessToken(data.access);
+  return data.access;
+}
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+async function handleSessionExpired(): Promise<never> {
+  await clearTokens();
+  if (unauthorizedHandler) {
+    unauthorizedHandler();
+  }
+  throw new Error("Sessao expirada. Faca login novamente.");
+}
+
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  isFormData = false,
+  isRetry = false,
+): Promise<T> {
   const token = await getAccessToken();
   const headers = new Headers(init?.headers || {});
   if (!isFormData) {
@@ -16,6 +73,20 @@ async function request<T>(path: string, init?: RequestInit, isFormData = false):
     ...init,
     headers,
   });
+
+  // 401: tenta renovar o access token uma unica vez e repete a chamada.
+  // `isRetry` evita loop infinito: uma chamada ja retentada nao tenta de novo.
+  // Endpoints de autenticacao (login/refresh) nao entram no fluxo de refresh:
+  // um 401 ali e credencial invalida, e deve retornar o erro original.
+  const isAuthEndpoint = path.startsWith("/auth/");
+  if (response.status === 401 && !isRetry && !isAuthEndpoint) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return request<T>(path, init, isFormData, true);
+    }
+    // Refresh tambem falhou -> desloga o usuario.
+    return handleSessionExpired();
+  }
 
   if (!response.ok) {
     const text = await response.text();

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { api } from "@/services/api";
+import { api, setUnauthorizedHandler } from "@/services/api";
 import { clearTokens, saveTokens } from "@/services/storage";
 import { LoginResponse, MeResponse } from "@/types/api";
 
@@ -29,6 +29,13 @@ export function useAuth() {
     await clearTokens();
     setMe(null);
   }
+
+  useEffect(() => {
+    // Quando o refresh do token falha, a camada de API sinaliza aqui para
+    // deslogar o usuario (a sessao ja foi limpa em storage).
+    setUnauthorizedHandler(() => setMe(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     loadProfile();
