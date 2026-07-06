@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import Contribution, ContributionAttachment
+from .validators import validate_contribution_attachment
 
 
 class ContributionAttachmentSerializer(serializers.ModelSerializer):
@@ -36,7 +37,10 @@ class ContributionSerializer(serializers.ModelSerializer):
         read_only_fields = ("status",)
 
     def create(self, validated_data):
-        files = self.context["request"].FILES.getlist("files") or validated_data.pop("files", [])
+        parsed_files = validated_data.pop("files", [])
+        files = self.context["request"].FILES.getlist("files") or parsed_files
+        for file in files:
+            validate_contribution_attachment(file)
         contribution = Contribution.objects.create(**validated_data)
         for file in files:
             ContributionAttachment.objects.create(
