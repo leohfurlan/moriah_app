@@ -44,5 +44,5 @@ class MemberSerializer(serializers.ModelSerializer):
             "ministry_names",
         )
 
-    def get_ministry_names(self, obj):
+    def get_ministry_names(self, obj) -> list[str]:
         return list(obj.ministries.values_list("name", flat=True))
