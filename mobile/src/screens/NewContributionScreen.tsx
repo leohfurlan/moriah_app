@@ -2,11 +2,12 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
+import { describeError } from "@/services/errors";
 
 type UploadableFile = {
   uri: string;
@@ -14,9 +15,44 @@ type UploadableFile = {
   mimeType?: string;
 };
 
+/**
+ * Nome de arquivo quando o seletor nao informa um.
+ *
+ * A extensao precisa bater com o conteudo real: o backend valida a assinatura
+ * (magic bytes) do arquivo contra a extensao, entao chutar ".jpg" para um PNG
+ * faz o upload ser recusado.
+ */
+function fallbackFileName(mimeType?: string): string {
+  const type = (mimeType || "").toLowerCase();
+  const extension = type.includes("png") ? "png" : type.includes("pdf") ? "pdf" : "jpg";
+  return `comprovante-${Date.now()}.${extension}`;
+}
+
+/**
+ * Converte o arquivo escolhido no formato que cada plataforma exige.
+ *
+ * No React Native, o FormData aceita o objeto `{uri, name, type}`. No
+ * navegador esse objeto vira a string "[object Object]" e o upload chega
+ * vazio ao servidor — na web e preciso anexar um Blob/File de verdade.
+ */
+async function toFormDataValue(file: UploadableFile): Promise<Blob | never> {
+  const type = file.mimeType || "application/octet-stream";
+
+  if (Platform.OS === "web") {
+    const blob = await (await fetch(file.uri)).blob();
+    return new File([blob], file.name, { type: file.mimeType || blob.type || type });
+  }
+
+  return { uri: file.uri, name: file.name, type } as never;
+}
+
 const contributionCategories = [
   { label: "Dízimo", value: "tithe" },
   { label: "Oferta", value: "offering" },
+  { label: "Campanha", value: "campaign" },
+  { label: "Missões", value: "missions" },
+  { label: "Evento", value: "event" },
+  { label: "Outros", value: "other" },
 ] as const;
 
 type ContributionCategory = (typeof contributionCategories)[number]["value"];
@@ -41,7 +77,7 @@ export function NewContributionScreen() {
         ...current,
         {
           uri: result.assets[0].uri,
-          name: result.assets[0].fileName || `comprovante-${Date.now()}.jpg`,
+          name: result.assets[0].fileName || fallbackFileName(result.assets[0].mimeType),
           mimeType: result.assets[0].mimeType,
         },
       ]);
@@ -66,6 +102,15 @@ export function NewContributionScreen() {
     if (submittingRef.current) {
       return;
     }
+    // Sem esta trava a contribuicao e criada sem comprovante nenhum, e o
+    // membro so descobre depois — foi exatamente assim que anexos "sumiram".
+    if (!files.length) {
+      Alert.alert(
+        "Comprovante obrigatorio",
+        "Anexe ao menos uma imagem ou PDF do comprovante antes de enviar.",
+      );
+      return;
+    }
     submittingRef.current = true;
     setSubmitting(true);
     const form = new FormData();
@@ -73,14 +118,10 @@ export function NewContributionScreen() {
     form.append("category", category);
     form.append("contribution_date", date);
     form.append("notes", notes);
-    files.forEach((file) => {
-      form.append("files", {
-        uri: file.uri,
-        name: file.name,
-        type: file.mimeType || "application/octet-stream",
-      } as never);
-    });
     try {
+      for (const file of files) {
+        form.append("files", await toFormDataValue(file));
+      }
       await api.postForm("/contributions/", form);
       setFiles([]);
       setNotes("");
@@ -132,7 +173,8 @@ export function NewContributionScreen() {
           try {
             await submit();
           } catch (error) {
-            Alert.alert("Erro ao enviar", String(error));
+            const { title, message } = describeError(error, "Erro ao enviar");
+            Alert.alert(title, message);
           }
         }}
       >
@@ -149,10 +191,14 @@ const styles = StyleSheet.create({
   },
   categoryGroup: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   categoryOption: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "30%",
+    minWidth: 96,
+    paddingHorizontal: 8,
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",

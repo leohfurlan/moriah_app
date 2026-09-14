@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text } from "react-native";
 
 import { Button, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { describeError } from "@/services/errors";
 
 export function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
   const [email, setEmail] = useState("membro@moriah.app");
@@ -18,7 +19,8 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
           try {
             await onLogin(email, password);
           } catch (error) {
-            Alert.alert("Falha no login", String(error));
+            const { title, message } = describeError(error, "Falha no login");
+            Alert.alert(title, message);
           }
         }}
       >
