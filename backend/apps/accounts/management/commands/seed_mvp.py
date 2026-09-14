@@ -6,12 +6,13 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.accounts.models import Church
+from apps.accounts.roles import sync_role_permissions
 from apps.cells.models import Cell
 from apps.events.models import Event
 from apps.finance.models import Contribution
 from apps.members.models import Family, Member
 from apps.ministries.models import Ministry, MinistryRole
-from apps.schedules.models import Schedule, ScheduleAssignment
+from apps.schedules.models import Schedule, ScheduleAssignment, ScheduleItem
 
 
 class Command(BaseCommand):
@@ -116,5 +117,65 @@ class Command(BaseCommand):
             category=Contribution.Category.TITHE,
             defaults={"status": Contribution.Status.APPROVED, "created_by": member_user, "reviewed_by": treasurer},
         )
+
+        # Equipe de louvor: sem mais gente escalada, a tela de detalhe da
+        # escala nao tem nada para mostrar.
+        equipe = [
+            ("Joao Pedro", "joao.pedro@moriah.app", "Guitarra", ScheduleAssignment.Status.CONFIRMED),
+            ("Ana Costa", "ana.costa@moriah.app", "Teclado", ScheduleAssignment.Status.PENDING),
+            ("Lucas Dias", "lucas.dias@moriah.app", "Bateria", ScheduleAssignment.Status.DECLINED),
+        ]
+        for nome, email, funcao, situacao in equipe:
+            colega, _ = user_model.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email.split("@")[0],
+                    "first_name": nome.split()[0],
+                    "last_name": nome.split()[-1],
+                    "church": church,
+                    "role": user_model.Role.MEMBER,
+                },
+            )
+            colega.set_password("membro123")
+            colega.save()
+            colega_membro, _ = Member.objects.get_or_create(
+                church=church,
+                user=colega,
+                defaults={"full_name": nome, "email": email, "status": Member.Status.ACTIVE},
+            )
+            funcao_obj, _ = MinistryRole.objects.get_or_create(
+                church=church, ministry=ministry, name=funcao
+            )
+            ScheduleAssignment.objects.get_or_create(
+                church=church,
+                schedule=schedule,
+                member=colega_membro,
+                ministry_role=funcao_obj,
+                defaults={"status": situacao},
+            )
+
+        # Repertorio / ordem do culto.
+        repertorio = [
+            (1, ScheduleItem.ItemType.SONG, "Grande e o Senhor", "G", "https://www.cifraclub.com.br/"),
+            (2, ScheduleItem.ItemType.SONG, "Teu Amor Nao Falha", "D", ""),
+            (3, ScheduleItem.ItemType.MOMENT, "Ministracao da Palavra", "", ""),
+            (4, ScheduleItem.ItemType.SONG, "Nada Alem do Sangue", "Em", ""),
+        ]
+        for ordem, tipo, titulo, tom, link in repertorio:
+            ScheduleItem.objects.get_or_create(
+                church=church,
+                schedule=schedule,
+                order=ordem,
+                defaults={"item_type": tipo, "title": titulo, "song_key": tom, "reference_url": link},
+            )
+
+        if not schedule.notes:
+            schedule.notes = "Chegar as 18h para passagem de som. Traga seu proprio cabo."
+            schedule.save(update_fields=["notes", "updated_at"])
+
+        # Sem isso tesouraria e secretaria entram no admin e nao veem nada:
+        # ``is_staff`` sozinho nao concede permissao sobre nenhum modelo.
+        groups, users = sync_role_permissions()
+        self.stdout.write(f"Permissoes de papel sincronizadas: {groups} grupos, {users} usuarios.")
 
         self.stdout.write(self.style.SUCCESS("Seed do MVP criado com sucesso."))
