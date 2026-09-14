@@ -22,5 +22,15 @@ DATABASES = {
 # Hash de senha rapido acelera a criacao de usuarios nos testes.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
-# Uploads dos testes vao para um diretorio temporario descartavel.
+# Uploads dos testes vao para um diretorio temporario descartavel, sempre em
+# disco local — os testes nunca devem falar com S3/R2.
 MEDIA_ROOT = tempfile.mkdtemp(prefix="moriah-test-media-")
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+# O endurecimento de producao (settings.py) liga com DEBUG=False; o test client
+# fala HTTP, entao o redirect para HTTPS precisa ficar desligado aqui.
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 0
