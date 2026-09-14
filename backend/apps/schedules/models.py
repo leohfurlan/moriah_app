@@ -40,3 +40,37 @@ class ScheduleAssignment(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.member} - {self.schedule}"
+
+
+class ScheduleItem(TimestampedModel):
+    """Item do repertorio / ordem do culto de uma escala.
+
+    Extensao alem do PRD v1 (que previa apenas escala por funcao): a equipe
+    escalada precisa saber **o que** sera executado, nao so quem toca o que.
+    Um item pode ser uma musica (com tom e link da cifra) ou um momento da
+    programacao — leitura, ministracao, aviso.
+    """
+
+    class ItemType(models.TextChoices):
+        SONG = "song", "Musica"
+        MOMENT = "moment", "Momento"
+        READING = "reading", "Leitura"
+        OTHER = "other", "Outro"
+
+    church = models.ForeignKey(Church, on_delete=models.CASCADE, related_name="schedule_items")
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name="items")
+    order = models.PositiveIntegerField(default=1, help_text="Posicao na ordem do culto.")
+    item_type = models.CharField(max_length=20, choices=ItemType.choices, default=ItemType.SONG)
+    title = models.CharField(max_length=255)
+    song_key = models.CharField("Tom", max_length=12, blank=True, help_text="Ex: G, Am, D#")
+    reference_url = models.URLField("Link", blank=True, help_text="Cifra, letra ou video de referencia.")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Item da Escala"
+        verbose_name_plural = "Itens da Escala"
+        # Ordem explicita primeiro; created_at desempata itens de mesma posicao.
+        ordering = ["order", "created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.order}. {self.title}"
