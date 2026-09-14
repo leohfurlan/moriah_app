@@ -10,6 +10,8 @@ backend/staticfiles/
 
 # Env
 .env
+.env.bak*
+.env.*
 .venv/
 venv/
 
@@ -18,6 +20,10 @@ node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+
+# Backups do banco (nunca versionar: contem dados pessoais e financeiros)
+backups/
+*.dump
 
 # Editor / OS
 .DS_Store
