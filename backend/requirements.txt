@@ -6,3 +6,4 @@ django-filter==25.1
 psycopg[binary]==3.2.13
 python-dotenv==1.1.1
 drf-spectacular==0.28.0
+django-storages[s3]==1.14.6

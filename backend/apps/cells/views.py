@@ -11,10 +11,16 @@ from .serializers import CellMeetingSerializer, LeaderCellMemberSerializer
 
 
 class LeaderCellMembersView(ListAPIView):
+    """Membros da celula liderada pelo usuario autenticado."""
+
     serializer_class = LeaderCellMemberSerializer
     permission_classes = [IsCellLeaderOrAdmin]
+    # Ver nota em finance.views: exigido pela introspeccao do schema.
+    queryset = Member.objects.none()
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Member.objects.none()
         return Member.objects.filter(cell__leader=self.request.user).select_related("cell")
 
 
