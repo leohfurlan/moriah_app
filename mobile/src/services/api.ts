@@ -1,3 +1,4 @@
+import { ApiError, NetworkError, SessionExpiredError } from "./errors";
 import {
   clearTokens,
   getAccessToken,
@@ -19,12 +20,34 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 // disparem apenas UM refresh; as demais aguardam o mesmo resultado.
 let refreshPromise: Promise<string | null> | null = null;
 
+/** `fetch` que converte falha de rede em `NetworkError` tratavel pela UI. */
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    throw new NetworkError(error);
+  }
+}
+
+/** Le o corpo da resposta como JSON quando possivel, senao como texto. */
+async function parseBody(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
 async function performRefresh(): Promise<string | null> {
   const refresh = await getRefreshToken();
   if (!refresh) {
     return null;
   }
-  const response = await fetch(`${API_URL}/auth/refresh/`, {
+  const response = await safeFetch(`${API_URL}/auth/refresh/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh }),
@@ -51,7 +74,7 @@ async function handleSessionExpired(): Promise<never> {
   if (unauthorizedHandler) {
     unauthorizedHandler();
   }
-  throw new Error("Sessao expirada. Faca login novamente.");
+  throw new SessionExpiredError();
 }
 
 async function request<T>(
@@ -69,7 +92,7 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await safeFetch(`${API_URL}${path}`, {
     ...init,
     headers,
   });
@@ -89,8 +112,7 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || "Erro ao processar a requisicao");
+    throw new ApiError(response.status, await parseBody(response));
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
