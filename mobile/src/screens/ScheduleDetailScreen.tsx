@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
-import { Button, Card, Field } from "@/components/Form";
+import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
+import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
-const statusColors: Record<string, string> = {
-  confirmed: "#2f7a4d",
-  declined: "#8a3c2d",
-  pending: "#9a6b1f",
-};
+function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
+  if (status === "confirmed") return "success";
+  if (status === "declined") return "danger";
+  if (status === "pending") return "warning";
+  return "neutral";
+}
 
 export function ScheduleDetailScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [detail, setDetail] = useState<ScheduleAssignmentDetail | null>(null);
   const [justification, setJustification] = useState("");
@@ -25,7 +26,6 @@ export function ScheduleDetailScreen() {
   const [error, setError] = useState<UserFacingError | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       setDetail(await api.get<ScheduleAssignmentDetail>(`/me/schedules/${id}/`));
@@ -37,6 +37,7 @@ export function ScheduleDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    setLoading(true);
     load();
   }, [load]);
 
@@ -59,24 +60,22 @@ export function ScheduleDetailScreen() {
 
   return (
     <Screen title="Detalhe da Escala">
-      <Button variant="secondary" onPress={() => router.back()}>
-        Voltar
-      </Button>
-
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
-      {loading ? <Text>Carregando...</Text> : null}
+      {loading && !detail ? <Text style={styles.meta}>Carregando…</Text> : null}
 
       {detail ? (
         <>
           <Card>
-            <Text style={styles.eventName}>{detail.event_name}</Text>
-            <Text style={styles.meta}>{new Date(detail.event_start_at).toLocaleString()}</Text>
-            {detail.event_location ? <Text style={styles.meta}>Local: {detail.event_location}</Text> : null}
+            <View style={styles.eventHeader}>
+              <View style={styles.eventHeaderCol}>
+                <Text style={styles.eventName}>{detail.event_name}</Text>
+                <Text style={styles.meta}>{formatDate(detail.event_start_at, true)}</Text>
+                {detail.event_location ? <Text style={styles.meta}>{detail.event_location}</Text> : null}
+              </View>
+              <Badge label={statusLabel(detail.status)} tone={statusTone(detail.status)} />
+            </View>
             <Text style={styles.meta}>
-              {detail.ministry_name} / {detail.role_name}
-            </Text>
-            <Text style={[styles.status, { color: statusColors[detail.status] || "#4b4038" }]}>
-              Sua situacao: {detail.status_display}
+              {detail.ministry_name} / {detail.role_name} · {detail.schedule_name}
             </Text>
           </Card>
 
@@ -92,7 +91,9 @@ export function ScheduleDetailScreen() {
             {detail.repertoire.length ? (
               detail.repertoire.map((item) => (
                 <View key={item.id} style={styles.row}>
-                  <Text style={styles.order}>{item.order}</Text>
+                  <View style={styles.orderCircle}>
+                    <Text style={styles.orderText}>{item.order}</Text>
+                  </View>
                   <View style={styles.rowBody}>
                     <Text style={styles.itemTitle}>{item.title}</Text>
                     <Text style={styles.meta}>
@@ -103,10 +104,10 @@ export function ScheduleDetailScreen() {
                     {item.reference_url ? (
                       <Text
                         accessibilityRole="link"
-                        style={styles.link}
                         onPress={() => Linking.openURL(item.reference_url)}
+                        style={styles.link}
                       >
-                        Abrir cifra/referencia
+                        Abrir cifra/referencia ↗
                       </Text>
                     ) : null}
                   </View>
@@ -130,29 +131,40 @@ export function ScheduleDetailScreen() {
                     {member.ministry_name} / {member.role_name}
                   </Text>
                 </View>
-                <Text style={[styles.badge, { color: statusColors[member.status] || "#4b4038" }]}>
-                  {member.status_display}
-                </Text>
+                <Badge label={statusLabel(member.status)} tone={statusTone(member.status)} />
               </View>
             ))}
           </Card>
 
-          <Card>
-            <Text style={styles.sectionTitle}>Sua resposta</Text>
-            <Field
-              value={justification}
-              onChangeText={setJustification}
-              placeholder="Justificativa (obrigatoria para recusar)"
-            />
-            <View style={{ gap: 8 }}>
-              <Button disabled={acting} onPress={() => act("confirm")}>
-                {acting ? "Enviando..." : "Confirmar"}
-              </Button>
-              <Button disabled={acting} variant="secondary" onPress={() => act("decline")}>
-                Recusar
-              </Button>
+          {detail.status === "pending" ? (
+            <Card>
+              <Text style={styles.sectionTitle}>Sua resposta</Text>
+              <Field
+                value={justification}
+                onChangeText={setJustification}
+                placeholder="Justificativa (obrigatoria para recusar)"
+              />
+              <View style={styles.buttonRow}>
+                <View style={styles.buttonFlex}>
+                  <Button disabled={acting} loading={acting} onPress={() => act("confirm")}>
+                    {acting ? "Enviando..." : "Confirmar"}
+                  </Button>
+                </View>
+                <View style={styles.buttonFlex}>
+                  <Button disabled={acting} variant="secondary" onPress={() => act("decline")}>
+                    Recusar
+                  </Button>
+                </View>
+              </View>
+            </Card>
+          ) : (
+            <View style={styles.respondedNote}>
+              <Text style={styles.meta}>
+                {detail.status === "confirmed" ? "Voce confirmou presenca." : "Voce recusou esta escala."}
+                {detail.responded_at ? ` (${formatDate(detail.responded_at, true)})` : ""}
+              </Text>
             </View>
-          </Card>
+          )}
         </>
       ) : null}
     </Screen>
@@ -160,66 +172,92 @@ export function ScheduleDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  eventHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  eventHeaderCol: {
+    flex: 1,
+    gap: 2,
+  },
   eventName: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#3f2f24",
+    fontWeight: "800",
+    color: colors.ink,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#3f2f24",
-    marginBottom: 8,
+    color: colors.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: spacing.xs,
   },
   meta: {
-    color: "#5f5148",
+    fontSize: 13,
+    color: colors.inkMuted,
   },
   body: {
-    color: "#4b4038",
-  },
-  status: {
-    fontWeight: "700",
-    marginTop: 6,
+    fontSize: 14,
+    color: colors.inkBody,
   },
   row: {
     flexDirection: "row",
-    gap: 10,
-    paddingVertical: 8,
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "#efe6d9",
+    borderTopColor: colors.borderDivider,
+  },
+  orderCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.surfaceSelected,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.accent,
   },
   teamRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
-    paddingVertical: 8,
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: "#efe6d9",
+    borderTopColor: colors.borderDivider,
   },
   rowBody: {
     flex: 1,
     gap: 2,
   },
-  order: {
-    fontWeight: "700",
-    color: "#7a4d2d",
-    minWidth: 18,
-  },
   itemTitle: {
+    fontSize: 14,
     fontWeight: "700",
-    color: "#3f2f24",
+    color: colors.ink,
   },
   me: {
-    color: "#7a4d2d",
-  },
-  badge: {
-    fontWeight: "700",
-    fontSize: 12,
+    color: colors.accent,
   },
   link: {
-    color: "#7a4d2d",
+    color: colors.accent,
     fontWeight: "700",
-    textDecorationLine: "underline",
+    fontSize: 13,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  buttonFlex: {
+    flex: 1,
+  },
+  respondedNote: {
+    alignItems: "center",
+    paddingVertical: spacing.sm,
   },
 });

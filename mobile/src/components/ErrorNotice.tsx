@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { Button } from "./Form";
+import { colors, radius, spacing } from "@/theme";
 
 /**
  * Aviso de erro para falhas de carregamento de tela.
@@ -34,19 +35,20 @@ export function ErrorNotice({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
-    padding: 16,
-    borderRadius: 14,
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: "#e6c3bc",
-    backgroundColor: "#fdf3f1",
+    borderColor: colors.dangerBorder,
+    backgroundColor: colors.dangerBg,
   },
   title: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#8a3c2d",
+    color: colors.danger,
   },
   message: {
-    color: "#5f5148",
+    color: colors.inkMuted,
+    fontSize: 14,
   },
 });

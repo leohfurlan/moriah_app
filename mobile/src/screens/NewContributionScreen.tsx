@@ -8,6 +8,7 @@ import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
 import { describeError } from "@/services/errors";
+import { colors, radius, spacing } from "@/theme";
 
 type UploadableFile = {
   uri: string;
@@ -98,6 +99,10 @@ export function NewContributionScreen() {
     }
   }
 
+  function removeFile(uri: string, name: string) {
+    setFiles((current) => current.filter((file) => !(file.uri === uri && file.name === name)));
+  }
+
   async function submit() {
     if (submittingRef.current) {
       return;
@@ -126,6 +131,9 @@ export function NewContributionScreen() {
       setFiles([]);
       setNotes("");
       router.replace("/statement");
+    } catch (error) {
+      const { title, message } = describeError(error, "Erro ao enviar");
+      Alert.alert(title, message);
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -134,8 +142,10 @@ export function NewContributionScreen() {
 
   return (
     <Screen title="Nova Contribuicao">
-      <Field value={amount} onChangeText={setAmount} placeholder="Valor" keyboardType="decimal-pad" />
-      <Text style={styles.categoryLabel}>Tipo de contribuição</Text>
+      <Text style={styles.sectionTitle}>Valor</Text>
+      <Field value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0,00" />
+
+      <Text style={styles.sectionTitle}>Tipo de contribuição</Text>
       <View style={styles.categoryGroup}>
         {contributionCategories.map((item) => {
           const selected = category === item.value;
@@ -153,31 +163,49 @@ export function NewContributionScreen() {
           );
         })}
       </View>
-      <Field value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
-      <Field value={notes} onChangeText={setNotes} placeholder="Observacoes" multiline />
-      <Button disabled={submitting} onPress={pickImage} variant="secondary">
-        Selecionar imagem
-      </Button>
-      <Button disabled={submitting} onPress={pickDocument} variant="secondary">
-        Selecionar documento
-      </Button>
+
+      <Text style={styles.sectionTitle}>Data da contribuição</Text>
+      <Field value={date} onChangeText={setDate} placeholder="AAAA-MM-DD" />
+
+      <Text style={styles.sectionTitle}>Observações (opcional)</Text>
+      <Field value={notes} onChangeText={setNotes} multiline numberOfLines={3} placeholder="Ex.: campanha de missões" />
+
+      <Text style={styles.sectionTitle}>Comprovante</Text>
       <Card>
-        <Text>Arquivos anexados: {files.length}</Text>
-        {files.map((file) => (
-          <Text key={`${file.uri}-${file.name}`}>{file.name}</Text>
-        ))}
+        {files.length ? (
+          files.map((file) => (
+            <View key={`${file.uri}-${file.name}`} style={styles.fileRow}>
+              <Text numberOfLines={1} style={styles.fileName}>
+                {file.name}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Remover ${file.name}`}
+                hitSlop={8}
+                onPress={() => removeFile(file.uri, file.name)}
+              >
+                <Text style={styles.fileRemove}>✕</Text>
+              </Pressable>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.fileEmpty}>Nenhum arquivo anexado. Anexe uma imagem ou PDF.</Text>
+        )}
+        <View style={styles.pickerRow}>
+          <View style={styles.pickerFlex}>
+            <Button disabled={submitting} variant="secondary" onPress={pickImage}>
+              Imagem
+            </Button>
+          </View>
+          <View style={styles.pickerFlex}>
+            <Button disabled={submitting} variant="secondary" onPress={pickDocument}>
+              PDF/Documento
+            </Button>
+          </View>
+        </View>
       </Card>
-      <Button
-        disabled={submitting}
-        onPress={async () => {
-          try {
-            await submit();
-          } catch (error) {
-            const { title, message } = describeError(error, "Erro ao enviar");
-            Alert.alert(title, message);
-          }
-        }}
-      >
+
+      <Button disabled={submitting} loading={submitting} onPress={submit}>
         {submitting ? "Enviando..." : "Enviar contribuicao"}
       </Button>
     </Screen>
@@ -185,40 +213,72 @@ export function NewContributionScreen() {
 }
 
 const styles = StyleSheet.create({
-  categoryLabel: {
-    color: "#5f5148",
+  sectionTitle: {
+    fontSize: 13,
     fontWeight: "700",
+    color: colors.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginTop: spacing.sm,
   },
   categoryGroup: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: spacing.sm,
   },
   categoryOption: {
     flexGrow: 1,
     flexBasis: "30%",
     minWidth: 96,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#d6cbbb",
-    borderRadius: 12,
-    backgroundColor: "#fffdf9",
+    borderColor: colors.borderStrong,
+    borderRadius: radius.field,
+    backgroundColor: colors.surfaceTint,
   },
   categoryOptionSelected: {
-    borderColor: "#7a4d2d",
-    backgroundColor: "#7a4d2d",
+    borderColor: colors.accent,
+    backgroundColor: colors.accent,
   },
   disabledOption: {
     opacity: 0.55,
   },
   categoryText: {
-    color: "#4b4038",
+    color: colors.inkBody,
     fontWeight: "700",
   },
   categoryTextSelected: {
-    color: "#fff",
+    color: colors.onAccent,
+  },
+  fileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  fileName: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.ink,
+    fontWeight: "600",
+  },
+  fileRemove: {
+    color: colors.danger,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  fileEmpty: {
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
+  pickerRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  pickerFlex: {
+    flex: 1,
   },
 });
