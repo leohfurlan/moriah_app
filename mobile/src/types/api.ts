@@ -72,3 +72,33 @@ export interface ScheduleAssignment {
   justification: string;
   responded_at?: string | null;
 }
+
+export interface ScheduleItem {
+  id: number;
+  order: number;
+  item_type: "song" | "moment" | "reading" | "other";
+  item_type_display: string;
+  title: string;
+  song_key: string;
+  reference_url: string;
+  notes: string;
+}
+
+export interface TeamMember {
+  id: number;
+  member_name: string;
+  role_name: string;
+  ministry_name: string;
+  status: "pending" | "confirmed" | "declined";
+  status_display: string;
+  is_me: boolean;
+}
+
+export interface ScheduleAssignmentDetail extends ScheduleAssignment {
+  status_display: string;
+  event_location: string;
+  event_type: string;
+  schedule_notes: string;
+  team: TeamMember[];
+  repertoire: ScheduleItem[];
+}

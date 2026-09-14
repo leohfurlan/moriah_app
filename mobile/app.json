@@ -6,16 +6,52 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "primaryColor": "#7a4d2d",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#fffdf9"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
+    "ios": {
+      "bundleIdentifier": "app.moriah.mobile",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "O app usa suas fotos para voce anexar o comprovante da contribuicao.",
+        "NSCameraUsageDescription": "O app usa a camera para voce fotografar o comprovante da contribuicao."
+      }
+    },
+    "android": {
+      "package": "app.moriah.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#7a4d2d"
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "experiments": {
       "typedRoutes": true
     },
     "plugins": [
       "expo-router",
       "expo-document-picker",
-      "expo-image-picker"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O app usa suas fotos para voce anexar o comprovante da contribuicao.",
+          "cameraPermission": "O app usa a camera para voce fotografar o comprovante da contribuicao."
+        }
+      ]
     ]
   }
 }
