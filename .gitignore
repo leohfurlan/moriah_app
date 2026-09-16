@@ -30,3 +30,8 @@ backups/
 Thumbs.db
 .idea/
 .vscode/
+
+# Testes e verificações
+output/
+tmp/
+.playwright-cli/

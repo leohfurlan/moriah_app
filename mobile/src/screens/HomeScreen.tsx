@@ -257,7 +257,7 @@ export function HomeScreen({
 const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 36, height: 36, borderRadius: 6, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 12, fontWeight: "700", color: colors.accent },
   notificationButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   notificationBadge: { position: "absolute", top: 2, right: 1, width: 17, height: 17, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },

@@ -18,7 +18,7 @@ import {
   Bell,
   BookOpen,
   CalendarDays,
-  ChevronDown,
+
   ClipboardList,
   HandCoins,
   House,
@@ -212,6 +212,7 @@ export function Screen({
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
+  const appShell = desktop && pathname !== "/";
   const parentLabel = parentOf(pathname);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const activeRoute = pathname.split("/").filter(Boolean)[0] || "home";
@@ -219,10 +220,10 @@ export function Screen({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={desktop ? styles.desktopShell : styles.mobileShell}>
-        {desktop ? <Sidebar pathname={pathname} onNavigate={onNavigate} /> : null}
-        <View style={desktop ? styles.desktopMain : styles.mobileMain}>
-          {desktop ? (
+      <View style={appShell ? styles.desktopShell : styles.mobileShell}>
+        {appShell ? <Sidebar pathname={pathname} onNavigate={onNavigate} /> : null}
+        <View style={appShell ? styles.desktopMain : styles.mobileMain}>
+          {appShell ? (
             <View style={styles.desktopTopbar}>
               <Pressable
                 accessibilityRole="button"
@@ -260,7 +261,7 @@ export function Screen({
                   style={({ pressed }) => [styles.profilePill, pressed && styles.pressed]}
                 >
                   <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>AM</Text></View>
-                  <ChevronDown size={14} color={colors.inkMuted} />
+
                 </Pressable>
               </View>
             </View>
@@ -269,13 +270,14 @@ export function Screen({
           <ScrollView
             contentContainerStyle={[
               styles.content,
-              desktop && styles.desktopContent,
-              showBottomNav && !desktop && styles.contentWithNav,
+              appShell && styles.desktopContent,
+              !appShell && desktop && styles.authContent,
+              showBottomNav && !appShell && styles.contentWithNav,
             ]}
             keyboardShouldPersistTaps="handled"
             refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} /> : undefined}
           >
-            {!desktop ? (
+            {!appShell ? (
               <View style={styles.header}>
                 {parentLabel ? (
                   <Pressable
@@ -316,11 +318,11 @@ export function Screen({
                 </View>
               </View>
             )}
-            <View style={[styles.body, desktop && styles.desktopBody]}>{children}</View>
+            <View style={[styles.body, appShell && styles.desktopBody]}>{children}</View>
           </ScrollView>
         </View>
       </View>
-      {showBottomNav && !desktop ? <BottomNav pathname={pathname} onNavigate={onNavigate} /> : null}
+      {showBottomNav && !appShell ? <BottomNav pathname={pathname} onNavigate={onNavigate} /> : null}
     </SafeAreaView>
   );
 }
@@ -370,22 +372,22 @@ const styles = StyleSheet.create({
   sidebarItemTextActive: { color: colors.onAccent, fontWeight: "700" },
   sidebarFooter: { flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: 1, borderTopColor: "#1D2939", paddingTop: 14 },
   sidebarFooterText: { color: "#98A2B3", fontSize: 12 },
-  desktopTopbar: { height: 92, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, position: "relative" },
+  desktopTopbar: { height: 92, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, position: "relative", zIndex: 40, overflow: "visible" },
   sidebarToggle: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   topbarGreeting: { marginLeft: 18, flex: 1, gap: 3 },
   topbarChurch: { color: colors.inkMuted, fontSize: 12 },
   topbarTitle: { color: colors.ink, fontSize: 20, fontWeight: "800", letterSpacing: -0.2 },
-  topbarActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  topbarActions: { flexDirection: "row", alignItems: "center", gap: 10, position: "relative", zIndex: 41 },
   globalSearch: { width: 260, height: 42, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
   globalSearchText: { color: colors.inkPlaceholder, fontSize: 12 },
-  notificationAnchor: { position: "relative" },
+  notificationAnchor: { position: "relative", zIndex: 42 },
   topbarIconButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   notificationBadge: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.canvas },
   notificationBadgeText: { color: colors.onAccent, fontSize: 9, fontWeight: "800" },
-  profilePill: { width: 70, height: 40, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
-  profileAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
+  profilePill: { width: 40, height: 40, alignItems: "center", justifyContent: "center", backgroundColor: colors.avatar, borderRadius: 6 },
+  profileAvatar: { width: "100%", height: "100%", borderRadius: 6, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
   profileAvatarText: { color: colors.accent, fontSize: 9, fontWeight: "800" },
-  notificationPopover: { position: "absolute", zIndex: 20, top: 50, right: -228, width: 300, minHeight: 310, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 16, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  notificationPopover: { position: "absolute", zIndex: 100, top: 50, right: 0, width: 300, minHeight: 310, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 16, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   notificationHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   notificationTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
   markRead: { color: colors.accent, fontSize: 11, fontWeight: "700" },
@@ -398,6 +400,7 @@ const styles = StyleSheet.create({
   viewAll: { color: colors.accent, fontSize: 11, fontWeight: "700", marginTop: 16 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxl + spacing.lg },
   desktopContent: { width: "100%", maxWidth: 1088, alignSelf: "center", paddingHorizontal: 0, paddingTop: 0, paddingBottom: 44 },
+  authContent: { flexGrow: 1, width: "100%", maxWidth: 760, alignSelf: "center", paddingTop: 48, paddingBottom: 80 },
   contentWithNav: { paddingBottom: 96 },
   header: { marginBottom: spacing.lg },
   desktopPageHeader: { minHeight: 54, justifyContent: "center", marginBottom: 16 },
