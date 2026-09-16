@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
@@ -38,11 +38,13 @@ function statusFilterPath(status: StatusFilter, dateFrom: string, dateTo: string
 export function FinanceReviewScreen() {
   const toast = useToast();
   const submittingRef = useRef(false);
+  const loadSequence = useRef(0);
   const [items, setItems] = useState<Contribution[]>([]);
   const [selected, setSelected] = useState<Contribution | null>(null);
   const [status, setStatus] = useState<StatusFilter>("pending");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [period, setPeriod] = useState({ from: "", to: "" });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -51,21 +53,29 @@ export function FinanceReviewScreen() {
   const [reviewNotes, setReviewNotes] = useState("");
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    setLoading(true);
     setError(null);
     try {
-      const nextItems = await api.get<Contribution[]>(statusFilterPath(status, dateFrom, dateTo));
+      const nextItems = await api.get<Contribution[]>(statusFilterPath(status, period.from, period.to));
+      if (sequence !== loadSequence.current) return;
       setItems(nextItems);
       setSelected((current) => current ? nextItems.find((item) => item.id === current.id) || null : null);
     } catch (err) {
-      setError(describeError(err, "Não foi possível carregar as contribuições"));
+      if (sequence === loadSequence.current) setError(describeError(err, "Não foi possível carregar as contribuições"));
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (sequence === loadSequence.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [dateFrom, dateTo, status]);
+  }, [period, status]);
 
   useEffect(() => {
+    setItems([]);
+    setSelected(null);
     load();
+    return () => { ++loadSequence.current; };
   }, [load]);
 
   function selectContribution(item: Contribution) {
@@ -87,6 +97,7 @@ export function FinanceReviewScreen() {
     }
 
     submittingRef.current = true;
+    ++loadSequence.current;
     setSubmitting(true);
     setAviso(null);
     try {
@@ -94,12 +105,13 @@ export function FinanceReviewScreen() {
         status: nextStatus,
         review_notes: notes,
       });
-      setItems((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setItems((current) => current.flatMap((item) => item.id !== updated.id ? [item] : status === "all" || status === updated.status ? [updated] : []));
       setSelected(updated);
       setReviewNotes(updated.review_notes || "");
       toast(nextStatus === "approved" ? "Contribuição aprovada." : "Contribuição rejeitada.", {
         title: "Revisão registrada",
       });
+      await load();
     } catch (err) {
       setAviso({
         tone: "error",
@@ -117,7 +129,7 @@ export function FinanceReviewScreen() {
       title="Revisão financeira"
       headerSubtitle="Contribuições da sua igreja"
       refreshing={refreshing}
-      onRefresh={() => { setRefreshing(true); load(); }}
+      onRefresh={() => { if (!submitting) { setRefreshing(true); load(); } }}
     >
       <Card>
         <Text style={styles.sectionTitle}>Filtros</Text>
@@ -128,6 +140,7 @@ export function FinanceReviewScreen() {
               key={filter.value}
               size="compact"
               variant={status === filter.value ? "primary" : "secondary"}
+              disabled={submitting}
               onPress={() => setStatus(filter.value)}
             >
               {filter.label}
@@ -137,14 +150,19 @@ export function FinanceReviewScreen() {
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
             <Text style={styles.label}>De</Text>
-            <Field value={dateFrom} onChangeText={setDateFrom} placeholder="AAAA-MM-DD" />
+            <Field editable={!submitting} value={dateFrom} onChangeText={setDateFrom} placeholder="AAAA-MM-DD" />
           </View>
           <View style={styles.dateField}>
             <Text style={styles.label}>Até</Text>
-            <Field value={dateTo} onChangeText={setDateTo} placeholder="AAAA-MM-DD" />
+            <Field editable={!submitting} value={dateTo} onChangeText={setDateTo} placeholder="AAAA-MM-DD" />
           </View>
         </View>
-        <Button variant="secondary" onPress={load}>Aplicar filtros</Button>
+        <Button variant="secondary" disabled={submitting} onPress={() => {
+          const from = dateFrom.trim();
+          const to = dateTo.trim();
+          if (from === period.from && to === period.to) load();
+          else setPeriod({ from, to });
+        }}>Aplicar filtros</Button>
       </Card>
 
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
@@ -164,7 +182,7 @@ export function FinanceReviewScreen() {
             Lançamentos ({items.length})
           </Text>
           {items.map((item) => (
-            <Card key={item.id} onPress={() => selectContribution(item)} style={selected?.id === item.id ? styles.selectedCard : undefined}>
+            <Card key={item.id} onPress={() => { if (!submitting) selectContribution(item); }} style={selected?.id === item.id ? styles.selectedCard : undefined}>
               <View style={styles.row}>
                 <View style={styles.copy}>
                   <Text style={styles.itemTitle}>{item.member_name || "Membro não identificado"}</Text>
@@ -190,6 +208,13 @@ export function FinanceReviewScreen() {
             <Badge label={statusLabel(selected.status)} tone={statusTone(selected.status)} />
           </View>
           <Text style={styles.detailAmount}>{formatBRL(selected.amount)}</Text>
+          <Text style={styles.label}>Comprovantes</Text>
+          {selected.attachments.length ? selected.attachments.map((attachment) => (
+            <Button key={attachment.id} variant="secondary" onPress={async () => {
+              try { await Linking.openURL(attachment.file_url); }
+              catch { setAviso({ tone: "error", title: "Comprovante indisponível", message: "Não foi possível abrir o comprovante. Tente novamente." }); }
+            }}>{attachment.original_name || "Abrir comprovante"}</Button>
+          )) : <Text style={styles.meta}>Nenhum comprovante anexado.</Text>}
           {selected.notes ? <Text style={styles.detailText}>{selected.notes}</Text> : null}
           {selected.reviewed_by_name ? <Text style={styles.meta}>Revisado por {selected.reviewed_by_name}</Text> : null}
           {selected.review_notes ? <Text style={styles.reviewNote}>Motivo/observação: {selected.review_notes}</Text> : null}
@@ -252,4 +277,3 @@ const styles = StyleSheet.create({
   history: { gap: spacing.xs, borderTopWidth: 1, borderTopColor: colors.borderDivider, paddingTop: spacing.md },
   actionRow: { flexDirection: "row", gap: spacing.sm },
 });
-

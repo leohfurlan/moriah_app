@@ -25,7 +25,8 @@ Pré-requisitos: backend no ar e Expo web servindo o app.
 # app (mobile/) em http://localhost:8081 e API respondendo
 node tools/qa/run.mjs fase1      # só a fase 1
 node tools/qa/run.mjs fase2      # só a fase 2
-node tools/qa/run.mjs todas      # as duas
+node tools/qa/run.mjs fase3      # revisao financeira
+node tools/qa/run.mjs todas      # todas
 ```
 
 Saída: uma linha `PASS`/`FAIL`/`AVISO` por check e o código de saída
@@ -73,3 +74,22 @@ node tools/qa/scripts/diagnostico-toast.mjs   # linha do tempo: o toast apareceu
 - `fase2`: 13 checks (13 PASS) — evidência `docs/qa/evidencias/fase2-2026-09-16T123353`.
 - Relatórios: `docs/qa/fase-1-confiabilidade-2026-09-16.md`,
   `docs/qa/fase-2-navegacao-2026-09-16.md`.
+
+## Fase 3 — revisão financeira
+
+`node tools/qa/run.mjs fase3` executa 14 verificações da UI com API simulada,
+sem gravar decisões no banco da aplicação. Cobre acesso mobile de tesouraria sem
+membro, guarda de capacidades, comprovantes, motivo obrigatório, atualização
+após decisão, histórico, filtros, respostas atrasadas e recuperação de erro.
+
+As regras reais e a auditoria com JWT são verificadas por:
+
+```powershell
+cd backend
+python -m pytest apps/finance/tests -q
+$env:POSTGRES_HOST = '127.0.0.1'
+python -m pytest apps/finance/tests -q --ds=config.settings_test_postgres
+```
+
+A configuração PostgreSQL mantém os demais isolamentos dos testes e o Django
+cria/remove `test_<POSTGRES_DB>`. O CI inclui o job `finance-postgres`.

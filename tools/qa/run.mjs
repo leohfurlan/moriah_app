@@ -3,7 +3,8 @@
 //
 //   node tools/qa/run.mjs fase1        # confiabilidade P0 (plano, secao 6)
 //   node tools/qa/run.mjs fase2        # navegacao e menu
-//   node tools/qa/run.mjs todas        # as duas fases
+//   node tools/qa/run.mjs fase3        # revisao financeira
+//   node tools/qa/run.mjs todas        # todas as fases
 //
 // Cada fase grava evidencias em docs/qa/evidencias/<fase>-<carimbo>/:
 // resultados.json, resumo.md e shots/*.png.
@@ -21,6 +22,7 @@ process.chdir(RAIZ); // o seed e os caminhos relativos contam da raiz do repo
 const FASES = {
   fase1: () => import("./checks/fase1.mjs"),
   fase2: () => import("./checks/fase2.mjs"),
+  fase3: () => import("./checks/fase3.mjs"),
 };
 
 async function servidorResponde(base = BASE) {

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 
 from apps.audit.models import AuditLog
 
@@ -12,6 +13,13 @@ class ContributionAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContributionAttachment
         fields = ("id", "original_name", "file_url", "created_at")
+
+
+class ContributionReviewHistorySerializer(serializers.Serializer):
+    status_before = serializers.CharField(allow_null=True)
+    status_after = serializers.CharField()
+    reviewed_by_name = serializers.CharField(allow_null=True)
+    created_at = serializers.DateTimeField()
 
 
 class ContributionSerializer(serializers.ModelSerializer):
@@ -45,9 +53,10 @@ class ContributionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("status", "review_notes", "reviewed_by_name", "review_history")
 
-    def get_reviewed_by_name(self, obj):
+    def get_reviewed_by_name(self, obj) -> str | None:
         return obj.reviewed_by.get_full_name() or obj.reviewed_by.email if obj.reviewed_by else None
 
+    @extend_schema_field(ContributionReviewHistorySerializer(many=True))
     def get_review_history(self, obj):
         return [
             {
@@ -57,6 +66,7 @@ class ContributionSerializer(serializers.ModelSerializer):
                 "created_at": log.created_at,
             }
             for log in AuditLog.objects.filter(
+                church_id=obj.church_id,
                 model_name="Contribution",
                 object_id=str(obj.pk),
                 action="contribution_status_changed",

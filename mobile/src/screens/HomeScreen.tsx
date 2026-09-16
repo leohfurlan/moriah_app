@@ -318,6 +318,7 @@ export function HomeScreen({
   );
   const proximoCompromisso = useMemo(() => futuros(commitments, (item) => item.starts_at)[0] || null, [commitments]);
   const canCreateSchedule = podeGerenciarEscalas(me.capabilities || []);
+  const canReviewContributions = (me.capabilities || []).some(capability => ["review_contributions", "manage_all"].includes(capability));
 
   const itensProximos = useMemo(() => {
     const compromissos = futuros(commitments, (item) => item.starts_at).map((item) => ({
@@ -339,7 +340,7 @@ export function HomeScreen({
     <Screen
       title={`Olá, ${firstName(me)} 👋`}
       headerSubtitle={headerDate()}
-      showBottomNav={isMember}
+      showBottomNav={isMember || canReviewContributions}
       refreshing={refreshing || loading}
       onRefresh={onRefresh}
       headerAccessory={!desktop && isMember ? (<View style={styles.headerActions}>
@@ -368,6 +369,7 @@ export function HomeScreen({
           <Text style={styles.eyebrow}>ACESSO DE GESTÃO</Text>
           <Text style={styles.cardTitle}>Painel de gestão</Text>
           <Text style={styles.meta}>Esta conta possui permissões administrativas além da experiência pessoal.</Text>
+          {canReviewContributions ? <Button size="compact" onPress={() => onNavigate("finance-review")}>Abrir revisão financeira</Button> : null}
         </Card>
       ) : null}
 

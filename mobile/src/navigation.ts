@@ -111,6 +111,7 @@ export const MENU_LATERAL: NavGroup[] = [
 /** Abas (mobile). Rotulos conforme a decisao D3 do plano (Contribuicoes, nao Conteudo). */
 export const ABAS: NavItem[] = [
   criarItem({ id: "aba-inicio", label: "Início", route: "home", Icon: House, matches: ["home"] }),
+  criarItem({ id: "aba-revisao-financeira", label: "Revisão", route: "finance-review", Icon: HandCoins, required: ["review_contributions", "manage_all"], matches: ["finance-review"] }),
   criarItem({ id: "aba-agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
   criarItem({ id: "aba-escalas", label: "Escalas", route: "schedules", Icon: CalendarCheck, required: ["member"], matches: ["schedules", "schedule", "song", "schedule-create"] }),
   criarItem({ id: "aba-contribuicoes", label: "Contribuições", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
