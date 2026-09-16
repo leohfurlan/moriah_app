@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
-import { Alert, Linking, StyleSheet, Text } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Linking, StyleSheet, Text } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { useToast } from "@/components/Feedback";
 import { Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -12,11 +13,20 @@ import { colors, spacing } from "@/theme";
 
 export function SongDetailScreen() {
   const { id, scheduleId } = useLocalSearchParams<{ id: string; scheduleId: string }>();
+  const router = useRouter();
+  const toast = useToast();
   const [item, setItem] = useState<ScheduleItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<UserFacingError | null>(null);
+  // Sem escala na URL nao existe musica para buscar: `undefined` no path gerava
+  // uma chamada /me/schedules/undefined/ e um 404 confuso para o membro.
+  const semContexto = !id || !scheduleId;
 
   const load = useCallback(async () => {
+    if (semContexto) {
+      setLoading(false);
+      return;
+    }
     setError(null);
     try {
       const detail = await api.get<ScheduleAssignmentDetail>(`/me/schedules/${scheduleId}/`);
@@ -26,16 +36,30 @@ export function SongDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, scheduleId]);
+  }, [id, scheduleId, semContexto]);
 
   useEffect(() => { load(); }, [load]);
+
+  if (semContexto) {
+    return (
+      <Screen title="Musica">
+        <Card>
+          <Text style={styles.sectionTitle}>Musica sem contexto</Text>
+          <Text style={styles.body}>
+            Esta musica pertence ao repertorio de uma escala. Abra a escala para ver a cifra, o tom e as observacoes.
+          </Text>
+        </Card>
+        <Button onPress={() => router.replace("/schedules")}>Ver minhas escalas</Button>
+      </Screen>
+    );
+  }
 
   if (loading && !item) return <Screen title="Musica"><Text style={styles.meta}>Carregando...</Text></Screen>;
   if (error) return <Screen title="Musica"><ErrorNotice title={error.title} message={error.message} onRetry={load} /></Screen>;
   if (!item) return <Screen title="Musica"><Text style={styles.meta}>Musica nao encontrada ou ainda nao publicada.</Text></Screen>;
 
   const open = async (url: string) => {
-    try { await Linking.openURL(url); } catch { Alert.alert("Link indisponivel", "Nao foi possivel abrir este link."); }
+    try { await Linking.openURL(url); } catch { toast("Nao foi possivel abrir este link.", { tone: "warning", title: "Link indisponivel" }); }
   };
 
   return (

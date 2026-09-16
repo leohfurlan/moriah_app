@@ -44,16 +44,60 @@ export type UserFacingError = {
 };
 
 /**
+ * Limpa um texto vindo do backend para que ele possa ser exibido ao usuario.
+ *
+ * O DRF normalmente responde JSON, mas quando a requisicao nunca chega na view
+ * (erro 500 do WSGI, 502/504 do proxy, `DEBUG=True` ligado) o corpo vem em
+ * HTML ou com stack trace. Exibir isso dentro do app entrega detalhe interno
+ * ao membro e nao diz o que fazer — entao texto tecnico e descartado aqui.
+ *
+ * Devolve `null` quando o texto nao serve para o usuario final.
+ */
+export function sanitizarMensagem(texto: unknown): string | null {
+  if (typeof texto !== "string") {
+    return null;
+  }
+  const bruto = texto.trim();
+  if (!bruto) {
+    return null;
+  }
+  // Marcadores de markup/stack trace: nada disso vira mensagem de tela.
+  if (/<\s*(!doctype|html|body|head|pre|h1|div|p|table)\b/i.test(bruto)) {
+    return null;
+  }
+  if (/(traceback|exception value|django|wsgi|file "\/|line \d+, in )/i.test(bruto)) {
+    return null;
+  }
+  const semTags = bruto
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!semTags) {
+    return null;
+  }
+  return semTags.length > 240 ? `${semTags.slice(0, 237)}...` : semTags;
+}
+
+/**
  * Extrai a primeira mensagem legivel de um corpo de erro do DRF.
  *
  * O DRF responde em formatos diferentes conforme a origem do erro:
  * - `{"detail": "..."}` para erros de autenticacao/permissao;
  * - `{"campo": ["msg1", "msg2"]}` para erros de validacao de serializer;
  * - `["msg"]` para `non_field_errors` levantados na raiz.
+ *
+ * Qualquer candidato passa por `sanitizarMensagem`: HTML/stack trace nunca
+ * chega na tela (ver relatorio de paridade, §5.2).
  */
 function firstDetail(payload: unknown): string | null {
   if (typeof payload === "string") {
-    return payload.trim() || null;
+    return sanitizarMensagem(payload);
   }
   if (Array.isArray(payload)) {
     for (const item of payload) {
@@ -108,6 +152,7 @@ export function describeError(error: unknown, context?: string): UserFacingError
 
     switch (error.status) {
       case 400:
+      case 422:
         return {
           title: "Dados invalidos",
           message: detail || "Confira os dados informados e tente novamente.",
@@ -127,10 +172,22 @@ export function describeError(error: unknown, context?: string): UserFacingError
           title: "Nao encontrado",
           message: detail || "O item que voce tentou acessar nao existe mais.",
         };
+      case 409:
+        return {
+          title: "Registro desatualizado",
+          message:
+            detail ||
+            "Este item mudou desde que voce abriu a tela. Atualize a lista e tente de novo.",
+        };
       case 413:
         return {
           title: "Arquivo muito grande",
           message: "O comprovante excede o limite de 8MB. Envie uma foto menor ou um PDF.",
+        };
+      case 429:
+        return {
+          title: "Muitas tentativas",
+          message: detail || "Aguarde um instante antes de tentar novamente.",
         };
       default:
         break;

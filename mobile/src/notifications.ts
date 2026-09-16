@@ -34,17 +34,6 @@ export const MVP_NOTIFICATIONS: MvpNotification[] = [
     actionRoute: "/agenda",
   },
   {
-    id: "school-new",
-    section: "Ontem",
-    title: "Nova aula disponível",
-    body: "Aula 8 — A nova vida em Cristo.",
-    time: "Ontem",
-    category: "Igreja",
-    detail: "A nova aula da Escola Bíblica já está disponível para continuar seus estudos.",
-    actionLabel: "Abrir agenda",
-    actionRoute: "/agenda",
-  },
-  {
     id: "contribution-approved",
     section: "Anteriores",
     title: "Contribuição confirmada",
@@ -54,17 +43,6 @@ export const MVP_NOTIFICATIONS: MvpNotification[] = [
     detail: "A tesouraria validou seu comprovante. O registro já está disponível no seu extrato.",
     actionLabel: "Ver contribuições",
     actionRoute: "/statement",
-  },
-  {
-    id: "church-notice",
-    section: "Anteriores",
-    title: "Aviso importante",
-    body: "Alteração no horário da Escola Bíblica.",
-    time: "10 set",
-    category: "Igreja",
-    detail: "Neste domingo, excepcionalmente, a Escola Bíblica começará às 8h30 em vez de 9h. Pedimos que todos cheguem com 10 minutos de antecedência.",
-    actionLabel: "Abrir agenda",
-    actionRoute: "/agenda",
   },
 ];
 

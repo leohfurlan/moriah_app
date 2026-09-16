@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -17,13 +18,21 @@ function statusTone(status: string): "success" | "warning" | "danger" | "neutral
   return "neutral";
 }
 
+const ACTION_FEEDBACK: Record<"confirm" | "decline" | "unavailable", { title: string; message: string }> = {
+  confirm: { title: "Presenca confirmada", message: "Sua presenca foi confirmada nesta escala." },
+  decline: { title: "Resposta registrada", message: "Sua recusa foi registrada." },
+  unavailable: { title: "Resposta registrada", message: "Sua indisponibilidade foi registrada." },
+};
+
 export function ScheduleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
   const [detail, setDetail] = useState<ScheduleAssignmentDetail | null>(null);
   const [justification, setJustification] = useState("");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
 
   const load = useCallback(async () => {
@@ -43,18 +52,24 @@ export function ScheduleDetailScreen() {
   }, [load]);
 
   async function act(action: "confirm" | "decline" | "unavailable") {
+    // Trava de reentrancia: clique duplo nao pode enviar a resposta duas vezes.
+    // Ref cobre o mesmo tick, estado cobre o resto da operacao em andamento.
+    if (acting || actingRef.current) return;
+    actingRef.current = true;
     setActing(true);
     try {
       await api.post(`/me/schedules/${id}/action/`, { action, justification });
       setJustification("");
       await load();
+      toast(ACTION_FEEDBACK[action].message, { tone: "success", title: ACTION_FEEDBACK[action].title });
     } catch (err) {
       const { title, message } = describeError(
         err,
         action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar",
       );
-      Alert.alert(title, message);
+      toast(message, { tone: "error", title });
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   }

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { Alert, Platform, StyleSheet, Text, useWindowDimensions } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Platform, StyleSheet, Text, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 
+import { InlineNotice, useToast } from "@/components/Feedback";
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -23,13 +24,21 @@ export function ScheduleCreateScreen() {
   const [location, setLocation] = useState("Templo principal");
   const [scheduleName, setScheduleName] = useState("Escala de domingo");
   const [notes, setNotes] = useState("");
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const toast = useToast();
 
   async function submit() {
+    // Trava de reentrancia: sem isto o clique duplo criava duas escalas. O ref
+    // cobre o mesmo tick (dois cliques antes do re-render); o estado cobre o resto.
+    if (submitting || submittingRef.current) return;
     if (!eventName.trim() || !startAt.trim() || !scheduleName.trim()) {
-      Alert.alert("Dados incompletos", "Informe o evento, início e nome da escala.");
+      setNotice({ title: "Dados incompletos", message: "Informe o evento, início e nome da escala." });
       return;
     }
+    setNotice(null);
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       await api.post("/schedules/", {
@@ -41,11 +50,13 @@ export function ScheduleCreateScreen() {
         notes: notes.trim(),
         status: "published",
       });
-      Alert.alert("Escala criada", "O evento foi adicionado à agenda da igreja.", [{ text: "OK", onPress: () => router.replace("/agenda") }]);
+      toast("O evento foi adicionado à agenda da igreja.", { tone: "success", title: "Escala criada" });
+      router.replace("/agenda");
     } catch (error) {
-      const result = describeError(error, "Não foi possível criar a escala");
-      Alert.alert(result.title, result.message);
+      const { title, message } = describeError(error, "Não foi possível criar a escala");
+      toast(message, { tone: "error", title });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -63,6 +74,14 @@ export function ScheduleCreateScreen() {
         <Field value={scheduleName} onChangeText={setScheduleName} placeholder="Ex.: Louvor - domingo" />
         <Text style={styles.label}>Observações</Text>
         <Field value={notes} onChangeText={setNotes} multiline placeholder="Chegada, ensaio e orientações" />
+        {notice ? (
+          <InlineNotice
+            tone="warning"
+            title={notice.title}
+            message={notice.message}
+            onDismiss={() => setNotice(null)}
+          />
+        ) : null}
         <Button loading={submitting} disabled={submitting} onPress={submit}>Adicionar escala</Button>
       </Card>
     </Screen>

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,8 +56,10 @@ export function SchedulesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
+  const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const canCreate = Boolean(me?.can_access_management);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setError(null);
@@ -75,6 +78,8 @@ export function SchedulesScreen() {
   }, [me?.member_id]);
 
   async function act(id: number, action: "confirm" | "decline" | "unavailable") {
+    if (actingId !== null || actingRef.current) return;
+    actingRef.current = true;
     setActingId(id);
     try {
       await api.post("/me/schedules/" + id + "/action/", {
@@ -82,10 +87,15 @@ export function SchedulesScreen() {
         justification: justifications[id] || "",
       });
       await load();
+      toast(action === "confirm" ? "Presença confirmada na escala." : "A coordenação foi avisada da sua resposta.", {
+        tone: "success",
+        title: action === "confirm" ? "Escala confirmada" : "Resposta registrada",
+      });
     } catch (err) {
       const result = describeError(err, action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar");
-      Alert.alert(result.title, result.message);
+      toast(result.message, { tone: "error", title: result.title });
     } finally {
+      actingRef.current = false;
       setActingId(null);
     }
   }

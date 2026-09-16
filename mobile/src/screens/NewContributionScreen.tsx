@@ -2,8 +2,9 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -60,6 +61,7 @@ type ContributionCategory = (typeof contributionCategories)[number]["value"];
 
 export function NewContributionScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const submittingRef = useRef(false);
@@ -69,6 +71,8 @@ export function NewContributionScreen() {
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<UploadableFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Aviso de validacao fica colado no formulario, acima do botao de envio.
+  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -112,14 +116,16 @@ export function NewContributionScreen() {
     // Sem esta trava a contribuicao e criada sem comprovante nenhum, e o
     // membro so descobre depois — foi exatamente assim que anexos "sumiram".
     if (!files.length) {
-      Alert.alert(
-        "Comprovante obrigatorio",
-        "Anexe ao menos uma imagem ou PDF do comprovante antes de enviar.",
-      );
+      setAviso({
+        tone: "warning",
+        title: "Comprovante obrigatorio",
+        message: "Anexe ao menos uma imagem ou PDF do comprovante antes de enviar.",
+      });
       return;
     }
     submittingRef.current = true;
     setSubmitting(true);
+    setAviso(null);
     const form = new FormData();
     form.append("amount", amount);
     form.append("category", category);
@@ -132,10 +138,14 @@ export function NewContributionScreen() {
       await api.postForm("/contributions/", form);
       setFiles([]);
       setNotes("");
+      toast("Sua contribuicao foi registrada e ja aparece no seu extrato.", {
+        tone: "success",
+        title: "Contribuicao enviada",
+      });
       router.replace("/statement");
     } catch (error) {
       const { title, message } = describeError(error, "Erro ao enviar");
-      Alert.alert(title, message);
+      toast(message, { tone: "error", title });
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -208,6 +218,9 @@ export function NewContributionScreen() {
         </View>
       </Card>
 
+      {aviso ? (
+        <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
+      ) : null}
       <Button disabled={submitting} loading={submitting} onPress={submit}>
         {submitting ? "Enviando..." : "Enviar contribuicao"}
       </Button>

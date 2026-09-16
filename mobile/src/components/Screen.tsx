@@ -1,4 +1,4 @@
-import { PropsWithChildren, ReactNode, useState } from "react";
+import { PropsWithChildren, ReactNode, useMemo, useState } from "react";
 import { usePathname, useRouter } from "expo-router";
 import {
   Platform,
@@ -8,28 +8,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
+import { Bell, Menu, Search } from "lucide-react-native";
 
 import { colors, radius, routeLabels, spacing } from "@/theme";
 import { MVP_NOTIFICATIONS } from "@/notifications";
-import {
-  Bell,
-  BookOpen,
-  CalendarDays,
-
-  ClipboardList,
-  HandCoins,
-  House,
-  LayoutDashboard,
-  Menu,
-  Search,
-  Settings2,
-  UserRound,
-  Users,
-  WalletCards,
-} from "lucide-react-native";
+import { useAuth } from "@/hooks/useAuth";
+import { ABAS, NavGroup, ResultadoBusca, buscaItens, gruposVisiveis, rotaAtiva, temAcesso } from "@/navigation";
+import { MeResponse } from "@/types/api";
 
 function parentOf(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
@@ -40,141 +29,73 @@ function parentOf(pathname: string): string {
   return routeLabels[parent] || "";
 }
 
-type SidebarItem = {
-  label: string;
-  route: string;
-  Icon: typeof House;
-};
-
-const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
-  { label: "Dashboard", items: [{ label: "Visão geral", route: "home", Icon: LayoutDashboard }] },
-  {
-    label: "Pessoas",
-    items: [
-      { label: "Membros", route: "profile", Icon: Users },
-      { label: "Visitantes", route: "profile", Icon: UserRound },
-    ],
-  },
-  {
-    label: "Financeiro",
-    items: [
-      { label: "Visão geral", route: "home", Icon: WalletCards },
-      { label: "Contribuições", route: "statement", Icon: HandCoins },
-      { label: "Relatórios", route: "statement", Icon: ClipboardList },
-    ],
-  },
-  {
-    label: "Ministérios",
-    items: [
-      { label: "Ministérios", route: "schedules", Icon: Users },
-      { label: "Escalas", route: "schedules", Icon: CalendarDays },
-    ],
-  },
-  {
-    label: "Louvor",
-    items: [
-      { label: "Setlists", route: "schedules", Icon: ClipboardList },
-      { label: "Repertório", route: "schedules", Icon: BookOpen },
-      { label: "Bandas", route: "schedules", Icon: HandCoins },
-    ],
-  },
-  {
-    label: "Ensino",
-    items: [
-      { label: "Escola Bíblica", route: "agenda", Icon: BookOpen },
-      { label: "Turmas", route: "agenda", Icon: Users },
-    ],
-  },
-  {
-    label: "Cultos e eventos",
-    items: [
-      { label: "Agenda", route: "agenda", Icon: CalendarDays },
-      { label: "Cultos", route: "agenda", Icon: House },
-    ],
-  },
-  { label: "Conteúdo", items: [{ label: "Palavras", route: "home", Icon: BookOpen }] },
-];
-
-const mobileNavItems = [
-  { route: "home", label: "Início", Icon: House },
-  { route: "agenda", label: "Agenda", Icon: CalendarDays },
-  { route: "schedules", label: "Escalas", Icon: HandCoins },
-  { route: "statement", label: "Contribuições", Icon: BookOpen },
-  { route: "profile", label: "Perfil", Icon: UserRound },
-];
-
-function isActiveRoute(route: string, activeRoute: string) {
-  if (route === "home") return activeRoute === "home";
-  if (route === "agenda") return activeRoute === "agenda";
-  if (route === "schedules") return ["schedules", "schedule", "song", "schedule-create"].includes(activeRoute);
-  if (route === "statement") return ["statement", "contribution"].includes(activeRoute);
-  if (route === "profile") return activeRoute === "profile";
-  return false;
+function nomeDaConta(me: MeResponse | null): string {
+  const completo = [me?.first_name, me?.last_name].filter(Boolean).join(" ").trim();
+  return completo || me?.member_name || me?.email || "";
 }
 
-function Sidebar({ pathname, onNavigate }: { pathname: string; onNavigate: (route: string) => void }) {
-  const activeRoute = pathname.split("/").filter(Boolean)[0] || "home";
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string; onNavigate: (route: string) => void; recolhida: boolean; grupos: NavGroup[] }) {
   return (
-    <View style={styles.sidebar}>
+    <View style={[styles.sidebar, recolhida && styles.sidebarRecolhida]}>
       <View style={styles.brand}>
-        <View style={styles.brandMark}><Text style={styles.brandMarkText}>M</Text></View>
-        <View>
-          <Text style={styles.brandTitle}>Moriah</Text>
-          <Text style={styles.brandSubtitle}>Igreja Moriah</Text>
+        <View style={styles.brandMark}>
+          <Text style={styles.brandMarkText}>M</Text>
         </View>
+        {recolhida ? null : (
+          <View>
+            <Text style={styles.brandTitle}>Moriah</Text>
+            <Text style={styles.brandSubtitle}>Igreja Moriah</Text>
+          </View>
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarGroups}>
-        {sidebarGroups.map((group) => (
-          <View key={group.label} style={styles.sidebarGroup}>
-            <Text style={styles.sidebarGroupLabel}>{group.label.toUpperCase()}</Text>
-            {group.items.map((item, index) => {
-              const active =
-                (item.label === "Membros" && activeRoute === "profile") ||
-                (item.label === "Contribuições" && activeRoute === "statement") ||
-                (item.label === "Escalas" && ["schedules", "schedule", "schedule-create", "song"].includes(activeRoute)) ||
-                (item.label === "Agenda" && activeRoute === "agenda") ||
-                (item.label === "Visão geral" && activeRoute === "home" && group.label === "Dashboard") ||
-                (item.label === "Cultos" && activeRoute === "agenda" && group.label === "Cultos e eventos");
+        {grupos.map((grupo) => (
+          <View key={grupo.label} style={styles.sidebarGroup}>
+            {recolhida ? null : <Text style={styles.sidebarGroupLabel}>{grupo.label.toUpperCase()}</Text>}
+            {grupo.items.map((item) => {
+              const ativo = rotaAtiva(pathname, item.matches);
               return (
                 <Pressable
-                  key={group.label + item.label + index}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
+                  key={item.id}
+                  accessibilityRole="link"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: ativo }}
                   onPress={() => onNavigate(item.route)}
-                  style={({ pressed }) => [
-                    styles.sidebarItem,
-                    active && styles.sidebarItemActive,
-                    pressed && styles.pressed,
-                  ]}
+                  style={({ pressed }) => [styles.sidebarItem, recolhida && styles.sidebarItemRecolhida, ativo && styles.sidebarItemActive, pressed && styles.pressed]}
                 >
-                  <item.Icon size={15} strokeWidth={1.8} color={active ? colors.onAccent : "#98A2B3"} />
-                  <Text style={[styles.sidebarItemText, active && styles.sidebarItemTextActive]}>{item.label}</Text>
+                  <item.Icon size={15} strokeWidth={1.8} color={ativo ? colors.onAccent : "#98A2B3"} />
+                  {recolhida ? null : <Text style={[styles.sidebarItemText, ativo && styles.sidebarItemTextActive]}>{item.label}</Text>}
                 </Pressable>
               );
             })}
           </View>
         ))}
       </ScrollView>
-
-      <View style={styles.sidebarFooter}>
-        <Settings2 size={15} color="#98A2B3" />
-        <Text style={styles.sidebarFooterText}>Configurações</Text>
-      </View>
     </View>
   );
 }
-
 function NotificationPopover({ onClose, onNavigate }: { onClose: () => void; onNavigate: (route: string) => void }) {
   return (
     <View style={styles.notificationPopover}>
       <View style={styles.notificationHeader}>
-        <Text style={styles.notificationTitle}>Notificações</Text>
-        <Pressable onPress={onClose}><Text style={styles.markRead}>Marcar lidas</Text></Pressable>
+        <Text style={styles.notificationTitle}>Notificações ({MVP_NOTIFICATIONS.length})</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Fechar notificações" onPress={onClose}>
+          <Text style={styles.markRead}>Fechar</Text>
+        </Pressable>
       </View>
       {MVP_NOTIFICATIONS.slice(0, 3).map((notification, index) => (
         <Pressable
           key={notification.id}
+          accessibilityRole="button"
+          accessibilityLabel={"Abrir notificação: " + notification.title}
           onPress={() => { onClose(); onNavigate("notifications"); }}
           style={[styles.notificationRow, index === 0 && styles.notificationRowUnread]}
         >
@@ -185,13 +106,13 @@ function NotificationPopover({ onClose, onNavigate }: { onClose: () => void; onN
           </View>
         </Pressable>
       ))}
-      <Pressable onPress={() => { onClose(); onNavigate("notifications"); }}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Ver todas as notificações" onPress={() => { onClose(); onNavigate("notifications"); }}>
         <Text style={styles.viewAll}>Ver todas</Text>
       </Pressable>
+      <Text style={styles.notificationNote}>Conteúdo de demonstração do MVP.</Text>
     </View>
   );
 }
-
 export function Screen({
   children,
   title,
@@ -214,20 +135,29 @@ export function Screen({
   const desktop = Platform.OS === "web" && width >= 900;
   const appShell = desktop && pathname !== "/";
   const parentLabel = parentOf(pathname);
+  const { me } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const activeRoute = pathname.split("/").filter(Boolean)[0] || "home";
+  const [menuRecolhido, setMenuRecolhido] = useState(false);
+  const [busca, setBusca] = useState("");
+  const capabilities = me?.capabilities ?? [];
+  const grupos = useMemo(() => gruposVisiveis(capabilities), [me]);
+  const resultados = useMemo(() => buscaItens(busca, grupos), [busca, grupos]);
+  const nome = nomeDaConta(me);
+  const sigla = iniciais(nome);
   const onNavigate = (route: string) => router.replace(("/" + route) as never);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={appShell ? styles.desktopShell : styles.mobileShell}>
-        {appShell ? <Sidebar pathname={pathname} onNavigate={onNavigate} /> : null}
+        {appShell ? <Sidebar pathname={pathname} onNavigate={onNavigate} recolhida={menuRecolhido} grupos={grupos} /> : null}
         <View style={appShell ? styles.desktopMain : styles.mobileMain}>
           {appShell ? (
             <View style={styles.desktopTopbar}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Recolher menu"
+                accessibilityLabel={menuRecolhido ? "Expandir menu" : "Recolher menu"}
+                accessibilityState={{ expanded: !menuRecolhido }}
+                onPress={() => setMenuRecolhido((atual) => !atual)}
                 style={({ pressed }) => [styles.sidebarToggle, pressed && styles.pressed]}
               >
                 <Menu size={18} color={colors.inkBody} />
@@ -237,9 +167,42 @@ export function Screen({
                 <Text accessibilityRole="header" style={styles.topbarTitle}>{title}</Text>
               </View>
               <View style={styles.topbarActions}>
-                <View style={styles.globalSearch}>
-                  <Search size={16} color={colors.inkMuted} />
-                  <Text style={styles.globalSearchText}>Buscar no Moriah</Text>
+                <View style={styles.searchAnchor}>
+                  <View style={styles.globalSearch}>
+                    <Search size={16} color={colors.inkMuted} />
+                    <TextInput
+                      accessibilityLabel="Buscar no Moriah"
+                      value={busca}
+                      onChangeText={setBusca}
+                      placeholder="Buscar no Moriah"
+                      placeholderTextColor={colors.inkPlaceholder}
+                      style={styles.globalSearchInput}
+                    />
+                  </View>
+                  {busca.trim() ? (
+                    <View style={styles.searchResults}>
+                      {resultados.length === 0 ? (
+                        <Text style={styles.searchEmptyText}>Nada encontrado nesta conta.</Text>
+                      ) : (
+                        resultados.map((resultado: ResultadoBusca) => (
+                          <Pressable
+                            key={resultado.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={"Ir para " + resultado.label}
+                            onPress={() => {
+                              setBusca("");
+                              onNavigate(resultado.route);
+                            }}
+                            style={({ pressed }) => [styles.searchResultRow, pressed && styles.pressed]}
+                          >
+                            <resultado.Icon size={15} strokeWidth={1.8} color={colors.inkBody} />
+                            <Text style={styles.searchResultText}>{resultado.label}</Text>
+                            <Text style={styles.searchResultGroup}>{resultado.grupo}</Text>
+                          </Pressable>
+                        ))
+                      )}
+                    </View>
+                  ) : null}
                 </View>
                 <View style={styles.notificationAnchor}>
                   <Pressable
@@ -250,18 +213,21 @@ export function Screen({
                     style={({ pressed }) => [styles.topbarIconButton, pressed && styles.pressed]}
                   >
                     <Bell size={17} color={colors.inkBody} />
-                    <View style={styles.notificationBadge}><Text style={styles.notificationBadgeText}>3</Text></View>
                   </Pressable>
                   {notificationsOpen ? <NotificationPopover onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Abrir perfil"
+                  accessibilityLabel={nome ? "Abrir perfil de " + nome : "Abrir perfil"}
                   onPress={() => onNavigate("profile")}
                   style={({ pressed }) => [styles.profilePill, pressed && styles.pressed]}
                 >
-                  <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>AM</Text></View>
-
+                  <View style={styles.profileAvatar}>
+                    <Text style={styles.profileAvatarText}>{sigla}</Text>
+                  </View>
+                  {nome ? (
+                    <Text numberOfLines={1} style={styles.profileName}>{nome}</Text>
+                  ) : null}
                 </Pressable>
               </View>
             </View>
@@ -322,28 +288,27 @@ export function Screen({
           </ScrollView>
         </View>
       </View>
-      {showBottomNav && !appShell ? <BottomNav pathname={pathname} onNavigate={onNavigate} /> : null}
+      {showBottomNav && !appShell ? <BottomNav pathname={pathname} onNavigate={onNavigate} capabilities={capabilities} /> : null}
     </SafeAreaView>
   );
 }
 
-function BottomNav({ pathname, onNavigate }: { pathname: string; onNavigate: (route: string) => void }) {
-  const activeRoute = pathname.split("/").filter(Boolean)[0] || "home";
+function BottomNav({ pathname, onNavigate, capabilities }: { pathname: string; onNavigate: (route: string) => void; capabilities: string[] }) {
   return (
     <View style={styles.bottomNav}>
-      {mobileNavItems.map((item) => {
-        const active = isActiveRoute(item.route, activeRoute);
+      {ABAS.filter((item) => temAcesso(item, capabilities)).map((item) => {
+        const ativo = rotaAtiva(pathname, item.matches);
         return (
           <Pressable
-            key={item.label}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
+            key={item.id}
+            accessibilityRole="link"
             accessibilityLabel={item.label}
+            accessibilityState={{ selected: ativo }}
             onPress={() => onNavigate(item.route)}
-            style={({ pressed }) => [styles.navItem, active && styles.navItemActive, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.navItem, ativo && styles.navItemActive, pressed && styles.pressed]}
           >
-            <item.Icon size={19} strokeWidth={1.8} color={active ? colors.accent : colors.inkMuted} />
-            <Text numberOfLines={1} style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
+            <item.Icon size={19} strokeWidth={1.8} color={ativo ? colors.accent : colors.inkMuted} />
+            <Text numberOfLines={1} style={[styles.navLabel, ativo && styles.navLabelActive]}>{item.label}</Text>
           </Pressable>
         );
       })}
@@ -370,8 +335,8 @@ const styles = StyleSheet.create({
   sidebarItemActive: { backgroundColor: "#27315A" },
   sidebarItemText: { color: "#D0D5DD", fontSize: 12, fontWeight: "500" },
   sidebarItemTextActive: { color: colors.onAccent, fontWeight: "700" },
-  sidebarFooter: { flexDirection: "row", alignItems: "center", gap: 10, borderTopWidth: 1, borderTopColor: "#1D2939", paddingTop: 14 },
-  sidebarFooterText: { color: "#98A2B3", fontSize: 12 },
+  sidebarRecolhida: { width: 76, paddingHorizontal: 12 },
+  sidebarItemRecolhida: { justifyContent: "center", paddingHorizontal: 0, gap: 0 },
   desktopTopbar: { height: 92, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, position: "relative", zIndex: 40, overflow: "visible" },
   sidebarToggle: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   topbarGreeting: { marginLeft: 18, flex: 1, gap: 3 },
@@ -380,13 +345,19 @@ const styles = StyleSheet.create({
   topbarActions: { flexDirection: "row", alignItems: "center", gap: 10, position: "relative", zIndex: 41 },
   globalSearch: { width: 260, height: 42, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
   globalSearchText: { color: colors.inkPlaceholder, fontSize: 12 },
+  globalSearchInput: { flex: 1, color: colors.ink, fontSize: 12, paddingVertical: 0 },
+  searchAnchor: { position: "relative", zIndex: 43 },
+  searchResults: { position: "absolute", top: 48, left: 0, width: 300, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 6, gap: 2, zIndex: 120, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  searchResultRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 34, paddingHorizontal: 8, borderRadius: 6 },
+  searchResultText: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: "600" },
+  searchResultGroup: { color: colors.inkMuted, fontSize: 10 },
+  searchEmptyText: { color: colors.inkMuted, fontSize: 11, paddingHorizontal: 8, paddingVertical: 8 },
   notificationAnchor: { position: "relative", zIndex: 42 },
   topbarIconButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  notificationBadge: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.canvas },
-  notificationBadgeText: { color: colors.onAccent, fontSize: 9, fontWeight: "800" },
-  profilePill: { width: 40, height: 40, alignItems: "center", justifyContent: "center", backgroundColor: colors.avatar, borderRadius: 6 },
-  profileAvatar: { width: "100%", height: "100%", borderRadius: 6, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
-  profileAvatarText: { color: colors.accent, fontSize: 9, fontWeight: "800" },
+  profilePill: { height: 40, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 10, backgroundColor: colors.avatar, borderRadius: 6, maxWidth: 230 },
+  profileName: { flexShrink: 1, color: colors.ink, fontSize: 12, fontWeight: "700" },
+  profileAvatar: { width: 28, height: 28, borderRadius: 6, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
+  profileAvatarText: { color: colors.accent, fontSize: 11, fontWeight: "800" },
   notificationPopover: { position: "absolute", zIndex: 100, top: 50, right: 0, width: 300, minHeight: 310, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 16, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   notificationHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   notificationTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
@@ -398,6 +369,7 @@ const styles = StyleSheet.create({
   notificationRowTitle: { color: colors.ink, fontSize: 11, fontWeight: "700" },
   notificationMeta: { color: colors.inkMuted, fontSize: 10 },
   viewAll: { color: colors.accent, fontSize: 11, fontWeight: "700", marginTop: 16 },
+  notificationNote: { color: colors.inkMuted, fontSize: 10, marginTop: 8 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxl + spacing.lg },
   desktopContent: { width: "100%", maxWidth: 1088, alignSelf: "center", paddingHorizontal: 0, paddingTop: 0, paddingBottom: 44 },
   authContent: { flexGrow: 1, width: "100%", maxWidth: 760, alignSelf: "center", paddingTop: 48, paddingBottom: 80 },

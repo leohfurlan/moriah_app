@@ -35,3 +35,7 @@ Thumbs.db
 output/
 tmp/
 .playwright-cli/
+
+# Evidencias de QA (regeradas a cada execucao: node tools/qa/run.mjs)
+# Os relatorios versionados ficam em docs/qa/fase-*.md
+docs/qa/evidencias/

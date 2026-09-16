@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -100,6 +101,7 @@ function DesktopAgenda({
 
 export function AgendaScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [items, setItems] = useState<PersonalCommitment[]>([]);
@@ -114,8 +116,11 @@ export function AgendaScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
+  // Aviso de validacao fica preso ao formulario, logo acima do botao.
+  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -178,11 +183,20 @@ export function AgendaScreen() {
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
   async function submit() {
-    if (!title.trim() || !startsAt.trim()) {
-      Alert.alert("Dados incompletos", "Informe o título e o início do compromisso.");
+    if (submitting || submittingRef.current) {
       return;
     }
+    if (!title.trim() || !startsAt.trim()) {
+      setAviso({
+        tone: "warning",
+        title: "Dados incompletos",
+        message: "Informe o título e o início do compromisso.",
+      });
+      return;
+    }
+    submittingRef.current = true;
     setSubmitting(true);
+    setAviso(null);
     try {
       await api.post<PersonalCommitment>("/me/agenda/", {
         title: title.trim(),
@@ -195,11 +209,13 @@ export function AgendaScreen() {
       setStartsAt("");
       setEndsAt("");
       setNotes("");
+      toast("O compromisso ja aparece na sua agenda.", { tone: "success", title: "Compromisso adicionado" });
       await load();
     } catch (err) {
       const result = describeError(err, "Nao foi possivel salvar");
-      Alert.alert(result.title, result.message);
+      toast(result.message, { tone: "error", title: result.title });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -281,6 +297,9 @@ export function AgendaScreen() {
         <Field value={startsAt} onChangeText={setStartsAt} placeholder="Início: 2026-09-20T18:00:00-03:00" />
         <Field value={endsAt} onChangeText={setEndsAt} placeholder="Fim (opcional): 2026-09-20T20:00:00-03:00" />
         <Field value={notes} onChangeText={setNotes} placeholder="Observações (opcional)" multiline />
+        {aviso ? (
+          <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
+        ) : null}
         <Button loading={submitting} disabled={submitting} onPress={submit}>Adicionar à agenda</Button>
       </Card>
 
