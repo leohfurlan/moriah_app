@@ -2,27 +2,67 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { usePathname, useRouter } from "expo-router";
 
+import { ToastProvider, useToast } from "@/components/Feedback";
 import { useAuth } from "@/hooks/useAuth";
+import { Capacidade, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navigation";
 
+/** Rotas que exigem apenas estar logado com vinculo de membro. */
 const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/notifications"];
 
+/**
+ * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade
+ * final (403), mas o app nao oferece o caminho a quem nao pode usar — e, se a
+ * URL for digitada na mao, avisa em portugues em vez de abrir a tela vazia.
+ */
+const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
+  "/schedule-create": CAPACIDADES_DE_ESCALA,
+  "/finance-review": ["review_contributions", "manage_all"],
+};
+
 function isMemberPath(pathname: string): boolean {
-  return MEMBER_PATHS.includes(pathname) || pathname.startsWith("/schedule/") || pathname.startsWith("/song/") || pathname.startsWith("/notification/") || pathname === "/schedule-create";
+  return (
+    MEMBER_PATHS.includes(pathname) ||
+    pathname.startsWith("/schedule/") ||
+    pathname.startsWith("/song/") ||
+    pathname.startsWith("/notification/") ||
+    pathname in ROTAS_DE_GESTAO
+  );
 }
 
-export default function Layout() {
+function capacidadesDaRota(pathname: string): Capacidade[] | null {
+  return ROTAS_DE_GESTAO[pathname] ?? null;
+}
+
+function LayoutComGuarda() {
   const pathname = usePathname();
   const router = useRouter();
   const { me, loading } = useAuth();
-  const needsLogin = Boolean(!loading && !me && isMemberPath(pathname));
-  const blocked = Boolean(me && !me.member_id && isMemberPath(pathname) && !me.can_access_management);
+  const toast = useToast();
+  const exige = capacidadesDaRota(pathname);
+  const precisaLogin = Boolean(!loading && !me && isMemberPath(pathname));
+  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige);
+  const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
+  const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
 
   useEffect(() => {
-    if (needsLogin) router.replace("/");
-    else if (blocked) router.replace("/home");
-  }, [blocked, needsLogin, router]);
+    if (precisaLogin) router.replace("/");
+    else if (semVinculo) router.replace(destinoSemVinculo);
+    else if (semCapacidade) {
+      const rotaFinanceira = pathname === "/finance-review";
+      toast(rotaFinanceira ? "Sua conta não tem permissão para revisar contribuições." : "Sua conta não tem permissão para criar escalas.", { tone: "error", title: "Acesso restrito" });
+      router.replace(rotaFinanceira ? "/home" : "/schedules");
+    }
+  }, [precisaLogin, semVinculo, semCapacidade, destinoSemVinculo, router, toast]);
 
   if (loading && isMemberPath(pathname)) return null;
-  if (needsLogin || blocked) return null;
+  if (precisaLogin || semVinculo || semCapacidade) return null;
   return <Stack screenOptions={{ headerShown: false }} />;
+}
+
+export default function Layout() {
+  return (
+    <ToastProvider>
+      <LayoutComGuarda />
+    </ToastProvider>
+  );
 }

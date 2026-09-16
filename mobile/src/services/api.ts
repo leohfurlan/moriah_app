@@ -42,6 +42,29 @@ async function parseBody(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * Filtra resposta nao-JSON antes de virar erro exibivel.
+ *
+ * Quando a requisicao nao chega na view (500 do WSGI, 502/504 do proxy) o corpo
+ * vem em HTML. Esse conteudo nao pode ser exibido ao membro — e o `ApiError`
+ * fica com `payload: null`, o que faz `describeError` cair na mensagem padrao
+ * do status. O aviso fica no console do desenvolvedor.
+ */
+function payloadDeErro(status: number, contentType: string, corpo: unknown): unknown {
+  if (typeof corpo !== "string") {
+    return corpo;
+  }
+  const pareceHtml =
+    /text\/html/i.test(contentType) || /<\s*(!doctype|html|body|h1|pre)\b/i.test(corpo);
+  if (!pareceHtml) {
+    return corpo;
+  }
+  console.warn(
+    `[api] resposta ${status} nao-JSON (${contentType || "sem content-type"}) descartada antes de chegar na UI`,
+  );
+  return null;
+}
+
 async function performRefresh(): Promise<string | null> {
   const refresh = await getRefreshToken();
   if (!refresh) {
@@ -112,10 +135,25 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await parseBody(response));
+    const corpo = await parseBody(response);
+    throw new ApiError(
+      response.status,
+      payloadDeErro(response.status, response.headers.get("content-type") || "", corpo),
+    );
   }
 
-  return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  // 2xx que nao e JSON (proxy/HTML de portal cativo): nunca entregar o corpo
+  // cru para a tela — vira erro de servidor com mensagem padrao.
+  const corpo = await parseBody(response);
+  if (typeof corpo === "string") {
+    console.warn("[api] resposta 2xx nao-JSON descartada antes de chegar na UI");
+    throw new ApiError(502, null);
+  }
+  return corpo as T;
 }
 
 export const api = {

@@ -72,6 +72,7 @@ export const routeLabels: Record<string, string> = {
   notifications: "Notificações",
   notification: "Notificação",
   "schedule-create": "Adicionar escala",
+  "finance-review": "Revisão financeira",
 };
 
 /** Converte status do backend em rotulo humano, se existir. */

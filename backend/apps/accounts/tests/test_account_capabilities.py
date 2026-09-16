@@ -78,3 +78,28 @@ def test_admin_tecnico_sem_membro_fica_so_na_gestao(api_client, make_user):
     for url in PERSONAL_ENDPOINTS[1:]:
         assert api_client.get(url).status_code == 403
     assert api_client.get("/api/leader/cell-members/").status_code == 200
+
+
+@pytest.mark.parametrize("papel", [User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR])
+def test_papel_de_escala_recebe_capacidade_manage_schedules(api_client, make_user, papel):
+    """Cliente e servidor usam a mesma regra: quem cria escala tem a capacidade."""
+    gestor = make_user(f"capacidade.{papel}@igreja.com", role=papel)
+    api_client.force_authenticate(user=gestor)
+
+    me = api_client.get("/api/me/")
+
+    assert me.status_code == 200
+    assert "manage_schedules" in me.data["capabilities"]
+
+
+def test_membro_comum_nao_recebe_capacidade_de_escala(api_client, make_user, make_member):
+    user = make_user("sem.escala@igreja.com")
+    make_member("Sem Escala", user=user)
+    api_client.force_authenticate(user=user)
+
+    me = api_client.get("/api/me/")
+
+    assert me.status_code == 200
+    assert "manage_schedules" not in me.data["capabilities"]
+    assert me.data["can_access_management"] is False
+

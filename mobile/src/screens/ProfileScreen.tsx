@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { Alert, Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
@@ -127,9 +128,12 @@ export function ProfileScreen() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setError(null);
@@ -156,22 +160,27 @@ export function ProfileScreen() {
   }, [load]);
 
   async function submitUpdateRequest() {
+    if (submitting || submittingRef.current) return;
     const requested_changes: Record<string, string> = {};
     if (profile && phone !== profile.phone) requested_changes.phone = phone;
     if (profile && address !== profile.address) requested_changes.address = address;
     if (!Object.keys(requested_changes).length) {
-      Alert.alert("Nenhuma alteracao", "Altere telefone ou endereco antes de enviar.");
+      // Validacao fica presa ao formulario; nao e uma conclusao de acao.
+      setAviso({ tone: "warning", title: "Nenhuma alteração", message: "Altere telefone ou endereço antes de enviar." });
       return;
     }
+    setAviso(null);
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const request = await api.post<MemberUpdateRequest>("/me/member-requests/", { requested_changes });
       setRequests((current) => [request, ...current]);
-      Alert.alert("Solicitacao enviada", "A secretaria revisara seus dados.");
+      toast("A secretaria vai revisar seus dados.", { tone: "success", title: "Solicitação enviada" });
     } catch (err) {
       const result = describeError(err, "Nao foi possivel enviar");
-      Alert.alert(result.title, result.message);
+      setAviso({ tone: "error", title: result.title, message: result.message });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -185,6 +194,7 @@ export function ProfileScreen() {
       headerAccessory={<Button size="compact" variant="ghost" onPress={() => router.push("/notifications" as never)}>Notificações</Button>}
     >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
+      {aviso ? <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} /> : null}
 
       {desktop && profile ? <DesktopProfile profile={profile} requests={requests} phone={phone} address={address} setPhone={setPhone} setAddress={setAddress} submitting={submitting} submitUpdateRequest={submitUpdateRequest} onNotifications={() => router.push("/notifications" as never)} /> : profile ? (
         <>

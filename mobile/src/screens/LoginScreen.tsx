@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { FeedbackTone, InlineNotice } from "@/components/Feedback";
 import { Button, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { describeError } from "@/services/errors";
@@ -10,14 +11,21 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
   const [email, setEmail] = useState("membro@moriah.app");
   const [password, setPassword] = useState("membro123");
   const [submitting, setSubmitting] = useState(false);
+  // Falha de login fica presa ao formulario: o membro precisa ver a mensagem
+  // enquanto corrige o que digitou, sem ela sumir da tela.
+  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
 
   async function submit() {
+    if (submitting) {
+      return;
+    }
     try {
+      setAviso(null);
       setSubmitting(true);
       await onLogin(email, password);
     } catch (error) {
       const { title, message } = describeError(error, "Falha no login");
-      Alert.alert(title, message);
+      setAviso({ tone: "error", title, message });
     } finally {
       setSubmitting(false);
     }
@@ -44,6 +52,9 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
         />
         <Text style={styles.label}>Senha</Text>
         <Field secureTextEntry placeholder="Sua senha" value={password} onChangeText={setPassword} />
+        {aviso ? (
+          <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
+        ) : null}
         <Button loading={submitting} onPress={submit}>
           Entrar
         </Button>
