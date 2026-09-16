@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Family, FamilyRelationship, Member
+from .models import Family, FamilyRelationship, Member, MemberUpdateRequest
 
 
 class FamilyRelationshipInline(admin.TabularInline):
@@ -30,3 +30,10 @@ class FamilyRelationshipAdmin(admin.ModelAdmin):
     list_display = ("family", "member", "relationship_type", "related_member")
     list_filter = ("church", "relationship_type")
     autocomplete_fields = ("family", "member", "related_member")
+
+@admin.register(MemberUpdateRequest)
+class MemberUpdateRequestAdmin(admin.ModelAdmin):
+    list_display = ("member", "status", "created_at", "reviewed_by", "reviewed_at")
+    list_filter = ("church", "status", "created_at")
+    search_fields = ("member__full_name", "member__email")
+    readonly_fields = ("member", "church", "requested_changes", "created_at", "reviewed_by", "reviewed_at")

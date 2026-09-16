@@ -102,6 +102,40 @@ Com a base estabilizada, este sprint fecha as diferenças entre o que o PRD prom
 
 ---
 
+## Replanejamento do escopo de implementação — 14/09/2026
+
+Após a auditoria do produto e do design, o escopo foi ajustado para que o lançamento entregue o fluxo operacional completo, sem incorporar módulos explicitamente pós-MVP.
+
+### Implementar no lançamento
+
+Os tickets 01–07 e 10–12 permanecem no escopo de implementação. O ticket 07 foi detalhado em quatro fatias verticais para que o Louvor possa ser validado progressivamente:
+
+| Ticket | Entrega | Bloqueado por |
+|---|---|---|
+| 07A | Cadastro de bandas/equipes, funções, integrantes, repertório e permissões do coordenador | 01, 02 |
+| 07B | Montagem, edição, ordenação e publicação do setlist vinculado à escala | 07A, 05 |
+| 07C | Consumo mobile da escala de Louvor, setlist publicado e detalhe das músicas | 07B |
+| 07D | Disponibilidade, conflitos de horário, recusa, substituição e histórico da escala | 07A, 07B, 05 |
+
+O Louvor só é considerado completo quando 07A–07D estiverem demonstráveis ponta a ponta: coordenação cadastra a equipe e o repertório, monta e publica o setlist, o membro consulta e responde pelo mobile, e conflitos/substituições ficam rastreáveis.
+
+### Pós-lançamento
+
+| Ticket | Módulo | Decisão |
+|---|---|---|
+| 08 | Escola Bíblica | Movido para depois do lançamento |
+| 09 | Conteúdo | Movido para depois do lançamento |
+
+Essa decisão mantém o lançamento concentrado em membresia, financeiro, eventos, escalas ministeriais, notificações, navegação e estados de operação, preservando os módulos de conteúdo e formação para uma segunda onda.
+
+### Sequenciamento de implementação
+
+1. Fechar os contratos compartilhados, permissões e dados canônicos (01–02).
+2. Implementar membresia, financeiro, eventos e agendas (03–06).
+3. Implementar o Louvor em 07A–07D.
+4. Completar notificações, navegação, destinos e estados/feedback (10–12).
+5. Validar o fluxo completo do lançamento antes de iniciar os módulos pós-lançamento.
+
 ## Marco: piloto interno pode começar
 
 **A partir de 17/08/2026** — Fase 6 do PRD: uso real com dados controlados, ajustes de UX e correção de bugs em campo.

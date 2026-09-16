@@ -8,7 +8,7 @@ class MinistryAdmin(admin.ModelAdmin):
     list_display = ("name", "church")
     list_filter = ("church",)
     search_fields = ("name",)
-    filter_horizontal = ("members",)
+    filter_horizontal = ("members", "coordinators")
 
 
 @admin.register(MinistryRole)

@@ -24,7 +24,7 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
   }
 
   return (
-    <Screen title="Moriah App">
+    <Screen title="Moriah App" showBottomNav={false}>
       <View style={styles.hero}>
         <View style={styles.logoCircle}>
           <Text style={styles.logoText}>M</Text>

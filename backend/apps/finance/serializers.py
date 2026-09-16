@@ -50,3 +50,13 @@ class ContributionSerializer(serializers.ModelSerializer):
                 uploaded_by=self.context["request"].user,
             )
         return contribution
+
+class ContributionReviewSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=(
+            (Contribution.Status.APPROVED, "Aprovada"),
+            (Contribution.Status.REJECTED, "Rejeitada"),
+            (Contribution.Status.NEEDS_REVIEW, "Precisa revisao"),
+        )
+    )
+    review_notes = serializers.CharField(required=False, allow_blank=True)

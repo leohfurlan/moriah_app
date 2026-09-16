@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.accounts.models import Church, TimestampedModel
@@ -8,6 +9,12 @@ class Ministry(TimestampedModel):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     members = models.ManyToManyField("members.Member", related_name="ministries", blank=True)
+    coordinators = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="coordinated_ministries",
+        blank=True,
+        limit_choices_to={"role": "coordinator"},
+    )
 
     class Meta:
         verbose_name = "Ministerio"

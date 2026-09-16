@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Church, User
+from .models import Church, User, UserRoleAssignment
 
 
 @admin.register(Church)
@@ -11,12 +11,18 @@ class ChurchAdmin(admin.ModelAdmin):
     search_fields = ("name", "legal_name", "tax_id")
 
 
+class UserRoleAssignmentInline(admin.TabularInline):
+    model = UserRoleAssignment
+    extra = 1
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ("email", "first_name", "last_name", "role", "church", "is_staff", "is_active")
     list_filter = ("role", "church", "is_staff", "is_active")
     search_fields = ("email", "first_name", "last_name", "username")
     ordering = ("email",)
+    inlines = [UserRoleAssignmentInline]
     fieldsets = BaseUserAdmin.fieldsets + (
         ("Moriah", {"fields": ("church", "role", "phone")}),
     )

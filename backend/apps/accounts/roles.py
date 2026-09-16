@@ -37,6 +37,7 @@ ROLE_GROUPS: dict[str, dict[str, tuple[str, ...]]] = {
     "Secretaria": {
         "members.member": MANAGE,
         "members.family": MANAGE,
+        "members.memberupdaterequest": FULL,
         "members.familyrelationship": FULL,
         "cells.cell": MANAGE,
         "cells.cellmeeting": MANAGE,
@@ -51,6 +52,10 @@ ROLE_GROUPS: dict[str, dict[str, tuple[str, ...]]] = {
         "ministries.ministryrole": MANAGE,
         "events.event": MANAGE,
         "schedules.schedule": MANAGE,
+        "schedules.song": FULL,
+        "schedules.worshipteam": FULL,
+        "schedules.worshipteammember": FULL,
+        "schedules.personalcommitment": VIEW,
         "schedules.scheduleassignment": FULL,
         "schedules.scheduleitem": FULL,
         "members.member": VIEW,
@@ -68,6 +73,10 @@ ROLE_GROUPS: dict[str, dict[str, tuple[str, ...]]] = {
         "schedules.schedule": MANAGE,
         "schedules.scheduleassignment": VIEW,
         "schedules.scheduleitem": VIEW,
+        "schedules.song": VIEW,
+        "schedules.worshipteam": VIEW,
+        "schedules.worshipteammember": VIEW,
+        "schedules.personalcommitment": VIEW,
         "audit.auditlog": VIEW,
         "accounts.church": VIEW,
     },
@@ -124,17 +133,17 @@ def apply_role(user: User, groups: dict[str, Group] | None = None) -> None:
         return
 
     groups = groups if groups is not None else {g.name: g for g in Group.objects.all()}
-    group_name = ROLE_TO_GROUP.get(user.role)
+    role_values = user.assigned_roles()
+    group_names = {ROLE_TO_GROUP[role] for role in role_values if role in ROLE_TO_GROUP}
 
     # Remove apenas grupos gerenciados por este modulo, preservando grupos
     # criados manualmente pela equipe no admin.
     managed = set(ROLE_GROUPS)
     current = [g for g in user.groups.all() if g.name not in managed]
-    if group_name and group_name in groups:
-        current.append(groups[group_name])
+    current.extend(groups[name] for name in sorted(group_names) if name in groups)
     user.groups.set(current)
 
-    should_be_staff = user.role in STAFF_ROLES
+    should_be_staff = bool(role_values.intersection(STAFF_ROLES))
     if user.is_staff != should_be_staff:
         user.is_staff = should_be_staff
         user.save(update_fields=["is_staff", "updated_at"])

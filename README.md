@@ -71,6 +71,11 @@ docker compose up --build
 - `GET /api/me/schedules/`
 - `POST /api/me/schedules/<id>/action/`
 - `GET /api/leader/cell-members/`
+- `GET/POST /api/me/member-requests/`
+- `GET/POST/PATCH/DELETE /api/me/agenda/`
+- `POST /api/contributions/<id>/review/` (tesouraria/admin)
+- `POST /api/schedules/<id>/publish/` (coordenacao/pastoral/admin)
+- `POST /api/schedules/<schedule_id>/assignments/<assignment_id>/substitute/`
 - `POST /api/cell-meetings/`
 - `GET /api/schema/` e `GET /api/docs/` (documentacao interativa)
 
@@ -154,3 +159,9 @@ python manage.py runserver
 - Evoluir o app para navegacao com tabs e estados globais
 - Substituir o icone provisorio por identidade visual definitiva
 - Endpoint de validacao de contribuicao fora do admin, se a tesouraria pedir
+
+## Escalas de Louvor
+
+O fluxo de Louvor agora suporta equipes com integrantes e funcao, catalogo de musicas, setlist com ordem e metadados por escala, publicacao explicita, consulta mobile da equipe e da musica, conflitos de horario e substituicoes com historico. O cadastro e a operacao inicial continuam no Django Admin; as rotas de publicacao e substituicao ficam protegidas por escopo do coordenador.
+
+O modelo de musica guarda metadados e links externos (cifra, Spotify e YouTube). Letras/cifras internas nao sao copiadas para o MVP.

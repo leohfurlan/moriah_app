@@ -1,5 +1,5 @@
 import { ComponentProps, PropsWithChildren } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from "react-native";
 
 import { colors, radius, spacing } from "@/theme";
 
@@ -13,11 +13,13 @@ export function Button({
   loading = false,
   onPress,
   variant = "primary",
+  size = "regular",
 }: PropsWithChildren<{
   disabled?: boolean;
   loading?: boolean;
   onPress?: () => void;
   variant?: "primary" | "secondary" | "ghost";
+  size?: "regular" | "compact";
 }>) {
   const isDisabled = disabled || loading;
   return (
@@ -28,6 +30,7 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        size === "compact" && styles.compactButton,
         variant === "secondary" && styles.secondaryButton,
         variant === "ghost" && styles.ghostButton,
         isDisabled && styles.disabledButton,
@@ -40,6 +43,7 @@ export function Button({
         <Text
           style={[
             styles.buttonText,
+            size === "compact" && styles.compactButtonText,
             variant === "secondary" && styles.secondaryButtonText,
             variant === "ghost" && styles.ghostButtonText,
             isDisabled && variant === "primary" && styles.disabledButtonText,
@@ -52,19 +56,19 @@ export function Button({
   );
 }
 
-export function Card({ children, onPress }: PropsWithChildren<{ onPress?: () => void }>) {
+export function Card({ children, onPress, style }: PropsWithChildren<{ onPress?: () => void; style?: StyleProp<ViewStyle> }>) {
   if (onPress) {
     return (
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        style={({ pressed }) => [styles.card, style, pressed && styles.cardPressed]}
       >
         {children}
       </Pressable>
     );
   }
-  return <View style={styles.card}>{children}</View>;
+  return <View style={[styles.card, style]}>{children}</View>;
 }
 
 /** Chip de status (Confirmado / Pendente / Recusado etc.). */
@@ -113,8 +117,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  compactButton: {
+    minHeight: 30,
+    paddingVertical: 0,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
   secondaryButton: {
-    backgroundColor: colors.surfaceSelected,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   ghostButton: {
     backgroundColor: "transparent",
@@ -132,8 +144,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+  compactButtonText: {
+    fontSize: 13,
+  },
   secondaryButtonText: {
-    color: colors.accentDeep,
+    color: colors.inkBody,
   },
   ghostButtonText: {
     color: colors.accent,

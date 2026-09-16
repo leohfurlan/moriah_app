@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -60,6 +60,8 @@ type ContributionCategory = (typeof contributionCategories)[number]["value"];
 
 export function NewContributionScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === "web" && width >= 900;
   const submittingRef = useRef(false);
   const [amount, setAmount] = useState("100.00");
   const [category, setCategory] = useState<ContributionCategory>("tithe");
@@ -141,7 +143,8 @@ export function NewContributionScreen() {
   }
 
   return (
-    <Screen title="Nova Contribuicao">
+    <Screen title="Registrar contribuição" headerSubtitle="Registre seu dízimo, oferta ou contribuição">
+      <View style={desktop ? styles.desktopContributionForm : undefined}>
       <Text style={styles.sectionTitle}>Valor</Text>
       <Field value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0,00" />
 
@@ -208,11 +211,13 @@ export function NewContributionScreen() {
       <Button disabled={submitting} loading={submitting} onPress={submit}>
         {submitting ? "Enviando..." : "Enviar contribuicao"}
       </Button>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  desktopContributionForm: { width: "100%", maxWidth: 768, alignSelf: "center", padding: 24, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, gap: 4 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",

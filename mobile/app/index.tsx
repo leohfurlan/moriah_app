@@ -11,7 +11,7 @@ export default function IndexPage() {
 
   useEffect(() => {
     if (me) {
-      router.replace("/home");
+      router.replace("/profile");
     }
   }, [me, router]);
 

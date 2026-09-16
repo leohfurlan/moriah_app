@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Alert, Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
@@ -19,6 +19,7 @@ function statusTone(status: string): "success" | "warning" | "danger" | "neutral
 
 export function ScheduleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [detail, setDetail] = useState<ScheduleAssignmentDetail | null>(null);
   const [justification, setJustification] = useState("");
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,7 @@ export function ScheduleDetailScreen() {
     load();
   }, [load]);
 
-  async function act(action: "confirm" | "decline") {
+  async function act(action: "confirm" | "decline" | "unavailable") {
     setActing(true);
     try {
       await api.post(`/me/schedules/${id}/action/`, { action, justification });
@@ -101,6 +102,12 @@ export function ScheduleDetailScreen() {
                       {item.song_key ? ` · Tom ${item.song_key}` : ""}
                     </Text>
                     {item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}
+                    <Button
+                      variant="ghost"
+                      onPress={() => router.push({ pathname: "/song/[id]", params: { id: item.id, scheduleId: detail.schedule } })}
+                    >
+                      Ver detalhes da musica
+                    </Button>
                     {item.reference_url ? (
                       <Text
                         accessibilityRole="link"
@@ -142,7 +149,7 @@ export function ScheduleDetailScreen() {
               <Field
                 value={justification}
                 onChangeText={setJustification}
-                placeholder="Justificativa (obrigatoria para recusar)"
+                placeholder="Justificativa (recusa ou indisponibilidade)"
               />
               <View style={styles.buttonRow}>
                 <View style={styles.buttonFlex}>
@@ -156,6 +163,9 @@ export function ScheduleDetailScreen() {
                   </Button>
                 </View>
               </View>
+              <Button disabled={acting} variant="ghost" onPress={() => act("unavailable")}>
+                Marcar indisponivel
+              </Button>
             </Card>
           ) : (
             <View style={styles.respondedNote}>

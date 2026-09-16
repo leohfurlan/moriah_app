@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
-import { Badge, Card } from "@/components/Form";
+import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
@@ -16,7 +17,42 @@ function statusTone(status: string): "success" | "warning" | "danger" | "neutral
   return "neutral";
 }
 
+
+function DesktopStatement({ items, total, onRegister }: { items: Contribution[]; total: number; onRegister: () => void }) {
+  const approved = items.filter((item) => ["approved", "received"].includes(item.status)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const pending = items.filter((item) => item.status === "pending_confirmation").length;
+  return (
+    <View style={styles.desktopStatement}>
+      <View style={styles.statementSummaryRow}>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Total contribuído</Text><Text style={styles.statementSummaryValue}>{formatBRL(total)}</Text><Text style={styles.statementSummaryMeta}>No período registrado</Text></View>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Contribuições</Text><Text style={styles.statementSummaryValue}>{items.length}</Text><Text style={styles.statementSummaryMeta}>Lançamentos pessoais</Text></View>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Confirmado</Text><Text style={styles.statementSummaryValue}>{formatBRL(approved)}</Text><Text style={styles.statementSummaryMeta}>Validado pela tesouraria</Text></View>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Em análise</Text><Text style={styles.statementSummaryValue}>{pending}</Text><Text style={styles.statementSummaryMeta}>Aguardando conferência</Text></View>
+      </View>
+
+      <View style={styles.statementChartCard}>
+        <View style={styles.statementChartHeader}><View><Text style={styles.panelTitle}>Evolução mensal</Text><Text style={styles.panelMeta}>Contribuições registradas nos últimos 6 meses</Text></View><Text style={styles.chartLegend}>Total por mês</Text></View>
+        <View style={styles.statementBars}>
+          {[42, 72, 58, 96, 64, 82].map((height, index) => <View key={String(index)} style={styles.statementBarColumn}><View style={[styles.statementBar, { height }]} /><Text style={styles.chartLabel}>{["Abr", "Mai", "Jun", "Jul", "Ago", "Set"][index]}</Text></View>)}
+        </View>
+      </View>
+
+      <View style={styles.statementFilters}><View style={styles.filterPill}><Text style={styles.filterText}>Todos os períodos</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.filterPill}><Text style={styles.filterText}>Todas as categorias</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.filterPill}><Text style={styles.filterText}>Todos os status</Text><Text style={styles.filterChevron}>⌄</Text></View><Button size="compact" onPress={onRegister}>+ Registrar contribuição</Button></View>
+
+      <View style={styles.statementTable}>
+        <View style={styles.tableHeader}><Text style={styles.tableHeaderCell}>Data</Text><Text style={styles.tableHeaderCell}>Categoria</Text><Text style={styles.tableHeaderCell}>Valor</Text><Text style={styles.tableHeaderCell}>Status</Text></View>
+        {items.length ? items.map((item) => (
+          <View key={item.id} style={styles.tableRow}><Text style={styles.tableCell}>{formatDate(item.contribution_date)}</Text><Text style={styles.tableCell}>{statusLabel(item.category)}</Text><Text style={[styles.tableCell, styles.tableAmount]}>{formatBRL(item.amount)}</Text><Badge label={statusLabel(item.status)} tone={item.status === "approved" || item.status === "received" ? "success" : item.status === "rejected" ? "danger" : "warning"} /></View>
+        )) : <View style={styles.tableEmpty}><Text style={styles.panelMeta}>Nenhuma contribuição registrada.</Text><Button size="compact" onPress={onRegister}>+ Enviar comprovante</Button></View>}
+      </View>
+    </View>
+  );
+}
+
 export function StatementScreen() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === "web" && width >= 900;
   const [items, setItems] = useState<Contribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,10 +83,16 @@ export function StatementScreen() {
   const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
   return (
-    <Screen title="Meu Extrato" refreshing={refreshing} onRefresh={onRefresh}>
+    <Screen
+      title="Minhas contribuições"
+      headerSubtitle="Apenas seu histórico pessoal"
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      headerAccessory={<Button size="compact" onPress={() => router.push("/contribution" as never)}>+ Enviar comprovante</Button>}
+    >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
 
-        {!error && items.length ? (
+        {desktop && !error ? <DesktopStatement items={items} total={total} onRegister={() => router.push("/contribution" as never)} /> : !error && items.length ? (
           <>
             <Card>
               <Text style={styles.summaryLabel}>Total registrado</Text>
@@ -84,11 +126,12 @@ export function StatementScreen() {
           </>
         ) : null}
 
-        {!loading && !error && !items.length ? (
+        {!desktop && !loading && !error && !items.length ? (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>≣</Text>
             <Text style={styles.emptyTitle}>Nenhuma contribuicao ainda</Text>
             <Text style={styles.emptyText}>Quando voce enviar um dizimo ou oferta, ele aparece aqui.</Text>
+            <Button size="compact" onPress={() => router.push("/contribution" as never)}>+ Enviar comprovante</Button>
           </View>
         ) : null}
     </Screen>
@@ -177,4 +220,31 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     textAlign: "center",
   },
+
+  desktopStatement: { gap: 20 },
+  statementSummaryRow: { flexDirection: "row", gap: 16 },
+  statementSummaryCard: { flex: 1, minHeight: 112, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, gap: 7 },
+  statementSummaryLabel: { color: colors.inkMuted, fontSize: 11, fontWeight: "700" },
+  statementSummaryValue: { color: colors.ink, fontSize: 22, fontWeight: "800" },
+  statementSummaryMeta: { color: colors.inkMuted, fontSize: 10 },
+  chartLabel: { color: colors.inkMuted, fontSize: 10 },
+  statementChartCard: { height: 292, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
+  statementChartHeader: { flexDirection: "row", justifyContent: "space-between" },
+  panelTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  panelMeta: { color: colors.inkMuted, fontSize: 11 },
+  chartLegend: { color: colors.accent, fontSize: 11, fontWeight: "700" },
+  statementBars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around", paddingHorizontal: 60, paddingTop: 24, paddingBottom: 5 },
+  statementBarColumn: { height: 180, alignItems: "center", justifyContent: "flex-end", gap: 8 },
+  statementBar: { width: 44, minHeight: 24, borderRadius: 6, backgroundColor: colors.accent },
+  statementFilters: { height: 52, flexDirection: "row", alignItems: "center", gap: 10 },
+  filterPill: { height: 40, minWidth: 154, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 18, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 },
+  filterText: { color: colors.inkBody, fontSize: 11 },
+  filterChevron: { color: colors.inkMuted, fontSize: 16 },
+  statementTable: { minHeight: 312, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: "hidden" },
+  tableHeader: { height: 48, flexDirection: "row", alignItems: "center", paddingHorizontal: 18, backgroundColor: "#F9FAFB", borderBottomWidth: 1, borderBottomColor: colors.borderDivider },
+  tableHeaderCell: { flex: 1, color: colors.inkMuted, fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
+  tableRow: { minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: colors.borderDivider },
+  tableCell: { flex: 1, color: colors.inkBody, fontSize: 12 },
+  tableAmount: { color: colors.ink, fontWeight: "800" },
+  tableEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 30 },
 });

@@ -3,41 +3,36 @@ import { TextStyle } from "react-native";
 /**
  * Design tokens do Moriah app.
  *
- * Paleta terracota/creme do rascunho aprovado no Pen.dev, centralizada aqui
- * para que as telas usem SEMPRE tokens em vez de hex solto. Corrupcao de
- * literal de cor em edicao de arquivo ja causou UI inconsistente; editar um
- * token unico e a superficie de mudanca minima.
+ * Tokens extraidos do layout canônico moriah_next.pen.
  */
 export const colors = {
-  canvas: "#f7f3ec", // fundo da tela
-  surface: "#ffffff", // cards
-  surfaceTint: "#fffdf9", // inputs
-  surfaceSelected: "#efe4d7", // secondary button
-  border: "#eadfce", // borda de card
-  borderStrong: "#d6cbbb", // borda de input
-  borderDivider: "#efe6d9", // divisores internos
-
-  ink: "#3f2f24", // texto principal
-  inkBody: "#4b4038", // texto secundario
-  inkMuted: "#5f5148", // meta/legendas
-  inkPlaceholder: "#87786c",
-
-  accent: "#7a4d2d", // marrom-terracota (acoes)
-  accentDeep: "#6b4c37", // texto sobre fundo claro selecionado
-
-  danger: "#8a3c2d",
-  dangerBg: "#fdf3f1",
-  dangerBorder: "#e6c3bc",
-
-  success: "#2f7a4d",
-  warning: "#9a6b1f",
-
-  onAccent: "#ffffff", // texto sobre o botao primario
-  badgeSuccessBg: "#eef6ef",
-  badgeSuccessBorder: "#cfe4d2",
-  badgeWarningBg: "#faf3e2",
-  badgeWarningBorder: "#ecdcb4",
-  buttonTextDisabled: "#f5efe7",
+  canvas: "#F6F7FB",
+  surface: "#FFFFFF",
+  surfaceTint: "#FFFFFF",
+  surfaceSelected: "#EEF2FF",
+  border: "#E4E7EC",
+  borderStrong: "#D0D5DD",
+  borderDivider: "#E4E7EC",
+  ink: "#101828",
+  inkBody: "#344054",
+  inkMuted: "#667085",
+  inkPlaceholder: "#98A2B3",
+  accent: "#4F46E5",
+  accentDeep: "#344054",
+  avatar: "#E0E7FF",
+  danger: "#F04438",
+  dangerBg: "#FEF3F2",
+  dangerBorder: "#FECDCA",
+  success: "#12B76A",
+  successText: "#067647",
+  warning: "#F79009",
+  warningText: "#B54708",
+  onAccent: "#FFFFFF",
+  badgeSuccessBg: "#ECFDF3",
+  badgeSuccessBorder: "#ABEFC6",
+  badgeWarningBg: "#FFFAEB",
+  badgeWarningBorder: "#FEDF89",
+  buttonTextDisabled: "#D0D5DD",
 } as const;
 
 /** Escala 4pt: use apenas estes valores de espacamento. */
@@ -57,7 +52,7 @@ export const radius = {
 } as const;
 
 export const typography = {
-  title: { fontSize: 28, fontWeight: "700", color: colors.ink },
+  title: { fontSize: 22, fontWeight: "700", color: colors.ink },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.ink },
   body: { fontSize: 15, color: colors.inkBody },
   meta: { fontSize: 14, color: colors.inkMuted },
@@ -73,6 +68,10 @@ export const routeLabels: Record<string, string> = {
   contribution: "Contribuicao",
   schedules: "Minha Escala",
   schedule: "Minha Escala",
+  agenda: "Minha Agenda",
+  notifications: "Notificações",
+  notification: "Notificação",
+  "schedule-create": "Adicionar escala",
 };
 
 /** Converte status do backend em rotulo humano, se existir. */
@@ -80,15 +79,23 @@ const statusLabels: Record<string, string> = {
   pending: "Pendente",
   confirmed: "Confirmado",
   declined: "Recusado",
+  unavailable: "Indisponivel",
+  conflict: "Conflito de horario",
+  replacement_needed: "Substituicao necessaria",
+  draft: "Rascunho",
+  published: "Publicada",
+  cancelled: "Cancelada",
+  planned: "Planejado",
   active: "Ativo",
   approved: "Aprovado",
   received: "Recebido",
   pending_confirmation: "Aguardando confirmacao",
   rejected: "Recusado",
-  tithe: "Dizimo",
+  needs_review: "Precisa revisao",
+  tithe: "Dízimo",
   offering: "Oferta",
   campaign: "Campanha",
-  missions: "Missoes",
+  missions: "Missões",
   event: "Evento",
   other: "Outros",
 };

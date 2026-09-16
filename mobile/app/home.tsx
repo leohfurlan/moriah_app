@@ -24,6 +24,7 @@ export default function HomePage() {
   return (
     <HomeScreen
       me={me}
+      canAccessManagement={me.can_access_management}
       onNavigate={(route) => router.push(`/${route}` as never)}
       onLogout={async () => {
         await logout();

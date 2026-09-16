@@ -48,6 +48,31 @@ class Member(TimestampedModel):
         return self.full_name
 
 
+class MemberUpdateRequest(TimestampedModel):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendente"
+        APPROVED = "approved", "Aprovada"
+        REJECTED = "rejected", "Rejeitada"
+
+    church = models.ForeignKey(Church, on_delete=models.CASCADE, related_name="member_update_requests")
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="update_requests")
+    requested_changes = models.JSONField(default=dict)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    review_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_member_update_requests",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Solicitacao de alteracao cadastral"
+        verbose_name_plural = "Solicitacoes de alteracao cadastral"
+        ordering = ["-created_at"]
+
 class FamilyRelationship(TimestampedModel):
     class RelationshipType(models.TextChoices):
         SPOUSE = "spouse", "Conjuge"
