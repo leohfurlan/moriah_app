@@ -25,8 +25,13 @@ export interface MemberUpdateRequest {
 }
 export interface ContributionAttachment { id: number; original_name: string; file_url: string; created_at: string; }
 export interface Contribution {
-  id: number; category: string; status: string; amount: string; contribution_date: string;
+  id: number; member_name?: string; category: string; status: string; amount: string; contribution_date: string;
   notes: string; attachments: ContributionAttachment[]; created_at: string;
+  review_notes?: string;
+  reviewed_by_name?: string | null;
+  review_history?: Array<{
+    status_before: string | null; status_after: string; reviewed_by_name: string | null; created_at: string;
+  }>;
 }
 export type ScheduleStatus = "draft" | "published" | "cancelled";
 export type AssignmentStatus = "pending" | "confirmed" | "declined" | "unavailable" | "conflict" | "replacement_needed";

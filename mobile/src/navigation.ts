@@ -82,6 +82,14 @@ export const MENU_LATERAL: NavGroup[] = [
     label: "Financeiro",
     items: [
       criarItem({ id: "extrato", label: "Meu extrato", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
+      criarItem({
+        id: "revisao-financeira",
+        label: "Revisão financeira",
+        route: "finance-review",
+        Icon: HandCoins,
+        required: ["review_contributions", "manage_all"],
+        matches: ["finance-review"],
+      }),
     ],
   },
   {

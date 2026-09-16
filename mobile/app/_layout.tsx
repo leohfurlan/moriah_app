@@ -16,6 +16,7 @@ const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "
  */
 const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
   "/schedule-create": CAPACIDADES_DE_ESCALA,
+  "/finance-review": ["review_contributions", "manage_all"],
 };
 
 function isMemberPath(pathname: string): boolean {
@@ -47,8 +48,9 @@ function LayoutComGuarda() {
     if (precisaLogin) router.replace("/");
     else if (semVinculo) router.replace(destinoSemVinculo);
     else if (semCapacidade) {
-      toast("Sua conta não tem permissão para criar escalas.", { tone: "error", title: "Acesso restrito" });
-      router.replace("/schedules");
+      const rotaFinanceira = pathname === "/finance-review";
+      toast(rotaFinanceira ? "Sua conta não tem permissão para revisar contribuições." : "Sua conta não tem permissão para criar escalas.", { tone: "error", title: "Acesso restrito" });
+      router.replace(rotaFinanceira ? "/home" : "/schedules");
     }
   }, [precisaLogin, semVinculo, semCapacidade, destinoSemVinculo, router, toast]);
 

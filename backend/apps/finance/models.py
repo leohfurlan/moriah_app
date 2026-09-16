@@ -31,6 +31,7 @@ class Contribution(TimestampedModel):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     contribution_date = models.DateField()
     notes = models.TextField(blank=True)
+    review_notes = models.TextField(blank=True)
     reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_contributions")
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
