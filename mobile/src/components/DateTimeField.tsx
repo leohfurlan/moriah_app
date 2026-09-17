@@ -69,6 +69,10 @@ function monthTitle(date: Date): string {
     .replace(/^./, (char) => char.toUpperCase());
 }
 
+function isSameLocalDate(left: Date, right: Date): boolean {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+}
+
 function calendarDays(cursor: Date): Date[] {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1 - first.getDay());
@@ -105,12 +109,22 @@ export function DateTimeField({
   }, [value]);
 
   const days = useMemo(() => calendarDays(cursor), [cursor]);
+  const hoje = useMemo(() => new Date(), [open]);
 
   function openPicker() {
     const next = parseDateInput(value, mode) || new Date();
     setSelected(next);
     setCursor(next);
     setOpen(true);
+  }
+
+  function voltarHoje() {
+    const now = new Date();
+    const next = new Date(selected);
+    next.setFullYear(now.getFullYear(), now.getMonth(), now.getDate());
+    setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+    setSelected(next);
+    setTimeText(`${pad(next.getHours())}:${pad(next.getMinutes())}`);
   }
 
   function chooseDay(day: Date) {
@@ -168,14 +182,20 @@ export function DateTimeField({
                 <Text style={styles.monthButtonText}>›</Text>
               </Pressable>
             </View>
+            <View style={styles.todayRow}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Voltar para hoje" onPress={voltarHoje} style={({ pressed }) => [styles.todayButton, pressed && styles.pressed]}>
+                <Text style={styles.todayButtonText}>Hoje</Text>
+              </Pressable>
+            </View>
             <View style={styles.weekRow}>{["D", "S", "T", "Q", "Q", "S", "S"].map((day, index) => <Text key={`${day}-${index}`} style={styles.weekday}>{day}</Text>)}</View>
             <View style={styles.calendarGrid}>
               {days.map((day) => {
-                const sameDay = day.toDateString() === selected.toDateString();
+                const sameDay = isSameLocalDate(day, selected);
+                const isToday = isSameLocalDate(day, hoje);
                 const inMonth = day.getMonth() === cursor.getMonth();
                 return (
-                  <Pressable key={day.toISOString()} accessibilityRole="button" accessibilityState={{ selected: sameDay }} onPress={() => chooseDay(day)} style={[styles.day, !inMonth && styles.outsideDay, sameDay && styles.selectedDay]}>
-                    <Text style={[styles.dayText, !inMonth && styles.outsideText, sameDay && styles.selectedText]}>{day.getDate()}</Text>
+                  <Pressable key={day.toISOString()} accessibilityRole="button" accessibilityState={{ selected: sameDay }} onPress={() => chooseDay(day)} style={[styles.day, !inMonth && styles.outsideDay, isToday && styles.todayDay, sameDay && styles.selectedDay, sameDay && isToday && styles.todaySelectedDay]}>
+                    <Text style={[styles.dayText, !inMonth && styles.outsideText, isToday && !sameDay && styles.todayText, sameDay && styles.selectedText]}>{day.getDate()}</Text>
                   </Pressable>
                 );
               })}
@@ -230,14 +250,20 @@ const styles = StyleSheet.create({
   monthTitle: { color: colors.ink, fontSize: 15, fontWeight: "800" },
   monthButton: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: radius.field, backgroundColor: colors.surfaceTint },
   monthButtonText: { color: colors.accent, fontSize: 24, lineHeight: 24 },
+  todayRow: { alignItems: "flex-end" },
+  todayButton: { minHeight: 32, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.accent, borderRadius: radius.pill, backgroundColor: colors.surfaceTint },
+  todayButtonText: { color: colors.accent, fontSize: 12, fontWeight: "800" },
   weekRow: { flexDirection: "row", justifyContent: "space-around" },
   weekday: { width: "14.28%", textAlign: "center", color: colors.inkMuted, fontSize: 11, fontWeight: "800" },
   calendarGrid: { flexDirection: "row", flexWrap: "wrap" },
   day: { width: "14.28%", minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: 12 },
   outsideDay: { opacity: 0.4 },
+  todayDay: { borderWidth: 2, borderColor: colors.accent },
+  todaySelectedDay: { borderWidth: 2, borderColor: colors.onAccent },
   selectedDay: { backgroundColor: colors.accent },
   dayText: { color: colors.inkBody, fontSize: 13, fontWeight: "700" },
   outsideText: { color: colors.inkMuted },
+  todayText: { color: colors.accent, fontWeight: "900" },
   selectedText: { color: colors.onAccent },
   timeRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.borderDivider, paddingTop: spacing.md },
   timeLabel: { color: colors.inkBody, fontSize: 14, fontWeight: "700" },
