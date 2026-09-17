@@ -130,11 +130,11 @@ function firstDetail(payload: unknown): string | null {
  * (ex: "Falha no login" em vez de "Nao foi possivel concluir").
  */
 export function describeError(error: unknown, context?: string): UserFacingError {
-  const title = context || "Nao foi possivel concluir";
+  const title = context || "Não foi possível concluir";
 
   if (error instanceof SessionExpiredError) {
     return {
-      title: "Sessao expirada",
+      title: "Sessão expirada",
       message: "Sua sessao expirou por seguranca. Entre novamente para continuar.",
     };
   }
@@ -143,7 +143,7 @@ export function describeError(error: unknown, context?: string): UserFacingError
     return {
       title: "Sem conexao",
       message:
-        "Nao conseguimos falar com o servidor. Verifique sua internet e tente de novo em instantes.",
+        "Não conseguimos falar com o servidor. Verifique sua internet e tente de novo em instantes.",
     };
   }
 
@@ -165,19 +165,20 @@ export function describeError(error: unknown, context?: string): UserFacingError
       case 403:
         return {
           title: "Sem permissao",
-          message: detail || "Seu perfil nao tem permissao para esta acao.",
+          message: detail || "Seu perfil não tem permissão para esta ação.",
         };
       case 404:
         return {
-          title: "Nao encontrado",
-          message: detail || "O item que voce tentou acessar nao existe mais.",
+          title: "Não encontrado",
+          message: detail || "O item que você tentou acessar não existe mais.",
         };
       case 409:
         return {
-          title: "Registro desatualizado",
+          title: error.payload && typeof error.payload === "object" && "code" in error.payload && error.payload.code === "schedule_conflict"
+            ? "Conflito de horário" : "Registro desatualizado",
           message:
             detail ||
-            "Este item mudou desde que voce abriu a tela. Atualize a lista e tente de novo.",
+            "Este item mudou desde que você abriu a tela. Atualize a lista e tente de novo.",
         };
       case 413:
         return {

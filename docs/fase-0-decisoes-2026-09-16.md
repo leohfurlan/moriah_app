@@ -1,7 +1,8 @@
 # Fase 0 — Decisões fechadas e decisões pendentes de produto
 
-**Data:** 16/09/2026
-**Base de código:** commit `40ebc25` (ver `docs/qa/baseline-2026-09-16.md`)
+**Data:** 17/09/2026 (revisão pós-estabilização da fase 5)
+**Base atual:** working tree sobre `402b3c2` (`codex/moriah-navigation-admin`).
+**Baseline histórica:** `40ebc25` (ver `docs/qa/baseline-2026-09-16.md`).
 **Plano:** `docs/plano-mvp-moriah-execucao-2026-09-16.md` §5
 **Artefatos irmãos:** `docs/architecture/capacidades-mvp.md`, `docs/architecture/navegacao-mvp.md`
 
@@ -17,9 +18,10 @@ de decisão de produto (seção 5). As decisões de produto têm **recomendaçã
 financeira (revisão de contribuição), escalas (ver, responder, criar por quem coordena, publicar,
 substituir), perfil, notificações básicas, células para líder de célula.
 
-**Fora:** Escola Bíblica/turmas, repertório/setlist/bandas, palavras, família, diretório,
-relatórios financeiros, configurações. Nenhum desses itens ganha rota, tela vazia ou shell de
-navegação (§6 do plano, §2 da navegação).
+**Fora:** Escola Bíblica/turmas, repertório/setlist/bandas, palavras/conteúdo, família, diretório,
+relatórios financeiros, configurações. Nenhum desses itens ganha shell vazio de navegação.
+Rotas técnicas preexistentes de música e conteúdo não constituem entrega de domínio;
+Conteúdo informa explicitamente que está fora do MVP.
 
 **Critério de corte:** entra no MVP só o que tem (a) dado real no backend **ou** (b) modelo de
 domínio já existente **e** (c) fluxo de aceite por papel. "Escola Bíblica" falha em (b);
@@ -53,23 +55,22 @@ Multitenant por `church` em todas as consultas. Resultado da auditoria:
 | `GET /api/me/` | pela conta | ok |
 | `GET /api/me/member/` | `member_profile` da conta | ok |
 | `/api/me/member-requests/` | `member` + `church`; `perform_create` força ambos | ok |
-| `GET /api/me/statement/` | `member` + `church` | ok |
+| `GET /api/me/statement/` | membro: `member` + `church`; admin: consolidado da própria igreja | ok; leitura administrativa deliberada |
 | `GET /api/me/events/` | `church` + `active` + janela de 1 dia | ok |
-| `GET /api/me/schedules/`, `/{id}/` | `member` + `church` + escala publicada | ok |
+| `GET /api/me/schedules/`, `/{id}/` | membro: `member` + `church` + escala publicada; admin: leitura da própria igreja | ok; leitura administrativa não autoriza responder por outro membro |
 | `POST /api/me/schedules/{id}/action/` | `get_object_or_404(member=..., church=...)` | ok |
 | `/api/me/agenda/` | `member` + `church`; criação força `church` | ok |
 | `POST /api/contributions/` | `church` e `member` forçados no `save` | ok |
 | `POST /api/contributions/{id}/review/` | queryset `church=user.church` | ok |
-| `POST /api/schedules/` | `church` forçado no serializer; cria `Event` + `Schedule` | ok no tenant; **sem guarda de ministério** (C1) |
+| `POST /api/schedules/` | `church` forçado; ministério validado pelo escopo da coordenação | resolvido (C1) |
 | `POST /api/schedules/{id}/publish/` | `church` + `can_manage_schedule` | ok |
 | `POST /api/schedules/{pk}/assignments/{pk}/substitute/` | `schedule`, `assignment`, `member` e `role` todos com `church=user.church` | ok (referência de qualidade) |
-| `GET /api/leader/cell-members/` | `filter(cell__leader=user)` — **sem `church` explícito** | risco baixo (T1) |
-| `POST /api/cell-meetings/` | `Cell.objects.filter(leader=user).first()` — **sem `church`**; grava `church=user.church` | risco (T2) |
+| `GET /api/leader/cell-members/` | filtra explicitamente `church` da conta e líder da célula | resolvido |
+| `POST /api/cell-meetings/` | busca a célula por `church` + líder; grava `church=user.church` | resolvido |
+| `/api/me/notifications/` e ações de leitura | `church` + `recipient=request.user` em todas as consultas | implementado e testado |
 
 **Decisão T (fechada):** toda consulta nova filtra por `church` **explicitamente**, incluindo onde
-o filtro indireto já bastaria. Os dois pontos de célula (T1/T2) entram como correção da Fase 5
-(`cells` é a única área que não segue o padrão do projeto), não como bloqueio do MVP: exigem um
-usuário que lidere célula de outra igreja, cenário que o seed não cria.
+o filtro indireto já bastaria. Os dois pontos de célula (T1/T2) foram alinhados a esse padrão.
 
 **Decisão T2 (fechada):** nenhum endpoint novo pode receber `church` do cliente. Sempre
 `request.user.church`.
@@ -83,27 +84,27 @@ Endpoint: `POST /api/contributions/{id}/review/` (`finance/views.py:58-67`).
 
 | Regra | Situação hoje | Decisão do MVP |
 |---|---|---|
-| Transições válidas | **Qualquer estado → qualquer estado**: não há máquina de estados | Permitir `pending`/`needs_review` → `approved`/`rejected`; bloquear re-decisão de item já `approved`/`rejected` (409) |
-| Motivo de rejeição | `review_notes` opcional | **Obrigatório** ao `rejected` (422 com mensagem) |
-| Idempotência | Nenhuma: reenviar `approved` regrava `reviewed_at` | Re-decisão igual retorna 200 sem efeito (idempotente) |
-| Auditoria | Só `reviewed_by` + `reviewed_at`; `AuditLog` existe e **não é usado** | Gravar `AuditLog` a cada decisão |
+| Transições válidas | `pending`/`needs_review` → `approved`/`rejected`; decisão final diferente bloqueada (409) | Implementado |
+| Motivo de rejeição | Obrigatório ao `rejected` (422) | Implementado |
+| Idempotência | Re-decisão igual retorna 200 sem regravar | Implementado |
+| Auditoria | Decisão registra trilha; notificação persistente na mesma transação | Implementado |
 | Escopo | `church` ok | manter |
 
-Mudanças de backend entram na Fase 3 (`finance`), com teste por transição proibida.
+Mudanças de backend da Fase 3 (`finance`) têm testes por transição proibida.
 
 ### 4.2 Escala — `Schedule.Status`
 
-Estados: `draft`, `published`, `cancelled` — **o padrão do campo é `published`**
-(`schedules/models.py`), e o contrato de criação (`ScheduleCreateSerializer:130`) também assume
-`published` por padrão.
+Estados: `draft`, `published`, `cancelled`. O padrão histórico do **modelo** continua
+`published`, mas o **contrato da API de criação** cria `draft` e exige publicação explícita.
+Não confundir criação via ORM/Admin com o fluxo operacional do app.
 
 | Regra | Situação hoje | Decisão do MVP |
 |---|---|---|
-| Criação | `POST /api/schedules/` cria `Event` + `Schedule` com status `published` e **sem nenhuma função/pessoa** | Criar como `draft`; publicar é ação explícita (endpoint já existe) |
-| Publicação | Bloqueia só `cancelled`; republicar regrava `published_at` | Idempotente: se já publicado, 200 sem efeito |
-| Cancelamento | **Não existe endpoint** | Criar na Fase 4.1 (o plano §12 já pede avaliação de risco) |
-| Escopo de ministério na criação | **Não verificado** (C1) | Aplicar `can_manage_schedule` também à criação |
-| Criação com ministério | Contrato não aceita ministério/funções | Estender na Fase 4.1 |
+| Criação | API cria rascunho com evento e ministério | Implementado |
+| Publicação | Exige equipe; publicação, notificações e auditoria são atômicas; repetição idempotente | Implementado; lock somente da escala, sem bloquear JOINs opcionais |
+| Cancelamento | Endpoint `/api/schedules/{id}/cancel/`, idempotente e auditado com status anterior real | Implementado |
+| Escopo de ministério na criação | Coordenação limitada aos ministérios sob sua responsabilidade | Implementado (C1) |
+| Criação com ministério | Seleção de ministério e formação da equipe no detalhe administrativo | Implementado na Fase 4 |
 
 ### 4.3 Escala — `ScheduleAssignment.Status`
 
@@ -114,16 +115,18 @@ Endpoint: `POST /api/me/schedules/{id}/action/` (`schedules/views.py:85-115`).
 |---|---|---|
 | Ações aceitas | `confirm`, `decline`, `unavailable` | manter |
 | Justificativa | Obrigatória para `decline`/`unavailable` (serializer) | manter |
-| Conflito de horário | Detectado no `confirm`: grava `conflict` + `conflict_reason` e devolve **409** | manter; a UI precisa explicar o 409 (Fase 4) |
-| Re-resposta | Permitida sem guarda (confirmar → recusar → confirmar) | Permitir enquanto a escala não estiver `cancelled`; guardar histórico é Fase 5 |
+| Conflito de horário | Recalcula escalas e compromissos pessoais; grava `conflict` e responde 409 com `detail` e `code=schedule_conflict` | UI explica o motivo e recarrega o estado |
+| Re-resposta | API bloqueia rascunhos/canceladas; tela permite alterar resposta enquanto publicada | Implementado; histórico completo permanece fora desta rodada |
 | Substituição | Cria nova `ScheduleAssignment` com `substitution_for`, marca a original como `replacement_needed` — **sem aprovação** | Manter automático; aprovação de substituição é decisão de produto (D5) |
 | Duplicidade | `unique_together (schedule, member, ministry_role)` protege | manter |
 
-## 5. Decisões pendentes de produto (precisam de aprovação)
+## 5. Registro das decisões de produto
 
-Cada item tem recomendação e padrão. **Sem resposta do usuário, o padrão é executado.**
+As recomendações abaixo registram o contexto do baseline. O estado efetivamente
+implementado está nas seções 3, 4 e 6 e no relatório da fase 5. Este registro não
+constitui autorização nova para alterar produto, publicar ou fazer deploy.
 
-**D1 — Papéis com conta no seed.** Não existem contas `secretary`, `coordinator` e `pastor`;
+**D1 — Papéis com conta no seed (contexto histórico).** No baseline não existiam contas `secretary`, `coordinator` e `pastor`;
 logo `manage_members`, `manage_schedules` e `manage_pastoral` não têm verificação de ponta a
 ponta, e a Fase 4 (a mais longa) fica sem QA possível.
 *Recomendação:* criar as três contas no `seed_mvp` (+1 membro por conta quando o papel exigir
@@ -153,16 +156,18 @@ Hoje é automática (coordenador troca e pronto).
 **Padrão: automática.**
 
 **D6 — Cancelamento de escala entra no MVP?**
-Não existe endpoint hoje.
+Não existia endpoint no baseline; agora há endpoint e UI.
 *Recomendação:* entrar na Fase 4.1 — cancelar é a única saída para escala publicada errada, e sem
 isso a operação "publica e não pode desfazer" (§12 do plano).
 **Padrão: entra na Fase 4.1.**
 
 **D7 — Notificações: reais ou removidas?**
-Hoje são estado local em memória (`/notifications`), sem badge persistente.
+No baseline eram estado local em memória (`/notifications`), sem badge persistente.
 *Recomendação:* remover o badge falso agora (Fase 1) e implementar notificação persistente na
 Fase 5; até lá a tela permanece com aviso de que não há histórico real.
-**Padrão: badge removido na Fase 1; persistência na Fase 5.**
+**Padrão: badge removido na Fase 1; persistência na Fase 5.** A persistência agora usa
+`Notification` no app de auditoria, com destinatário por usuário, escopo explícito de igreja,
+leitura individual e em lote; o sino consulta o contador real.
 
 **D8 — Conta sem `member_profile` (tesouraria/líder de célula no seed).**
 O app mostra telas pessoais que o backend rejeita com 403.
@@ -170,13 +175,21 @@ O app mostra telas pessoais que o backend rejeita com 403.
 as áreas pessoais quando faltar `member`.
 **Padrão: ocultar + mensagem; vínculo na Fase 5.**
 
-## 6. Pendências técnicas registradas (não são decisões de produto)
+## 6. Situação das pendências técnicas (estado atual)
 
-- C1 `POST /api/schedules/` sem `can_manage_schedule` — Fase 4.1.
-- C2 `pastor` passa em `IsScheduleCoordinatorOrAdmin` mas não recebe `manage_schedules` — alinhar
-  na Fase 2 (senão a UI esconde o que o backend permite).
-- C3 não existe listagem de membros da igreja — Fase 4.2 (formação de equipe).
-- C4 aprovação de requisição cadastral só no Admin — Fase 3/5.
-- C5 ausência de guarda de rota no cliente — Fase 1.4.
-- C6 sem caminho de vínculo de cadastro na UI — Fase 5.
-- T1/T2 `cells` sem filtro explícito de `church` — Fase 5.
+- C1 resolvido: criação valida escopo de ministério.
+- C2 resolvido: pastor recebe `manage_schedules`; UI e permissão alinhadas.
+- C3 resolvido para formação de equipe: endpoint de candidatos por escala;
+  diretório geral continua fora do MVP.
+- C4 pendente no app: aprovação cadastral continua no Django Admin.
+- C5 resolvido para gestão: guardas de rota por capacidade e fallback PT-BR.
+- C6 resolvido no complemento da Fase 5: há solicitação autenticada de vínculo
+  por e-mail, sem escolha de `member_id` pelo cliente e com aprovação humana
+  no Admin. A decisão histórica de ocultar as áreas pessoais continua válida
+  até a aprovação.
+- T1/T2 resolvidos: células filtram explicitamente `church`.
+
+Fase 5 permanece **parcial quanto ao gate**: o complemento implementa paginação,
+vínculo cadastral e demais fundamentos locais, mas a validação integrada,
+PostgreSQL/CI e dispositivos ainda não foram concluídos. Nenhum domínio novo da
+Fase 6 foi implementado nesta rodada.

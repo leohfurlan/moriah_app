@@ -10,8 +10,9 @@ from apps.accounts.views import MeView
 from apps.events.views import MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, MyStatementView
-from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
+from apps.members.views import MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
 from apps.ministries.views import MinistryListView
+from apps.audit.notification_views import MyNotificationViewSet
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
     MyScheduleAssignmentsView,
@@ -33,6 +34,7 @@ router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")
+router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -40,6 +42,7 @@ urlpatterns = [
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/me/", MeView.as_view(), name="me"),
     path("api/me/member/", MyMemberView.as_view(), name="my-member"),
+    path("api/me/member-link-requests/", MyMemberLinkRequestView.as_view(), name="my-member-link-requests"),
     path("api/me/statement/", MyStatementView.as_view(), name="my-statement"),
     path("api/me/events/", MyChurchEventsView.as_view(), name="my-events"),
     path("api/me/schedules/", MyScheduleAssignmentsView.as_view(), name="my-schedules"),
@@ -71,15 +74,16 @@ urlpatterns = [
     path("api/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Alias para desenvolvimento local. Algumas extensoes de bloqueio do navegador
-# interpretam o segmento `/api/` como rastreamento e impedem o fetch do Expo.
-# Mantemos `/api/` como contrato publico e oferecemos este caminho equivalente
-# apenas para que o cliente web local consiga falar com o mesmo backend.
+# Aliases para desenvolvimento local. Algumas extensoes de bloqueio do navegador
+# interpretam caminhos com `api` como rastreamento e impedem o fetch do Expo.
+# Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
+# para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
     path("me/", MeView.as_view(), name="local-me"),
     path("me/member/", MyMemberView.as_view(), name="local-my-member"),
+    path("me/member-link-requests/", MyMemberLinkRequestView.as_view(), name="local-my-member-link-requests"),
     path("me/statement/", MyStatementView.as_view(), name="local-my-statement"),
     path("me/events/", MyChurchEventsView.as_view(), name="local-my-events"),
     path("me/schedules/", MyScheduleAssignmentsView.as_view(), name="local-my-schedules"),
@@ -98,4 +102,7 @@ local_api_urlpatterns = [
     path("", include(router.urls)),
 ]
 
-urlpatterns += [path("local-api/", include(local_api_urlpatterns))]
+urlpatterns += [
+    path("local-api/", include(local_api_urlpatterns)),
+    path("backend/", include(local_api_urlpatterns)),
+]

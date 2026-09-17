@@ -144,9 +144,9 @@ export function NewContributionScreen() {
       await api.postForm("/contributions/", form);
       setFiles([]);
       setNotes("");
-      toast("Sua contribuicao foi registrada e ja aparece no seu extrato.", {
+      toast("Sua contribuição foi registrada e já aparece no seu extrato.", {
         tone: "success",
-        title: "Contribuicao enviada",
+        title: "Contribuição enviada",
       });
       router.replace("/statement");
     } catch (error) {
@@ -228,7 +228,7 @@ export function NewContributionScreen() {
         <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
       ) : null}
       <Button disabled={submitting} loading={submitting} onPress={submit}>
-        {submitting ? "Enviando..." : "Enviar contribuicao"}
+        {submitting ? "Enviando…" : "Enviar contribuição"}
       </Button>
       </View>
     </Screen>

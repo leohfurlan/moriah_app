@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { api, setUnauthorizedHandler } from "@/services/api";
-import { clearTokens, saveTokens } from "@/services/storage";
+import { clearTokens, getAccessToken, saveTokens } from "@/services/storage";
+import { resetNotifications } from "@/services/notificationStore";
 import { LoginResponse, MeResponse } from "@/types/api";
 
 /**
@@ -27,6 +28,7 @@ function notificar() {
 
 /** Descarta o perfil em memoria (logout e sessao expirada). */
 export function limparPerfilEmMemoria() {
+  resetNotifications();
   geracaoPerfil += 1;
   requisicaoEmAndamento = null;
   perfilAtual = null;
@@ -43,6 +45,12 @@ function garantirHandlerDeSessao() {
 
 function carregarPerfil({ recarregar = false }: { recarregar?: boolean } = {}): Promise<MeResponse | null> {
   garantirHandlerDeSessao();
+  if (!recarregar && !perfilAtual && !requisicaoEmAndamento) {
+    return getAccessToken().then((token) => {
+      if (token) return carregarPerfil({ recarregar: true });
+      return null;
+    });
+  }
   if (!recarregar) {
     if (perfilAtual) return Promise.resolve(perfilAtual);
     if (requisicaoEmAndamento) return requisicaoEmAndamento;

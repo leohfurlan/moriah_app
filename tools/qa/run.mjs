@@ -24,6 +24,7 @@ const FASES = {
   fase2: () => import("./checks/fase2.mjs"),
   fase3: () => import("./checks/fase3.mjs"),
   fase4: () => import("./checks/fase4.mjs"),
+  fase5: () => import("./checks/fase5.mjs"),
 };
 
 async function servidorResponde(base = BASE) {
@@ -54,7 +55,7 @@ async function principal() {
   try {
     for (const nome of pedidas) {
       const modulo = await FASES[nome]();
-      const dir = path.join(RAIZ, "docs", "qa", "evidencias", `${nome}-${carimbo()}`);
+      const dir = path.join(RAIZ, nome === "fase5" ? "output/playwright" : "docs/qa/evidencias", `${nome}-${carimbo()}`);
       const verificacao = await modulo.executar({ browser, dir, base: BASE });
       const salvo = verificacao.salvar({ base: BASE, fase: nome, comando: `node tools/qa/run.mjs ${alvo}` });
       resultados.push({ nome, ...salvo, passes: verificacao.passes.length, falhas: verificacao.falhas.length });

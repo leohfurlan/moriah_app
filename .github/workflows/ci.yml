@@ -1,6 +1,6 @@
 name: CI
 
-# Roda a suite do backend e a checagem de tipos do mobile a cada push/PR.
+# Roda a suite do backend, tipos e regressões do mobile a cada push/PR.
 # Sem isso os testes so rodam quando alguem lembra de rodar localmente.
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
         run: python manage.py check
 
   mobile:
-    name: Mobile (typecheck)
+    name: Mobile (typecheck e regressões)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,8 +64,13 @@ jobs:
       - name: Checagem de tipos
         run: npm run typecheck
 
+      - name: Regressões de notificações e extrato
+        env:
+          TZ: America/Sao_Paulo
+        run: npm test
+
   finance-postgres:
-    name: Finance (PostgreSQL)
+    name: Fluxos operacionais (PostgreSQL)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -95,4 +100,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest apps/finance/tests -q --ds=config.settings_test_postgres
+      - run: python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres

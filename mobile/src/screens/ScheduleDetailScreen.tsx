@@ -7,7 +7,7 @@ import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
-import { describeError, UserFacingError } from "@/services/errors";
+import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
@@ -31,7 +31,7 @@ function responseNote(status: string): string {
     case "unavailable":
       return "Voce marcou indisponibilidade para esta escala.";
     case "conflict":
-      return "Sua confirmacao encontrou um conflito de horario. Voce ainda pode recusar ou marcar indisponibilidade.";
+      return "Sua confirmação encontrou um conflito de horário. Você ainda pode recusar ou marcar indisponibilidade.";
     case "replacement_needed":
       return "Esta escala aguarda uma substituicao.";
     default:
@@ -61,7 +61,7 @@ export function ScheduleDetailScreen() {
     try {
       setDetail(await api.get<ScheduleAssignmentDetail>(`/me/schedules/${id}/`));
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar a escala"));
+      setError(describeError(err, "Não foi possível carregar a escala"));
     } finally {
       setLoading(false);
     }
@@ -84,13 +84,14 @@ export function ScheduleDetailScreen() {
       await load();
       toast(ACTION_FEEDBACK[action].message, { tone: "success", title: ACTION_FEEDBACK[action].title });
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) await load();
       const { title, message } = describeError(
         err,
         action === "confirm"
-          ? "Nao foi possivel confirmar"
+          ? "Não foi possível confirmar"
           : action === "decline"
-            ? "Nao foi possivel recusar"
-            : "Nao foi possivel registrar a indisponibilidade",
+            ? "Não foi possível recusar"
+            : "Não foi possível registrar a indisponibilidade",
       );
       toast(message, { tone: "error", title });
     } finally {
@@ -162,7 +163,7 @@ export function ScheduleDetailScreen() {
                   </View>
                 ))
               ) : (
-                <Text style={styles.meta}>Repertorio ainda nao publicado.</Text>
+                <Text style={styles.meta}>Repertório ainda não publicado.</Text>
               )}
             </Card>
           ) : null}
@@ -174,7 +175,7 @@ export function ScheduleDetailScreen() {
                 <View style={styles.rowBody}>
                   <Text style={[styles.itemTitle, member.is_me && styles.me]}>
                     {member.member_name}
-                    {member.is_me ? " (voce)" : ""}
+                    {member.is_me ? " (você)" : ""}
                   </Text>
                   <Text style={styles.meta}>
                     {member.ministry_name} / {member.role_name}
@@ -189,12 +190,12 @@ export function ScheduleDetailScreen() {
             <View style={styles.respondedNote}>
               <Text style={styles.meta}>Esta escala foi cancelada. O periodo de respostas foi encerrado.</Text>
             </View>
-          ) : detail.status === "pending" || detail.status === "conflict" ? (
+          ) : detail.status !== "replacement_needed" ? (
             <Card>
-              <Text style={styles.sectionTitle}>Sua resposta</Text>
+              <Text style={styles.sectionTitle}>{detail.status === "pending" ? "Sua resposta" : "Alterar resposta"}</Text>
               {detail.status === "conflict" ? (
                 <Text style={styles.conflictNotice}>
-                  {detail.conflict_reason || "Ha um conflito de horario nesta escala."}
+                  {detail.conflict_reason || "Há um conflito de horário nesta escala."}
                 </Text>
               ) : null}
               <Field

@@ -1,15 +1,17 @@
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
-from rest_framework import generics, status, viewsets
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import generics, serializers, status, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.pagination import OptionalPaginationMixin
 from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
 from apps.audit.models import AuditLog
+from apps.audit.notification_service import create_notification
 from apps.members.models import Member
 from apps.ministries.models import Ministry
 
@@ -48,6 +50,20 @@ def record_audit(user, action, instance, payload=None):
     )
 
 
+def notify_schedule_assignment(schedule, assignment):
+    create_notification(
+        user=getattr(assignment.member, "user", None),
+        church=schedule.church,
+        category="Escalas",
+        title="Nova escala para voce",
+        body=f"{schedule.name} · {schedule.event.name}",
+        detail=f"Voce foi escalado para {schedule.name}. Confira os detalhes e confirme sua presenca.",
+        action_label="Abrir minhas escalas",
+        action_route="/schedules",
+        dedupe_key=f"schedule-published-{schedule.pk}-assignment-{assignment.pk}",
+    )
+
+
 def conflicting_assignments(assignment):
     """Outras escalas do membro no mesmo horario (compatibilidade de API)."""
     return services.overlapping_assignments(assignment.member, assignment.schedule)
@@ -57,9 +73,13 @@ def can_manage_schedule(user, schedule) -> bool:
     return services.can_manage_schedule(user, schedule)
 
 
-def _managed_schedule_or_404(user, pk):
+def _managed_schedule_or_404(user, pk, *, lock=False):
+    queryset = Schedule.objects.select_related("event", "ministry", "created_by")
+    if lock:
+        # Lock apenas na escala: os JOINs de ministry/created_by podem ser nulos.
+        queryset = queryset.select_for_update(of=("self",))
     schedule = generics.get_object_or_404(
-        Schedule.objects.select_related("event", "ministry", "created_by"),
+        queryset,
         pk=pk,
         church=user.church,
     )
@@ -68,7 +88,7 @@ def _managed_schedule_or_404(user, pk):
     return schedule
 
 
-class MyScheduleAssignmentsView(generics.ListAPIView):
+class MyScheduleAssignmentsView(OptionalPaginationMixin, generics.ListAPIView):
     serializer_class = ScheduleAssignmentSerializer
     permission_classes = [HasMemberProfileOrAdmin]
     queryset = ScheduleAssignment.objects.none()
@@ -86,6 +106,15 @@ class MyScheduleAssignmentsView(generics.ListAPIView):
             if member is None:
                 return ScheduleAssignment.objects.none()
             queryset = queryset.filter(member=member)
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        ministry_filter = self.request.query_params.get("ministry")
+        if ministry_filter:
+            queryset = queryset.filter(ministry_role__ministry_id=ministry_filter)
+        search = self.request.query_params.get("q")
+        if search:
+            queryset = queryset.filter(Q(schedule__name__icontains=search) | Q(schedule__event__name__icontains=search))
         return queryset.select_related("schedule__event", "ministry_role__ministry", "member").order_by("schedule__event__start_at")
 
 
@@ -103,7 +132,7 @@ class MyScheduleAssignmentDetailView(generics.RetrieveAPIView):
             member = get_member_profile(user)
             if member is None:
                 return ScheduleAssignment.objects.none()
-            queryset = queryset.filter(member=member)
+            queryset = queryset.filter(member=member, schedule__status=Schedule.Status.PUBLISHED)
         return queryset.select_related("schedule__event", "ministry_role__ministry", "member", "schedule__worship_team")
 
 
@@ -111,7 +140,21 @@ class ScheduleAssignmentActionView(APIView):
     serializer_class = ScheduleAssignmentActionSerializer
     permission_classes = [HasMemberProfile]
 
-    @extend_schema(request=ScheduleAssignmentActionSerializer, responses=ScheduleAssignmentSerializer)
+    @extend_schema(
+        request=ScheduleAssignmentActionSerializer,
+        responses={
+            200: ScheduleAssignmentSerializer,
+            409: inline_serializer(
+                name="ScheduleAssignmentActionError",
+                fields={
+                    "detail": serializers.CharField(),
+                    "code": serializers.CharField(required=False),
+                    "status": serializers.CharField(required=False),
+                    "conflict_reason": serializers.CharField(required=False),
+                },
+            ),
+        },
+    )
     def post(self, request, pk: int):
         assignment = generics.get_object_or_404(
             ScheduleAssignment.objects.select_related("member", "schedule__event"),
@@ -119,33 +162,42 @@ class ScheduleAssignmentActionView(APIView):
             member=get_member_profile(request.user),
             church=request.user.church,
         )
-        if assignment.schedule.status == Schedule.Status.CANCELLED:
+        if assignment.schedule.status != Schedule.Status.PUBLISHED:
             return Response(
-                {"detail": "Escala cancelada nao aceita novas respostas."},
+                {
+                    "detail": (
+                        "Escala cancelada nao aceita novas respostas."
+                        if assignment.schedule.status == Schedule.Status.CANCELLED
+                        else "Escala ainda nao publicada nao aceita respostas."
+                    )
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         serializer = ScheduleAssignmentActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         action = serializer.validated_data["action"]
         if action == "confirm":
-            conflicts = conflicting_assignments(assignment)
-            if conflicts:
+            reason = services.conflict_reason(assignment.member, assignment.schedule)
+            if reason:
                 assignment.status = ScheduleAssignment.Status.CONFLICT
-                assignment.conflict_reason = "Ja existe outra escala no mesmo horario."
+                assignment.conflict_reason = reason
                 assignment.save(update_fields=["status", "conflict_reason", "updated_at"])
-                return Response(ScheduleAssignmentSerializer(assignment).data, status=status.HTTP_409_CONFLICT)
+                payload = dict(ScheduleAssignmentSerializer(assignment).data)
+                payload.update(detail=reason, code="schedule_conflict")
+                return Response(payload, status=status.HTTP_409_CONFLICT)
             assignment.status = ScheduleAssignment.Status.CONFIRMED
+            assignment.conflict_reason = ""
         elif action == "unavailable":
             assignment.status = ScheduleAssignment.Status.UNAVAILABLE
         else:
             assignment.status = ScheduleAssignment.Status.DECLINED
         assignment.justification = serializer.validated_data.get("justification", "")
         assignment.responded_at = timezone.now()
-        assignment.save(update_fields=["status", "justification", "responded_at", "updated_at"])
+        assignment.save(update_fields=["status", "justification", "conflict_reason", "responded_at", "updated_at"])
         return Response(ScheduleAssignmentSerializer(assignment).data, status=status.HTTP_200_OK)
 
 
-class ScheduleListCreateView(generics.ListCreateAPIView):
+class ScheduleListCreateView(OptionalPaginationMixin, generics.ListCreateAPIView):
     """GET lista as escalas da gestao; POST cria evento + escala (rascunho)."""
 
     permission_classes = [IsScheduleCoordinatorOrAdmin]
@@ -231,8 +283,9 @@ class SchedulePublishView(APIView):
     permission_classes = [IsScheduleCoordinatorOrAdmin]
 
     @extend_schema(request=None, responses=ScheduleAdminDetailSerializer)
+    @transaction.atomic
     def post(self, request, pk: int):
-        schedule = _managed_schedule_or_404(request.user, pk)
+        schedule = _managed_schedule_or_404(request.user, pk, lock=True)
         publication_error = services.publication_error(
             schedule.status, schedule.assignments.exists()
         )
@@ -248,6 +301,8 @@ class SchedulePublishView(APIView):
         schedule.status = Schedule.Status.PUBLISHED
         schedule.published_at = timezone.now()
         schedule.save(update_fields=["status", "published_at", "updated_at"])
+        for assignment in schedule.assignments.select_related("member__user"):
+            notify_schedule_assignment(schedule, assignment)
         record_audit(
             request.user,
             "schedule_published",
@@ -262,17 +317,19 @@ class ScheduleCancelView(APIView):
     permission_classes = [IsScheduleCoordinatorOrAdmin]
 
     @extend_schema(request=None, responses=ScheduleAdminDetailSerializer)
+    @transaction.atomic
     def post(self, request, pk: int):
-        schedule = _managed_schedule_or_404(request.user, pk)
+        schedule = _managed_schedule_or_404(request.user, pk, lock=True)
         if schedule.status != Schedule.Status.CANCELLED:
+            previous_status = schedule.status
             schedule.status = Schedule.Status.CANCELLED
             schedule.save(update_fields=["status", "updated_at"])
-            record_audit(request.user, "schedule_cancelled", schedule, {"previous_status": Schedule.Status.DRAFT})
+            record_audit(request.user, "schedule_cancelled", schedule, {"previous_status": previous_status})
         detail = ScheduleAdminDetailSerializer(schedule, context={"request": request})
         return Response(detail.data, status=status.HTTP_200_OK)
 
 
-class ScheduleCandidatesView(generics.ListAPIView):
+class ScheduleCandidatesView(OptionalPaginationMixin, generics.ListAPIView):
     """Candidatos para escalar (lacuna C3): membros ativos, com conflito visivel."""
 
     serializer_class = ScheduleCandidateSerializer
@@ -338,8 +395,9 @@ class ScheduleAssignmentCreateView(APIView):
     permission_classes = [IsScheduleCoordinatorOrAdmin]
 
     @extend_schema(request=ScheduleAssignmentCreateSerializer, responses=ScheduleTeamMemberAdminSerializer)
+    @transaction.atomic
     def post(self, request, pk: int):
-        schedule = _managed_schedule_or_404(request.user, pk)
+        schedule = _managed_schedule_or_404(request.user, pk, lock=True)
         if schedule.status == Schedule.Status.CANCELLED:
             return Response(
                 {"detail": "Escala cancelada nao recebe novos integrantes."},
@@ -357,6 +415,8 @@ class ScheduleAssignmentCreateView(APIView):
         assignment = services.add_assignment(
             schedule, member, role, serializer.validated_data.get("justification", "")
         )
+        if schedule.status == Schedule.Status.PUBLISHED:
+            notify_schedule_assignment(schedule, assignment)
         record_audit(
             request.user,
             "schedule_assignment_added",
@@ -377,6 +437,7 @@ class ScheduleAssignmentDeleteView(APIView):
 
     permission_classes = [IsScheduleCoordinatorOrAdmin]
 
+    @extend_schema(request=None, responses={204: None, 404: None, 409: None})
     def delete(self, request, schedule_pk: int, assignment_pk: int):
         schedule = _managed_schedule_or_404(request.user, schedule_pk)
         assignment = generics.get_object_or_404(
@@ -415,7 +476,7 @@ class ScheduleSubstitutionView(APIView):
     @extend_schema(request=ScheduleSubstitutionSerializer, responses=ScheduleAssignmentSerializer)
     @transaction.atomic
     def post(self, request, schedule_pk: int, assignment_pk: int):
-        schedule = _managed_schedule_or_404(request.user, schedule_pk)
+        schedule = _managed_schedule_or_404(request.user, schedule_pk, lock=True)
         original = generics.get_object_or_404(
             ScheduleAssignment.objects.select_related("ministry_role"),
             pk=assignment_pk,
@@ -440,6 +501,8 @@ class ScheduleSubstitutionView(APIView):
             status=ScheduleAssignment.Status.CONFLICT if reason else ScheduleAssignment.Status.PENDING,
             conflict_reason=reason,
         )
+        if schedule.status == Schedule.Status.PUBLISHED:
+            notify_schedule_assignment(schedule, replacement)
         original.status = ScheduleAssignment.Status.REPLACEMENT_NEEDED
         original.justification = justification
         original.save(update_fields=["status", "justification", "updated_at"])
@@ -458,7 +521,7 @@ class ScheduleSubstitutionView(APIView):
         return Response(ScheduleTeamMemberAdminSerializer(replacement).data, status=status.HTTP_201_CREATED)
 
 
-class PersonalCommitmentViewSet(viewsets.ModelViewSet):
+class PersonalCommitmentViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = PersonalCommitmentSerializer
     permission_classes = [HasMemberProfileOrAdmin]
     queryset = PersonalCommitment.objects.none()
@@ -473,11 +536,16 @@ class PersonalCommitmentViewSet(viewsets.ModelViewSet):
             return PersonalCommitment.objects.none()
         user = self.request.user
         queryset = PersonalCommitment.objects.filter(church=user.church)
-        if not is_admin_user(user):
-            member = get_member_profile(user)
-            if member is None:
-                return PersonalCommitment.objects.none()
-            queryset = queryset.filter(member=member)
+        member = get_member_profile(user)
+        if member is None:
+            return PersonalCommitment.objects.none()
+        queryset = queryset.filter(member=member)
+        commitment_status = self.request.query_params.get("status")
+        if commitment_status:
+            queryset = queryset.filter(status=commitment_status)
+        commitment_type = self.request.query_params.get("commitment_type")
+        if commitment_type:
+            queryset = queryset.filter(commitment_type=commitment_type)
         return queryset
 
     def perform_create(self, serializer):

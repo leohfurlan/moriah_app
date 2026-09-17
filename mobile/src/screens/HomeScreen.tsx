@@ -310,13 +310,13 @@ export function HomeScreen({
     ]);
     const failures: UserFacingError[] = [];
     if (escalas.status === "fulfilled") setSchedules(escalas.value);
-    else failures.push(describeError(escalas.reason, "Nao foi possivel carregar suas escalas"));
+    else failures.push(describeError(escalas.reason, "Não foi possível carregar suas escalas"));
     if (extrato.status === "fulfilled") setContributions(extrato.value);
-    else failures.push(describeError(extrato.reason, "Nao foi possivel carregar seu extrato"));
+    else failures.push(describeError(extrato.reason, "Não foi possível carregar seu extrato"));
     if (agenda.status === "fulfilled") setCommitments(agenda.value);
-    else failures.push(describeError(agenda.reason, "Nao foi possivel carregar sua agenda"));
+    else failures.push(describeError(agenda.reason, "Não foi possível carregar sua agenda"));
     if (eventos.status === "fulfilled") setEvents(eventos.value);
-    else failures.push(describeError(eventos.reason, "Nao foi possivel carregar os eventos"));
+    else failures.push(describeError(eventos.reason, "Não foi possível carregar os eventos"));
     setError(failures.length ? { title: "Dados incompletos", message: failures.map((item) => item.message).join(" ") } : null);
     setLoading(false);
     setRefreshing(false);

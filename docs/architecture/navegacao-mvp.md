@@ -1,8 +1,9 @@
 # Inventário de navegação e rotas — classificação do MVP
 
-**Data:** 16/09/2026
-**Base de código:** commit `40ebc25`
-**Fontes:** `mobile/src/components/Screen.tsx:49-104` (sidebar + tabs), `mobile/app/*` (rotas),
+**Data:** 17/09/2026
+**Base atual:** working tree sobre `402b3c2` (`codex/moriah-navigation-admin`).
+**Baseline histórica:** `40ebc25`, usada somente nas seções 1 e 2.
+**Fontes:** `mobile/src/navigation.ts` e `mobile/src/components/Screen.tsx` (sidebar + navegação inferior), `mobile/app/*` (rotas),
 `backend/config/urls.py` (API), `backend/apps/*/models.py` (domínio disponível).
 **Complementa:** §5 do plano (`docs/plano-mvp-moriah-execucao-2026-09-16.md`), Fase 2.
 
@@ -12,7 +13,7 @@ navegação; não vira tela vazia).
 
 ---
 
-## 1. Correção de métrica (errata do relatório de paridade)
+## 1. Correção de métrica histórica (baseline `40ebc25`)
 
 O relatório afirma "19 destinos / 8 dos 16 itens apontando para o lugar errado". Contagem real
 em `Screen.tsx:49-96`:
@@ -27,7 +28,7 @@ em `Screen.tsx:49-96`:
 
 O mapa do relatório cita `Screen.tsx:56-70`; o array real é `:49-96`.
 
-## 2. Sidebar desktop (17 rótulos)
+## 2. Sidebar histórica (17 rótulos no baseline, não o estado atual)
 
 | Grupo | Item | Rota hoje | Status da capacidade | Decisão de MVP |
 |---|---|---|---|---|
@@ -52,21 +53,33 @@ O mapa do relatório cita `Screen.tsx:56-70`; o array real é `:49-96`.
 **Regra de exibição (Fase 2):** item visível = capacidade + rota + tela coerente com o rótulo.
 Fora disso, ocultar. "Em breve" só é aceitável se não existir rota — nunca apontar para outra tela.
 
-## 3. Tabs mobile (5)
+## 3. Navegação atual
+
+A sidebar do membro contém Visão geral (`/home`), Agenda (`/agenda`), Escalas
+(`/schedules`) e Meu extrato (`/statement`). Revisão financeira (`/finance-review`)
+exige `review_contributions` ou `manage_all`; Gestão de escalas (`/schedule-admin`)
+e Criar escala (`/schedule-create`) exigem capacidade de escalas. A fonte única
+é `mobile/src/navigation.ts`, filtrada pelas capacidades do perfil.
+
+No mobile são **três abas e uma ação central**, quatro destinos visíveis:
 
 | Tab | Rota | Status | Observação |
 |---|---|---|---|
-| Início | `/home` | Implementado | Dados fixos a corrigir (Fase 1.6) |
+| Início | `/home` | Implementado | Dados da API e estados vazios |
 | Agenda | `/agenda` | Implementado | Eventos + compromissos pessoais reais |
-| Escalas | `/schedules` | Implementado | Resposta do membro funciona |
-| Contribuições | `/statement` | Implementado | Enviar contribuição em `/contribution` |
+| Nova contribuição (ação central) | `/contribution` | Implementado | O rótulo acessível é "Nova contribuição", não uma aba de extrato |
 | Perfil | `/profile` | Implementado | Sem edição direta (via requisição) |
+
+Escalas é acessível pelo módulo Agenda; o extrato tem acesso pelo perfil.
+O array `ABAS` inclui Contribuições, mas `BottomNav` substitui esse item pela ação
+central acima. Os verificadores devem conferir o que é renderizado, não só o array.
 
 O mockup canônico usa **Conteúdo** no lugar de Contribuições. Decisão D3 em
 `docs/fase-0-decisoes-2026-09-16.md`: manter Contribuições no MVP (há dado real) e adiar Conteúdo
-(sem modelo).
+(sem modelo). A rota técnica pode existir para deep links, mas Conteúdo não é item de sidebar nem aba;
+quando acessada diretamente, informa que o domínio está fora do MVP.
 
-## 4. Rotas de aplicação (13 arquivos)
+## 4. Rotas de aplicação (19 arquivos)
 
 | Rota | Tela | Status | API |
 |---|---|---|---|
@@ -75,42 +88,45 @@ O mockup canônico usa **Conteúdo** no lugar de Contribuições. Decisão D3 em
 | `/agenda` | `AgendaScreen` | Implementado | `/api/me/events/`, `/api/me/agenda/` |
 | `/schedules` | `SchedulesScreen` | Implementado | `/api/me/schedules/` |
 | `/schedule/[id]` | `ScheduleDetailScreen` | Implementado | `/api/me/schedules/{id}/`, `.../action/` |
-| `/schedule-create` | `ScheduleCreateScreen` | Implementado sem guarda de rota (C5) | `POST /api/schedules/` |
+| `/schedule-create` | `ScheduleCreateScreen` | Implementado com guarda de capacidade | `POST /api/schedules/`, `/api/ministries/` |
+| `/schedule-admin` | `ScheduleAdminScreen` | Implementado com guarda | `GET /api/schedules/` |
+| `/schedule-admin/[id]` | `ScheduleAdminDetailScreen` | Implementado com guarda | detalhe, edição, candidatos, equipe, publicação, cancelamento e substituição |
+| `/finance-review` | `FinanceReviewScreen` | Implementado com guarda | `/api/contributions/`, `.../{id}/review/` |
+| `/agenda-new` | `NewCommitmentScreen` | Implementado | `POST /api/me/agenda/` |
+| `/content` | `ContentScreen` | Domínio fora do MVP; aviso explícito | — |
 | `/statement` | `StatementScreen` | Implementado | `/api/me/statement/` |
 | `/contribution` | `NewContributionScreen` | Implementado | `POST /api/contributions/` |
 | `/profile` | `ProfileScreen` | Implementado | `/api/me/member/`, `/api/me/member-requests/` |
-| `/notifications` | `NotificationsScreen` | Implementado (estado local) | — |
-| `/notification/[id]` | `NotificationDetailScreen` | Implementado (estado local) | — |
-| `/song/[id]` | `SongDetailScreen` | Implementado com bug de `scheduleId` | `/api/me/schedules/{id}/` |
+| `/notifications` | `NotificationsScreen` | Implementado (persistente) | `/api/me/notifications/` |
+| `/notification/[id]` | `NotificationDetailScreen` | Implementado (persistente) | `/api/me/notifications/{id}/` |
+| `/song/[id]` | `SongDetailScreen` | Compatibilidade técnica, fora do corte de repertório | `/api/me/schedules/{scheduleId}/` |
 | `_layout.tsx` | shell de navegação (sidebar + tabs) | Implementado | — |
-| `+not-found` | — | **Ausente** (cai no "Unmatched Route" do Expo) | — |
+| `+not-found` | fallback PT-BR | Implementado | — |
 
-12 rotas (`index` + 11 telas) + `_layout.tsx` = **13 arquivos**; `mobile/src/screens` tem
-**12 telas** (as 11 roteadas mais a `LoginScreen`, renderizada por `/`).
+17 rotas, `_layout.tsx` e `+not-found.tsx` = **19 arquivos**.
+Os contratos usam `/api/`; o servidor também publica `/backend/` e `/local-api/`.
+A URL pública padrão do app é `/backend`. O QA aceita os três prefixos.
 
 ## 5. Backend sem UI (o gargalo do MVP é front, não domínio)
 
-Modelos que já existem e **não têm nenhuma rota no app**:
+Estado atual dos domínios e operações:
 
 | Modelo | API hoje | Onda |
 |---|---|---|
-| `Ministry`, `MinistryRole` | nenhuma (só admin) | Fase 4.1 |
-| `ScheduleItem` | nenhuma | pós-MVP (setlist) |
-| `Song` | nenhuma | pós-MVP (repertório) |
+| `Ministry`, `MinistryRole` | `/api/ministries/`; seleção na criação/equipe | Implementado na Fase 4 |
+| `ScheduleItem` | leitura no detalhe pessoal de escala, sem gestão completa | pós-MVP (setlist) |
+| `Song` | leitura de compatibilidade no detalhe musical, sem gestão completa | pós-MVP (repertório) |
 | `WorshipTeam`, `WorshipTeamMember` | nenhuma | pós-MVP (bandas) |
 | `Cell`, `CellMeeting`, `CellAttendance` | `POST /api/cell-meetings/`, `GET /api/leader/cell-members/` sem tela | Fase 5 (líder de célula) |
 | `Family`, `FamilyRelationship` | nenhuma | Fase 6 |
 | `AuditLog` | nenhuma (só admin; leitura pastoral) | Fase 3 (registro) / Fase 6 (consulta) |
 | `MemberUpdateRequest` | `GET/POST /api/me/member-requests/`; aprovação só no admin | Fase 3/5 |
 
-Endpoints existentes **sem nenhuma UI**: `POST /api/contributions/{id}/review/`,
-`POST /api/schedules/{id}/publish/`, `POST /api/.../substitute/`,
-`GET /api/leader/cell-members/`. Todos são capacidades prontas esperando tela — prioridade
-natural das Fases 3 e 4.
+Revisão financeira, publicação e substituição de escala **já têm UI no app**.
+Continuam sem UI operacional: células/reuniões e aprovação cadastral (esta permanece
+no Django Admin). Não interpretar a existência de modelos/API como conclusão da tela.
 
 ## 6. Rotas inexistentes citadas no relatório
 
-`/membros`, `/bandas`, `/escola`, `/relatorios`, `/rota-inexistente` não existem. Hoje caem no
-"Unmatched Route / Sitemap" do Expo, em inglês (relatório §5.3). A correção (`app/+not-found.tsx`
-em PT-BR) é Fase 1.5 — e **nenhuma delas deve virar rota vazia**: cada uma é um item das seções 2
-e 5 acima.
+`/membros`, `/bandas`, `/escola`, `/relatorios`, `/rota-inexistente` não existem e
+usam o fallback PT-BR de `app/+not-found.tsx`. Nenhuma deve ganhar tela vazia.

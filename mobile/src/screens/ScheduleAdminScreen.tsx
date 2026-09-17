@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -35,12 +36,15 @@ export function ScheduleAdminScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     setError(null);
     try {
       const consulta = filtro === "todos" ? "" : `?status=${filtro}`;
-      setEscalas(await api.get<ScheduleAdminItem[]>(`/schedules/${consulta}`));
+      const result = await api.getPage<ScheduleAdminItem>(`/schedules/${consulta}`, targetPage);
+      setEscalas(result.items);
+      setPageInfo(result);
     } catch (err) {
       setError(describeError(err, "Não foi possível carregar as escalas"));
     } finally {
@@ -135,6 +139,7 @@ export function ScheduleAdminScreen() {
           </Card>
         ))}
       </View>
+      <PaginationControls {...pageInfo} disabled={loading} onPageChange={(nextPage) => { void load(nextPage); }} />
     </Screen>
   );
 }

@@ -10,12 +10,22 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 
 from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsTreasurerOrAdmin, get_member_profile, is_admin_user
+from apps.audit.notification_service import create_notification
+from apps.accounts.pagination import OptionalPaginationMixin
 
 from .models import Contribution
 from .serializers import ContributionReviewSerializer, ContributionSerializer
 
 
-class MyStatementView(generics.ListAPIView):
+@extend_schema(
+    parameters=[
+        OpenApiParameter("status", OpenApiTypes.STR, enum=Contribution.Status.values),
+        OpenApiParameter("category", OpenApiTypes.STR, enum=Contribution.Category.values),
+        OpenApiParameter("date_from", OpenApiTypes.DATE),
+        OpenApiParameter("date_to", OpenApiTypes.DATE),
+    ]
+)
+class MyStatementView(OptionalPaginationMixin, generics.ListAPIView):
     """Extrato pessoal; para admin, leitura consolidada da igreja."""
 
     serializer_class = ContributionSerializer
@@ -27,16 +37,44 @@ class MyStatementView(generics.ListAPIView):
             return Contribution.objects.none()
         user = self.request.user
         if is_admin_user(user):
-            return Contribution.objects.filter(
+            queryset = Contribution.objects.filter(
                 church=user.church,
             ).select_related("member", "reviewed_by").prefetch_related("attachments")
-        member = get_member_profile(user)
-        if member is None:
-            return Contribution.objects.none()
-        return Contribution.objects.filter(
-            member=member,
-            church=user.church,
-        ).prefetch_related("attachments")
+        else:
+            member = get_member_profile(user)
+            if member is None:
+                return Contribution.objects.none()
+            queryset = Contribution.objects.filter(
+                member=member,
+                church=user.church,
+            ).prefetch_related("attachments")
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            if status_filter not in Contribution.Status.values:
+                raise ValidationError({"status": "Status de contribuição inválido."})
+            queryset = queryset.filter(status=status_filter)
+        category_filter = self.request.query_params.get("category")
+        if category_filter:
+            if category_filter not in Contribution.Category.values:
+                raise ValidationError({"category": "Categoria de contribuição inválida."})
+            queryset = queryset.filter(category=category_filter)
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+        try:
+            start = date.fromisoformat(date_from) if date_from else None
+        except ValueError as exc:
+            raise ValidationError({"date_from": "Use a data no formato AAAA-MM-DD."}) from exc
+        try:
+            end = date.fromisoformat(date_to) if date_to else None
+        except ValueError as exc:
+            raise ValidationError({"date_to": "Use a data no formato AAAA-MM-DD."}) from exc
+        if start and end and start > end:
+            raise ValidationError({"date_to": "A data final deve ser igual ou posterior à inicial."})
+        if start:
+            queryset = queryset.filter(contribution_date__gte=start)
+        if end:
+            queryset = queryset.filter(contribution_date__lte=end)
+        return queryset
 
 
 @extend_schema_view(
@@ -48,6 +86,7 @@ class MyStatementView(generics.ListAPIView):
     review=extend_schema(request=ContributionReviewSerializer, responses=ContributionSerializer),
 )
 class ContributionViewSet(
+    OptionalPaginationMixin,
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -80,6 +119,11 @@ class ContributionViewSet(
                     if status_filter not in Contribution.Status.values:
                         raise ValidationError({"status": "Status de contribuição inválido."})
                     queryset = queryset.filter(status=status_filter)
+                category_filter = self.request.query_params.get("category")
+                if category_filter:
+                    if category_filter not in Contribution.Category.values:
+                        raise ValidationError({"category": "Categoria de contribuição inválida."})
+                    queryset = queryset.filter(category=category_filter)
                 date_from = self.request.query_params.get("date_from")
                 date_to = self.request.query_params.get("date_to")
                 start = self._parse_date_filter("date_from", date_from) if date_from else None
@@ -134,4 +178,20 @@ class ContributionViewSet(
             contribution.reviewed_by = request.user
             contribution.reviewed_at = timezone.now()
             contribution.save(update_fields=("status", "review_notes", "reviewed_by", "reviewed_at", "updated_at"))
+            decision_label = "aprovado" if target_status == Contribution.Status.APPROVED else "rejeitado"
+            create_notification(
+                user=getattr(contribution.member, "user", None),
+                church=contribution.church,
+                category="Contribuições",
+                title="Contribuicao atualizada",
+                body=f"Seu comprovante foi {decision_label}.",
+                detail=(
+                    "A tesouraria validou seu comprovante. O registro ja esta disponivel no seu extrato."
+                    if target_status == Contribution.Status.APPROVED
+                    else f"A tesouraria rejeitou seu comprovante. Motivo: {review_notes}"
+                ),
+                action_label="Ver meu extrato",
+                action_route="/statement",
+                dedupe_key=f"contribution-review-{contribution.pk}-{target_status}",
+            )
         return Response(self.get_serializer(contribution).data, status=status.HTTP_200_OK)

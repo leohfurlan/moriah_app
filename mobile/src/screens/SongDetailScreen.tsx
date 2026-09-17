@@ -32,7 +32,7 @@ export function SongDetailScreen() {
       const detail = await api.get<ScheduleAssignmentDetail>(`/me/schedules/${scheduleId}/`);
       setItem(detail.repertoire.find((candidate) => String(candidate.id) === String(id)) || null);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar a musica"));
+      setError(describeError(err, "Não foi possível carregar a música"));
     } finally {
       setLoading(false);
     }
@@ -56,10 +56,10 @@ export function SongDetailScreen() {
 
   if (loading && !item) return <Screen title="Musica"><Text style={styles.meta}>Carregando...</Text></Screen>;
   if (error) return <Screen title="Musica"><ErrorNotice title={error.title} message={error.message} onRetry={load} /></Screen>;
-  if (!item) return <Screen title="Musica"><Text style={styles.meta}>Musica nao encontrada ou ainda nao publicada.</Text></Screen>;
+  if (!item) return <Screen title="Música"><Text style={styles.meta}>Música não encontrada ou ainda não publicada.</Text></Screen>;
 
   const open = async (url: string) => {
-    try { await Linking.openURL(url); } catch { toast("Nao foi possivel abrir este link.", { tone: "warning", title: "Link indisponivel" }); }
+    try { await Linking.openURL(url); } catch { toast("Não foi possível abrir este link.", { tone: "warning", title: "Link indisponível" }); }
   };
 
   return (
@@ -68,7 +68,7 @@ export function SongDetailScreen() {
         <Text style={styles.order}>#{item.order}</Text>
         <Text style={styles.title}>{item.song_title || item.title}</Text>
         {item.artist ? <Text style={styles.meta}>{item.artist}</Text> : null}
-        <Text style={styles.meta}>Tom: {item.effective_key || "Nao informado"}</Text>
+        <Text style={styles.meta}>Tom: {item.effective_key || "Não informado"}</Text>
         {item.effective_bpm ? <Text style={styles.meta}>BPM: {item.effective_bpm}</Text> : null}
         {item.effective_duration_seconds ? <Text style={styles.meta}>Duracao: {Math.floor(item.effective_duration_seconds / 60)}:{String(item.effective_duration_seconds % 60).padStart(2, "0")}</Text> : null}
       </Card>

@@ -9,6 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "test": "node --test ../tools/qa/tests/mobile-regressions.cjs",
     "build:preview": "eas build --profile preview --platform android",
     "build:production": "eas build --profile production --platform all"
   },

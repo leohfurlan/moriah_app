@@ -4,8 +4,6 @@
 // tela coerente com o rotulo, respeita a capacidade da conta e a tela tem
 // estado de carregamento/vazio/erro. Alem disso: nada de item decorativo
 // apontando para tela existente "para nao ficar rota vazia".
-import fs from "node:fs";
-
 import { conta, PAPEIS } from "../lib/accounts.mjs";
 import { BASE, digitar, esperarPor, login, novaSessao, texto, VIEWPORT_DESKTOP, VIEWPORT_MOBILE } from "../lib/harness.mjs";
 import { Verificacao } from "../lib/report.mjs";
@@ -25,7 +23,6 @@ const MENU_MEMBRO = [
   ["Visão geral", "/home"],
   ["Agenda", "/agenda"],
   ["Escalas", "/schedules"],
-  ["Conteúdo", "/content"],
   ["Meu extrato", "/statement"],
 ];
 
@@ -42,12 +39,7 @@ const ROTULOS_DECORATIVOS = [
   "Configurações",
 ];
 
-/** Total de notificacoes do MVP lido da fonte (nao do print, que mascara digitos). */
-function totalDeNotificacoes() {
-  const fonte = fs.readFileSync("mobile/src/notifications.ts", "utf8");
-  const trecho = fonte.slice(fonte.indexOf("MVP_NOTIFICATIONS"));
-  return (trecho.match(/id:\s*"/g) || []).length;
-}
+const apiPath = (url, endpoint) => ["api", "backend", "local-api"].some((prefix) => caminho(url) === `/${prefix}${endpoint}`);
 
 async function irPara(page, rota) {
   await page.goto(`${BASE}${rota}`, { waitUntil: "domcontentloaded", timeout: 45000 });
@@ -59,7 +51,6 @@ export async function executar({ browser, dir }) {
   v.nota(`fase 2 do plano | base=${BASE}`);
   const membro = conta(PAPEIS.membro);
   const admin = conta(PAPEIS.admin);
-  const esperadoNotificacoes = totalDeNotificacoes();
 
   // ---- 1. menu lateral do membro: item visivel leva a rota do rotulo -------
   {
@@ -119,7 +110,7 @@ export async function executar({ browser, dir }) {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     await login(sessao.page, admin);
     await irPara(sessao.page, "/home");
-    const conteudo = await texto(sessao.page);
+    const conteudo = await sessao.page.getByTestId("sidebar").innerText();
     const achados = ROTULOS_DECORATIVOS.filter((rotulo) => contem(conteudo, rotulo));
     v.check(
       "3. Menu sem itens decorativos (rótulo sem tela não aparece)",
@@ -139,8 +130,7 @@ export async function executar({ browser, dir }) {
     const abas = [
       ["Início", "/home"],
       ["Agenda", "/agenda"],
-      ["Contribuições", "/statement"],
-      ["Conteúdo", "/content"],
+      ["Nova contribuição", "/contribution"],
       ["Perfil", "/profile"],
     ];
     const problemas = [];
@@ -155,7 +145,7 @@ export async function executar({ browser, dir }) {
       if (!chegou) problemas.push(`${rotulo} -> ${caminho(sessao.page.url())} (esperado ${rota})`);
     }
     v.check(
-      "4. Abas do mobile levam às telas dos rótulos (Início, Agenda, Contribuições, Conteúdo, Perfil)",
+      "4. Navegação mobile leva aos destinos reais (Início, Agenda, Nova contribuição, Perfil)",
       problemas.length === 0,
       problemas.length ? problemas.join(" | ") : abas.map(([rotulo, rota]) => `${rotulo}=${rota}`).join(", "),
     );
@@ -163,12 +153,12 @@ export async function executar({ browser, dir }) {
     // evidencia e o destaque visual — exatamente uma aba com fundo proprio, e
     // ela tem que ser a da rota atual.
     const destacada = await sessao.page.evaluate(() => {
-      const rotulos = ["Início", "Agenda", "Contribuições", "Conteúdo", "Perfil"];
+      const rotulos = ["Início", "Agenda", "Perfil"];
       return [...document.querySelectorAll('[role="link"]')]
         .map((el) => ({ nome: (el.getAttribute("aria-label") || "").trim(), fundo: getComputedStyle(el).backgroundColor }))
         .filter((item) => rotulos.includes(item.nome) && item.fundo && item.fundo !== "rgba(0, 0, 0, 0)");
     });
-    const esperadaNaRota = { "/home": "Início", "/agenda": "Agenda", "/statement": "Contribuições", "/content": "Conteúdo", "/profile": "Perfil" }[caminho(sessao.page.url())];
+    const esperadaNaRota = { "/home": "Início", "/agenda": "Agenda", "/statement": "Contribuições", "/profile": "Perfil" }[caminho(sessao.page.url())];
     v.check(
       "4b. A aba da rota atual é a única destacada",
       destacada.length === 1 && destacada[0].nome === esperadaNaRota,
@@ -182,32 +172,35 @@ export async function executar({ browser, dir }) {
   {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     let perfil = null;
+    let esperadoNotificacoes = null;
     sessao.page.on("response", async (resposta) => {
-      if (caminho(resposta.url()) === "/api/me/") {
+      if (apiPath(resposta.url(), "/me/")) {
         perfil = await resposta.json().catch(() => null);
+      }
+      if (apiPath(resposta.url(), "/me/notifications/unread-count/")) {
+        esperadoNotificacoes = (await resposta.json().catch(() => null))?.count ?? null;
       }
     });
     await login(sessao.page, membro);
     await irPara(sessao.page, "/home");
+    await esperarPor(() => perfil !== null && esperadoNotificacoes !== null, { timeout: 8000 });
     const conteudo = await texto(sessao.page);
     const iniciaisEsperadas = perfil
-      ? (`${perfil.member_name || `${perfil.first_name} ${perfil.last_name}`}`.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("")).toUpperCase()
+      ? (`${[perfil.first_name, perfil.last_name].filter(Boolean).join(" ") || perfil.member_name || perfil.email}`.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("")).toUpperCase()
       : "";
-    const nomeEsperado = perfil ? (perfil.member_name || `${perfil.first_name} ${perfil.last_name}`).trim() : "";
+    const nomeEsperado = perfil ? ([perfil.first_name, perfil.last_name].filter(Boolean).join(" ") || perfil.member_name || perfil.email).trim() : "";
     const nomeNaTela = Boolean(nomeEsperado) && contem(conteudo, nomeEsperado);
     const semPlaceholder = !/\nAM\n/.test(conteudo);
-    const badge = await sessao.page.evaluate(() => {
-      const alvo = [...document.querySelectorAll("div,span")].find((el) => /^\d+$/.test((el.textContent || "").trim()) && el.children.length === 0);
-      return alvo ? (alvo.textContent || "").trim() : "";
-    });
+    const alvo = sessao.page.getByTestId("notification-badge");
+    const badge = await alvo.count() ? (await alvo.innerText()).trim() : "";
     v.check(
       "5. Avatar mostra as iniciais e o nome da conta logada (não mais 'AM' fixo)",
       Boolean(perfil) && iniciaisEsperadas.length > 0 && contem(conteudo, iniciaisEsperadas) && nomeNaTela && semPlaceholder,
       `iniciais=${iniciaisEsperadas} | nome na tela=${nomeNaTela} | avatar fixo AM=${!semPlaceholder}`,
     );
     v.check(
-      "6. Badge do sino usa a contagem real da lista de notificações",
-      badge === String(esperadoNotificacoes),
+      "6. Badge do sino usa a contagem de não lidas devolvida pela API",
+      esperadoNotificacoes !== null && badge === (esperadoNotificacoes === 0 ? "" : esperadoNotificacoes > 99 ? "99+" : String(esperadoNotificacoes)),
       `badge na tela="${badge}" | esperado=${esperadoNotificacoes}`,
     );
     await v.screenshot(sessao.page, "5-avatar-e-badge");
@@ -278,7 +271,7 @@ export async function executar({ browser, dir }) {
   {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     await login(sessao.page, membro);
-    await sessao.page.route("**/api/me/statement/**", (rota) => rota.fulfill({ status: 503, contentType: "text/html", body: "<html><body>Service Unavailable</body></html>" }));
+    await sessao.page.route((url) => apiPath(url.href, "/me/statement/"), (rota) => rota.fulfill({ status: 503, contentType: "text/html", body: "<html><body>Service Unavailable</body></html>" }));
     await irPara(sessao.page, "/statement");
     const conteudo = await texto(sessao.page);
     const temAlerta = contem(conteudo, "tentar novamente") || contem(conteudo, "servidor") || contem(conteudo, "instantes");
@@ -293,6 +286,6 @@ export async function executar({ browser, dir }) {
     await sessao.context.close();
   }
 
-  v.nota(`notificações do MVP (fonte): ${esperadoNotificacoes}`);
+  v.nota("Badge validado contra /me/notifications/unread-count/, sem dados estáticos.");
   return v;
 }

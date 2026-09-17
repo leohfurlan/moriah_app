@@ -1,48 +1,79 @@
-import { useCallback, useEffect, useState } from "react";
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { Contribution } from "@/types/api";
+import { parseDate, statementBarHeight, statementCutoff } from "@/services/dates";
 import { colors, formatDate, formatBRL, spacing, statusLabel } from "@/theme";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "received" || status === "approved") return "success";
-  if (status === "pending_confirmation") return "warning";
+  if (status === "pending" || status === "needs_review") return "warning";
   if (status === "rejected") return "danger";
   return "neutral";
 }
 
 
-function DesktopStatement({ items, total, onRegister }: { items: Contribution[]; total: number; onRegister: () => void }) {
-  const approved = items.filter((item) => ["approved", "received"].includes(item.status)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const pending = items.filter((item) => item.status === "pending_confirmation").length;
+function DesktopStatement({ items, onRegister }: { items: Contribution[]; onRegister: () => void }) {
+  const [period, setPeriod] = useState<"all" | "3m" | "6m" | "year">("all");
+  const [category, setCategory] = useState("all");
+  const [status, setStatus] = useState("all");
+  const categories = useMemo(() => ["all", ...Array.from(new Set(items.map((item) => item.category))).sort()], [items]);
+  const statuses = useMemo(() => ["all", ...Array.from(new Set(items.map((item) => item.status))).sort()], [items]);
+  const filteredItems = useMemo(() => {
+    const cutoff = statementCutoff(period);
+    return items.filter((item) => (!cutoff || parseDate(item.contribution_date) >= cutoff)
+      && (category === "all" || item.category === category)
+      && (status === "all" || item.status === status));
+  }, [category, items, period, status]);
+  const filteredTotal = filteredItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const approved = filteredItems.filter((item) => item.status === "approved").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const pending = filteredItems.filter((item) => ["pending", "needs_review"].includes(item.status)).length;
+  const months = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return { key, label: date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") };
+    });
+  }, []);
+  const monthlyTotals = months.map((month) => filteredItems.filter((item) => item.contribution_date.startsWith(month.key)).reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  const maxMonthly = Math.max(...monthlyTotals, 0);
+  const cycle = <T extends string>(current: T, values: T[], setter: (value: T) => void) => setter(values[(values.indexOf(current) + 1) % values.length]);
+  const periodLabels = { all: "Todos os períodos", "3m": "Últimos 3 meses", "6m": "Últimos 6 meses", year: "Último ano" };
   return (
     <View style={styles.desktopStatement}>
       <View style={styles.statementSummaryRow}>
-        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Total contribuído</Text><Text style={styles.statementSummaryValue}>{formatBRL(total)}</Text><Text style={styles.statementSummaryMeta}>No período registrado</Text></View>
-        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Contribuições</Text><Text style={styles.statementSummaryValue}>{items.length}</Text><Text style={styles.statementSummaryMeta}>Lançamentos pessoais</Text></View>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Total contribuído</Text><Text style={styles.statementSummaryValue}>{formatBRL(filteredTotal)}</Text><Text style={styles.statementSummaryMeta}>No período selecionado</Text></View>
+        <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Contribuições</Text><Text style={styles.statementSummaryValue}>{filteredItems.length}</Text><Text style={styles.statementSummaryMeta}>Lançamentos pessoais</Text></View>
         <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Confirmado</Text><Text style={styles.statementSummaryValue}>{formatBRL(approved)}</Text><Text style={styles.statementSummaryMeta}>Validado pela tesouraria</Text></View>
         <View style={styles.statementSummaryCard}><Text style={styles.statementSummaryLabel}>Em análise</Text><Text style={styles.statementSummaryValue}>{pending}</Text><Text style={styles.statementSummaryMeta}>Aguardando conferência</Text></View>
       </View>
 
       <View style={styles.statementChartCard}>
         <View style={styles.statementChartHeader}><View><Text style={styles.panelTitle}>Evolução mensal</Text><Text style={styles.panelMeta}>Contribuições registradas nos últimos 6 meses</Text></View><Text style={styles.chartLegend}>Total por mês</Text></View>
-        <View style={styles.statementBars}>
-          {[42, 72, 58, 96, 64, 82].map((height, index) => <View key={String(index)} style={styles.statementBarColumn}><View style={[styles.statementBar, { height }]} /><Text style={styles.chartLabel}>{["Abr", "Mai", "Jun", "Jul", "Ago", "Set"][index]}</Text></View>)}
-        </View>
+        {maxMonthly ? <View style={styles.statementBars}>
+          {months.map((month, index) => <View key={month.key} style={styles.statementBarColumn} accessibilityLabel={`${month.label}: ${formatBRL(monthlyTotals[index])}`}><Text style={styles.chartLabel}>{formatBRL(monthlyTotals[index])}</Text><View testID={`statement-bar-${month.key}`} style={[styles.statementBar, { height: statementBarHeight(monthlyTotals[index], maxMonthly) }]} /><Text style={styles.chartLabel}>{month.label}</Text></View>)}
+        </View> : <Text style={styles.chartEmpty}>Sem contribuições no período selecionado.</Text>}
       </View>
 
-      <View style={styles.statementFilters}><View style={styles.filterPill}><Text style={styles.filterText}>Todos os períodos</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.filterPill}><Text style={styles.filterText}>Todas as categorias</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.filterPill}><Text style={styles.filterText}>Todos os status</Text><Text style={styles.filterChevron}>⌄</Text></View><Button size="compact" onPress={onRegister}>+ Registrar contribuição</Button></View>
+      <View style={styles.statementFilters}>
+        <Pressable style={styles.filterPill} onPress={() => cycle(period, ["all", "3m", "6m", "year"], setPeriod)}><Text style={styles.filterText}>{periodLabels[period]}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
+        <Pressable style={styles.filterPill} onPress={() => cycle(category, categories, setCategory)}><Text style={styles.filterText}>{category === "all" ? "Todas as categorias" : statusLabel(category)}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
+        <Pressable style={styles.filterPill} onPress={() => cycle(status, statuses, setStatus)}><Text style={styles.filterText}>{status === "all" ? "Todos os status" : statusLabel(status)}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
+        <Button size="compact" onPress={onRegister}>+ Registrar contribuição</Button>
+      </View>
 
       <View style={styles.statementTable}>
         <View style={styles.tableHeader}><Text style={styles.tableHeaderCell}>Data</Text><Text style={styles.tableHeaderCell}>Categoria</Text><Text style={styles.tableHeaderCell}>Valor</Text><Text style={styles.tableHeaderCell}>Status</Text></View>
-        {items.length ? items.map((item) => (
+        {filteredItems.length ? filteredItems.map((item) => (
           <View key={item.id} style={styles.tableRow}><Text style={styles.tableCell}>{formatDate(item.contribution_date)}</Text><Text style={styles.tableCell}>{statusLabel(item.category)}</Text><Text style={[styles.tableCell, styles.tableAmount]}>{formatBRL(item.amount)}</Text><Badge label={statusLabel(item.status)} tone={item.status === "approved" || item.status === "received" ? "success" : item.status === "rejected" ? "danger" : "warning"} /></View>
         )) : <View style={styles.tableEmpty}><Text style={styles.panelMeta}>Nenhuma contribuição registrada.</Text><Button size="compact" onPress={onRegister}>+ Enviar comprovante</Button></View>}
       </View>
@@ -59,13 +90,16 @@ export function StatementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     setError(null);
     try {
-      setItems(await api.get<Contribution[]>("/me/statement/"));
+      const result = await api.getPage<Contribution>("/me/statement/", targetPage);
+      setItems(result.items);
+      setPageInfo(result);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar o extrato"));
+      setError(describeError(err, "Não foi possível carregar o extrato"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -108,13 +142,13 @@ export function StatementScreen() {
       ) : null}
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
 
-        {desktop && !error ? <DesktopStatement items={items} total={total} onRegister={() => router.push("/contribution" as never)} /> : !error && items.length ? (
+        {desktop && !error ? <DesktopStatement items={items} onRegister={() => router.push("/contribution" as never)} /> : !error && items.length ? (
           <>
             <Card>
               <Text style={styles.summaryLabel}>Total registrado</Text>
               <Text style={styles.summaryValue}>{formatBRL(total)}</Text>
               <Text style={styles.summaryMeta}>
-                {items.length} {items.length === 1 ? "contribuicao" : "contribuicoes"}
+                {items.length} {items.length === 1 ? "contribuição" : "contribuições"}
               </Text>
             </Card>
 
@@ -145,11 +179,12 @@ export function StatementScreen() {
         {!desktop && !loading && !error && !items.length ? (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>≣</Text>
-            <Text style={styles.emptyTitle}>Nenhuma contribuicao ainda</Text>
-            <Text style={styles.emptyText}>Quando voce enviar um dizimo ou oferta, ele aparece aqui.</Text>
+            <Text style={styles.emptyTitle}>Nenhuma contribuição ainda</Text>
+            <Text style={styles.emptyText}>Quando você enviar um dízimo ou oferta, ele aparecerá aqui.</Text>
             <Button size="compact" onPress={() => router.push("/contribution" as never)}>+ Enviar comprovante</Button>
           </View>
         ) : null}
+        <PaginationControls {...pageInfo} disabled={loading} onPageChange={(nextPage) => { void load(nextPage); }} />
     </Screen>
   );
 }
@@ -253,9 +288,10 @@ const styles = StyleSheet.create({
   panelTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
   panelMeta: { color: colors.inkMuted, fontSize: 11 },
   chartLegend: { color: colors.accent, fontSize: 11, fontWeight: "700" },
+  chartEmpty: { color: colors.inkMuted, textAlign: "center", paddingVertical: 80 },
   statementBars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around", paddingHorizontal: 60, paddingTop: 24, paddingBottom: 5 },
   statementBarColumn: { height: 180, alignItems: "center", justifyContent: "flex-end", gap: 8 },
-  statementBar: { width: 44, minHeight: 24, borderRadius: 6, backgroundColor: colors.accent },
+  statementBar: { width: 44, borderRadius: 6, backgroundColor: colors.accent },
   statementFilters: { height: 52, flexDirection: "row", alignItems: "center", gap: 10 },
   filterPill: { height: 40, minWidth: 154, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 18, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 },
   filterText: { color: colors.inkBody, fontSize: 11 },

@@ -97,7 +97,7 @@ endpoint próprio — implementado na Fase 4.2 como `GET /api/schedules/{id}/can
 | C3 | Resolvida: `GET /api/ministries/` (ministérios administráveis) e `GET /api/schedules/{id}/candidates/` (membros ativos com conflito de agenda e marcação de já escalado) | `ministries/views.py`, `schedules/views.py` + `apps/schedules/tests/test_schedule_admin.py` | Resolvida na Fase 4.2 |
 | C4 | Aprovação de requisição cadastral só existe no Django Admin (`member-requests` expõe só criar/listar) | `members/views.py:20-39` | Fase 3/5 |
 | C5 | Resolvida: guarda de rota no cliente cobre `/schedule-create` **e** `/schedule-admin(/<id>)`; sem a capacidade o app não renderiza a lista administrativa (mostra aviso em PT-BR na própria página) | `mobile/app/_layout.tsx` (`ROTAS_DE_GESTAO`, `PREFIXOS_DE_GESTAO`, `AcessoRestritoEscalas`) + `tools/qa/checks/fase4.mjs` (check 1) e `fase1.mjs` (check 2) | Resolvida na Fase 1.4 / 4 |
-| C6 | Conta sem `member_profile` não tem caminho de "vincular meu cadastro" na UI | `docs/architecture/contas-e-capacidades.md` + `HasMemberProfile.message` | Fase 1.4 / 5 |
+| C6 | Resolvida: conta sem `member_profile` pode solicitar revisão de vínculo por e-mail; o app não escolhe membro nem vincula automaticamente, e a aprovação é feita no Admin | `members/views.py`, `members/models.py`, `mobile/src/screens/ProfileScreen.tsx` | Resolvida na Fase 5 |
 
 ## 5. Regras de interface derivadas da matriz
 

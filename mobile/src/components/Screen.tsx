@@ -15,10 +15,11 @@ import {
 import { ArrowLeft, Bell, HandCoins, Menu, Search } from "lucide-react-native";
 
 import { colors, radius, routeLabels, spacing } from "@/theme";
-import { MVP_NOTIFICATIONS } from "@/notifications";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
+import { ErrorNotice } from "./ErrorNotice";
 import { ABAS, NavGroup, ResultadoBusca, buscaItens, gruposVisiveis, rotaAtiva, temAcesso } from "@/navigation";
-import { MeResponse } from "@/types/api";
+import { MeResponse, Notification } from "@/types/api";
 
 function parentOf(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
@@ -44,7 +45,7 @@ function iniciais(nome: string): string {
 
 function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string; onNavigate: (route: string) => void; recolhida: boolean; grupos: NavGroup[] }) {
   return (
-    <View style={[styles.sidebar, recolhida && styles.sidebarRecolhida]}>
+    <View testID="sidebar" style={[styles.sidebar, recolhida && styles.sidebarRecolhida]}>
       <View style={styles.brand}>
         <View style={styles.brandMark}>
           <Text style={styles.brandMarkText}>M</Text>
@@ -83,34 +84,36 @@ function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string
     </View>
   );
 }
-function NotificationPopover({ onClose, onNavigate }: { onClose: () => void; onNavigate: (route: string) => void }) {
+function NotificationPopover({ notifications, unreadCount, loading, error, onRetry, onClose, onNavigate }: { notifications: Notification[]; unreadCount: number; loading: boolean; error: { title: string; message: string } | null; onRetry: () => void; onClose: () => void; onNavigate: (route: string) => void }) {
   return (
     <View style={styles.notificationPopover}>
       <View style={styles.notificationHeader}>
-        <Text style={styles.notificationTitle}>Notificações ({MVP_NOTIFICATIONS.length})</Text>
+        <Text style={styles.notificationTitle}>Notificações ({unreadCount})</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Fechar notificações" onPress={onClose}>
           <Text style={styles.markRead}>Fechar</Text>
         </Pressable>
       </View>
-      {MVP_NOTIFICATIONS.slice(0, 3).map((notification, index) => (
+      {loading ? <Text style={styles.notificationNote}>Carregando notificações…</Text> : null}
+      {error ? <ErrorNotice title={error.title} message={error.message} onRetry={onRetry} /> : null}
+      {notifications.slice(0, 3).map((notification) => (
         <Pressable
           key={notification.id}
           accessibilityRole="button"
           accessibilityLabel={"Abrir notificação: " + notification.title}
           onPress={() => { onClose(); onNavigate("notifications"); }}
-          style={[styles.notificationRow, index === 0 && styles.notificationRowUnread]}
+          style={[styles.notificationRow, !notification.is_read && styles.notificationRowUnread]}
         >
           <View style={styles.notificationDot}><Bell size={14} color={colors.accent} /></View>
           <View style={styles.notificationCopy}>
             <Text numberOfLines={1} style={styles.notificationRowTitle}>{notification.title}</Text>
-            <Text numberOfLines={1} style={styles.notificationMeta}>{notification.time}</Text>
+            <Text numberOfLines={1} style={styles.notificationMeta}>{new Date(notification.created_at).toLocaleString("pt-BR")}</Text>
           </View>
         </Pressable>
       ))}
       <Pressable accessibilityRole="button" accessibilityLabel="Ver todas as notificações" onPress={() => { onClose(); onNavigate("notifications"); }}>
         <Text style={styles.viewAll}>Ver todas</Text>
       </Pressable>
-      <Text style={styles.notificationNote}>Conteúdo de demonstração do MVP.</Text>
+      {!loading && !error && !notifications.length ? <Text style={styles.notificationNote}>Nenhuma notificação nova.</Text> : null}
     </View>
   );
 }
@@ -138,6 +141,8 @@ export function Screen({
   const parentLabel = parentOf(pathname);
   const { me } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationState = useNotifications();
+  const notifications = notificationState.items;
   const [menuRecolhido, setMenuRecolhido] = useState(false);
   const [busca, setBusca] = useState("");
   const capabilities = me?.capabilities ?? [];
@@ -210,12 +215,16 @@ export function Screen({
                     accessibilityRole="button"
                     accessibilityLabel="Abrir notificações"
                     accessibilityState={{ expanded: notificationsOpen }}
-                    onPress={() => setNotificationsOpen((current) => !current)}
+                    onPress={() => {
+                      if (!notificationsOpen) void notificationState.reload().catch(() => undefined);
+                      setNotificationsOpen((current) => !current);
+                    }}
                     style={({ pressed }) => [styles.topbarIconButton, pressed && styles.pressed]}
                   >
                     <Bell size={17} color={colors.inkBody} />
+                    {!notificationState.error && notificationState.unreadCount > 0 ? <View testID="notification-badge" style={styles.notificationBadge}><Text style={styles.notificationBadgeText}>{notificationState.unreadCount > 99 ? "99+" : notificationState.unreadCount}</Text></View> : null}
                   </Pressable>
-                  {notificationsOpen ? <NotificationPopover onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
+                  {notificationsOpen ? <NotificationPopover notifications={notifications} unreadCount={notificationState.unreadCount} loading={notificationState.loading} error={notificationState.error} onRetry={() => { void notificationState.reload().catch(() => undefined); }} onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -372,6 +381,8 @@ const styles = StyleSheet.create({
   searchEmptyText: { color: colors.inkMuted, fontSize: 12, paddingHorizontal: 10, paddingVertical: 10 },
   notificationAnchor: { position: "relative", zIndex: 42 },
   topbarIconButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  notificationBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
+  notificationBadgeText: { color: colors.onAccent, fontSize: 9, fontWeight: "800" },
   profilePill: { height: 40, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 10, backgroundColor: colors.avatar, borderRadius: 6, maxWidth: 230 },
   profileName: { flexShrink: 1, color: colors.ink, fontSize: 12, fontWeight: "700" },
   profileAvatar: { width: 28, height: 28, borderRadius: 6, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },

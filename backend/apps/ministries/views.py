@@ -1,13 +1,14 @@
 from rest_framework import generics
 
 from apps.accounts.permissions import IsScheduleCoordinatorOrAdmin
+from apps.accounts.pagination import OptionalPaginationMixin
 
 from .models import Ministry
 from .serializers import MinistrySerializer
 from .services import managed_ministries
 
 
-class MinistryListView(generics.ListAPIView):
+class MinistryListView(OptionalPaginationMixin, generics.ListAPIView):
     """Ministerios disponiveis para montar escala com esta conta.
 
     Lideranca recebe todos os ministerios da igreja; coordenador recebe apenas
