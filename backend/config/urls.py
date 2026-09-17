@@ -12,6 +12,7 @@ from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, MyStatementView
 from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
 from apps.ministries.views import MinistryListView
+from apps.audit.notification_views import MyNotificationViewSet
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
     MyScheduleAssignmentsView,
@@ -33,6 +34,7 @@ router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")
+router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -71,10 +73,10 @@ urlpatterns = [
     path("api/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Alias para desenvolvimento local. Algumas extensoes de bloqueio do navegador
-# interpretam o segmento `/api/` como rastreamento e impedem o fetch do Expo.
-# Mantemos `/api/` como contrato publico e oferecemos este caminho equivalente
-# apenas para que o cliente web local consiga falar com o mesmo backend.
+# Aliases para desenvolvimento local. Algumas extensoes de bloqueio do navegador
+# interpretam caminhos com `api` como rastreamento e impedem o fetch do Expo.
+# Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
+# para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
@@ -98,4 +100,7 @@ local_api_urlpatterns = [
     path("", include(router.urls)),
 ]
 
-urlpatterns += [path("local-api/", include(local_api_urlpatterns))]
+urlpatterns += [
+    path("local-api/", include(local_api_urlpatterns)),
+    path("backend/", include(local_api_urlpatterns)),
+]

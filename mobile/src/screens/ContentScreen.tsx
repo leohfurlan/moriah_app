@@ -10,9 +10,9 @@ export function ContentScreen() {
       <Card>
         <Text style={styles.title}>Conteúdo da igreja</Text>
         <Text style={styles.body}>
-          Este espaço reúne mensagens, materiais e comunicados publicados pela igreja.
+        Este domínio ainda não faz parte do MVP e não está disponível para publicação.
         </Text>
-        <Text style={styles.meta}>Nenhum conteúdo publicado ainda.</Text>
+        <Text style={styles.meta}>A área será liberada quando houver modelo, permissões e fluxo de publicação.</Text>
       </Card>
     </Screen>
   );

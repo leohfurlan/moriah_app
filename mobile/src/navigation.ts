@@ -9,7 +9,6 @@
  * menu — nada de rota vazia para "preencher" o desenho.
  */
 import {
-  BookOpen,
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
@@ -81,12 +80,6 @@ export const MENU_LATERAL: NavGroup[] = [
     ],
   },
   {
-    label: "Conteúdo",
-    items: [
-      criarItem({ id: "conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member"], matches: ["content"] }),
-    ],
-  },
-  {
     label: "Financeiro",
     items: [
       criarItem({ id: "extrato", label: "Meu extrato", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
@@ -130,7 +123,6 @@ export const ABAS: NavItem[] = [
   criarItem({ id: "aba-inicio", label: "Início", route: "home", Icon: House, matches: ["home"] }),
   criarItem({ id: "aba-agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
   criarItem({ id: "aba-contribuicoes", label: "Contribuições", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
-  criarItem({ id: "aba-conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member"], matches: ["content"] }),
   criarItem({ id: "aba-perfil", label: "Perfil", route: "profile", Icon: UserRound, required: ["member"], matches: ["profile"] }),
 ];
 

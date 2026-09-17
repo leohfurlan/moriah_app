@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { api, setUnauthorizedHandler } from "@/services/api";
 import { clearTokens, saveTokens } from "@/services/storage";
+import { resetNotifications } from "@/services/notificationStore";
 import { LoginResponse, MeResponse } from "@/types/api";
 
 /**
@@ -27,6 +28,7 @@ function notificar() {
 
 /** Descarta o perfil em memoria (logout e sessao expirada). */
 export function limparPerfilEmMemoria() {
+  resetNotifications();
   geracaoPerfil += 1;
   requisicaoEmAndamento = null;
   perfilAtual = null;

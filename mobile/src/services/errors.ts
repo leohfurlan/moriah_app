@@ -174,7 +174,8 @@ export function describeError(error: unknown, context?: string): UserFacingError
         };
       case 409:
         return {
-          title: "Registro desatualizado",
+          title: error.payload && typeof error.payload === "object" && "code" in error.payload && error.payload.code === "schedule_conflict"
+            ? "Conflito de horário" : "Registro desatualizado",
           message:
             detail ||
             "Este item mudou desde que voce abriu a tela. Atualize a lista e tente de novo.",

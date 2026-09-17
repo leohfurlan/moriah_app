@@ -88,6 +88,19 @@ export interface ScheduleCandidate {
   id: number; full_name: string; preferred_name: string; email: string; phone: string; status: string;
   ministry_names: string[]; role_names: string[]; already_assigned: boolean; available: boolean; conflict_reason: string;
 }
+
+export interface Notification {
+  id: number;
+  category: "Escalas" | "Igreja" | "Contribuições" | string;
+  title: string;
+  body: string;
+  detail: string;
+  action_label: string;
+  action_route: string;
+  created_at: string;
+  read_at?: string | null;
+  is_read: boolean;
+}
 export interface ScheduleAdminDetail extends ScheduleAdminItem {
   notes: string; created_by?: number | null; created_by_name: string; ministry_roles: MinistryRoleAdmin[];
   team: ScheduleAdminTeamMember[]; substitutions: ScheduleSubstitutionItem[];

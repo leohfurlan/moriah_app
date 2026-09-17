@@ -9,7 +9,7 @@ import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
-import { describeError, UserFacingError } from "@/services/errors";
+import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignment } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
@@ -22,6 +22,16 @@ function statusTone(status: ScheduleAssignment["status"]): "success" | "warning"
 
 type ScheduleView = "calendar" | "list" | "ministry";
 type FilterOption = { value: string; label: string };
+type ScheduleListRow = {
+  scheduleId: number;
+  scheduleName: string;
+  eventName: string;
+  eventStartAt: string;
+  ministryName: string;
+  statuses: ScheduleAssignment["status"][];
+  participationCount: number;
+  detailAssignmentId: number;
+};
 
 function FilterMenu({
   label,
@@ -83,12 +93,14 @@ function ministryAllowsRepertoire(name: string): boolean {
 function DesktopSchedules({
   items,
   canCreate,
+  canManage,
   error,
   onRetry,
   router,
 }: {
   items: ScheduleAssignment[];
   canCreate: boolean;
+  canManage: boolean;
   error: UserFacingError | null;
   onRetry: () => void;
   router: ReturnType<typeof useRouter>;
@@ -109,10 +121,32 @@ function DesktopSchedules({
     { value: "all", label: "Status: todos" },
     ...Array.from(new Set(items.map((item) => item.status))).sort().map((status) => ({ value: status, label: `Status: ${statusLabel(status as ScheduleAssignment["status"])}` })),
   ];
-  const filteredItems = items.filter((item) =>
+  const scopedItems = items.filter((item) =>
     (eventFilter === "all" || item.event_name === eventFilter)
-      && (ministryFilter === "all" || (item.ministry_name || "Sem ministério") === ministryFilter)
-      && (statusFilter === "all" || item.status === statusFilter),
+      && (ministryFilter === "all" || (item.ministry_name || "Sem ministério") === ministryFilter),
+  );
+  const filteredItems = scopedItems.filter((item) => statusFilter === "all" || item.status === statusFilter);
+  const scheduleRows = Array.from(scopedItems.reduce((rows, item) => {
+    const ministryName = item.ministry_name || "Sem ministério";
+    const current = rows.get(item.schedule);
+    if (current) {
+      current.statuses = Array.from(new Set([...current.statuses, item.status]));
+      current.participationCount += 1;
+      return rows;
+    }
+    rows.set(item.schedule, {
+      scheduleId: item.schedule,
+      scheduleName: item.schedule_name,
+      eventName: item.event_name,
+      eventStartAt: item.event_start_at,
+      ministryName,
+      statuses: [item.status],
+      participationCount: 1,
+      detailAssignmentId: item.id,
+    });
+    return rows;
+  }, new Map<number, ScheduleListRow>()).values()).filter((row) =>
+    statusFilter === "all" || row.statuses.includes(statusFilter as ScheduleAssignment["status"]),
   );
   const groups = Array.from(new Set(filteredItems.map((item) =>
     view === "calendar" ? new Date(item.event_start_at).toLocaleDateString("pt-BR") : item.ministry_name || "Sem ministério",
@@ -127,6 +161,30 @@ function DesktopSchedules({
       <Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button>
     </View>
   );
+  const renderScheduleRow = (row: ScheduleListRow) => {
+    const status = row.statuses.includes("conflict")
+      ? "conflict"
+      : row.statuses.includes("pending")
+        ? "pending"
+        : row.statuses[0];
+    return (
+      <View key={row.scheduleId} style={styles.scheduleBoardRow}>
+        <View style={styles.scheduleBoardCopy}>
+          <Text style={styles.scheduleBoardTitle}>{row.scheduleName}</Text>
+          <Text style={styles.meta}>{row.eventName} · {formatDate(row.eventStartAt, true)} · {row.ministryName}</Text>
+          <Text style={styles.meta}>{row.participationCount} {row.participationCount === 1 ? "participação" : "participações"}</Text>
+        </View>
+        <Badge label={statusLabel(status)} tone={statusTone(status)} />
+        <Button
+          size="compact"
+          variant="ghost"
+          onPress={() => router.push(canManage
+            ? { pathname: "/schedule-admin/[id]", params: { id: row.scheduleId } }
+            : { pathname: "/schedule/[id]", params: { id: row.detailAssignmentId } })}
+        >Detalhes</Button>
+      </View>
+    );
+  };
   return (
     <View style={styles.desktopSchedules}>
       <View style={styles.scheduleViews}>
@@ -155,7 +213,7 @@ function DesktopSchedules({
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={onRetry} /> : null}
       {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento, monte a equipe e acompanhe as respostas.</Text><Button size="compact" onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
       <View style={styles.scheduleBoard}>
-        {groups.length ? view === "list" ? filteredItems.map(renderRow) : groups.map((group) => {
+        {(view === "list" ? scheduleRows.length > 0 : groups.length) ? view === "list" ? scheduleRows.map(renderScheduleRow) : groups.map((group) => {
           const groupItems = view === "calendar"
             ? filteredItems.filter((item) => new Date(item.event_start_at).toLocaleDateString("pt-BR") === group)
             : filteredItems.filter((item) => (item.ministry_name || "Sem ministério") === group);
@@ -187,10 +245,10 @@ export function SchedulesScreen() {
   const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const isAdmin = Boolean(me?.capabilities.includes("manage_all"));
-  const canCreate = Boolean(me?.can_access_management);
   // Atalho para a gestao existe so para quem realmente opera escalas
   // (coordenacao/lideranca). `can_access_management` e mais amplo que isso.
   const podeGerenciar = podeGerenciarEscalas(me?.capabilities || []);
+  const canCreate = podeGerenciar;
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -224,6 +282,7 @@ export function SchedulesScreen() {
         title: action === "confirm" ? "Escala confirmada" : "Resposta registrada",
       });
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) await load();
       const result = describeError(err, action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar");
       toast(result.message, { tone: "error", title: result.title });
     } finally {
@@ -250,7 +309,7 @@ export function SchedulesScreen() {
       onRefresh={onRefresh}
       headerAccessory={canCreate ? <Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Adicionar escala</Button> : null}
     >
-      {desktop ? <DesktopSchedules items={items} canCreate={canCreate} error={error} onRetry={load} router={router} /> : <>
+      {desktop ? <DesktopSchedules items={items} canCreate={canCreate} canManage={podeGerenciar} error={error} onRetry={load} router={router} /> : <>
       {canCreate ? (
         <Card>
           <Text style={styles.managementTitle}>Gestão de escalas</Text>
@@ -281,7 +340,7 @@ export function SchedulesScreen() {
             {ministryAllowsRepertoire(item.ministry_name) ? "Ver equipe e repertório" : "Ver equipe"}
           </Button>
 
-          {item.status === "pending" && !isAdmin ? (
+          {item.status !== "replacement_needed" && !isAdmin ? (
             <View style={styles.respondBox}>
               <Field
                 value={justifications[item.id] || ""}
@@ -289,7 +348,7 @@ export function SchedulesScreen() {
                 placeholder="Justificativa (recusa ou indisponibilidade)"
               />
               <View style={styles.buttonRow}>
-                <View style={styles.buttonFlex}><Button disabled={actingId !== null} loading={actingId === item.id} onPress={() => act(item.id, "confirm")}>Confirmar</Button></View>
+                <View style={styles.buttonFlex}><Button disabled={actingId !== null} loading={actingId === item.id} onPress={() => act(item.id, "confirm")}>{item.status === "confirmed" ? "Manter confirmação" : "Confirmar"}</Button></View>
                 <View style={styles.buttonFlex}><Button disabled={actingId !== null} variant="secondary" onPress={() => act(item.id, "decline")}>Recusar</Button></View>
               </View>
               <Button disabled={actingId !== null} variant="ghost" onPress={() => act(item.id, "unavailable")}>Marcar indisponível</Button>

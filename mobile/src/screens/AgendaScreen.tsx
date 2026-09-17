@@ -94,7 +94,7 @@ function DesktopAgenda({
       </View>
       <View style={styles.desktopAgendaBottom}>
         <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Eventos da igreja</Text>{upcomingEvents.length ? upcomingEvents.slice(0, 4).map((event) => <Pressable key={event.id} onPress={() => setSelectedDate(dateKey(event.start_at))} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{event.name}</Text><Text style={styles.meta}>{formatDate(event.start_at, true)} · {event.location || event.event_type_display}</Text></View><Text style={styles.link}>Ver no calendário</Text></Pressable>) : <Text style={styles.meta}>Nenhum evento futuro cadastrado.</Text>}</View>
-        <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Compromissos em {selectedDate}</Text>{selectedEntries.length ? selectedEntries.map((entry) => <View key={entry.id} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{entry.title}</Text><Text style={styles.meta}>{entry.subtitle} · {entry.detail}</Text></View><Badge label={entry.category} tone={entry.category === "Escala" ? "warning" : "neutral"} /></View>) : <Text style={styles.meta}>Nenhum compromisso para este dia.</Text>}{scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}{schedules.length ? <Text style={styles.agendaFootnote}>{schedules.length} escala(s) vinculada(s)</Text> : null}</View>
+        <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Meus compromissos em {selectedDate}</Text>{selectedEntries.length ? selectedEntries.map((entry) => <View key={entry.id} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{entry.title}</Text><Text style={styles.meta}>{entry.subtitle} · {entry.detail}</Text></View><Badge label={entry.category} tone={entry.category === "Escala" ? "warning" : "neutral"} /></View>) : <Text style={styles.meta}>Nenhum compromisso para este dia.</Text>}{scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}{schedules.length ? <Text style={styles.agendaFootnote}>{schedules.length} escala(s) vinculada(s)</Text> : null}</View>
       </View>
     </View>
   );
@@ -173,7 +173,7 @@ export function AgendaScreen() {
   ], [churchEvents, items, schedules]);
 
   const days = useMemo(() => calendarDays(cursor), [cursor]);
-  const selectedEntries = entries.filter((entry) => entry.date === selectedDate);
+  const selectedEntries = entries.filter((entry) => entry.date === selectedDate && entry.category === "Minha agenda");
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
   return (
@@ -240,7 +240,7 @@ export function AgendaScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.sectionTitle}>{selectedDate === dateKey(new Date()) ? "Hoje" : "Compromissos do dia"}</Text>
+        <Text style={styles.sectionTitle}>{selectedDate === dateKey(new Date()) ? "Meus compromissos de hoje" : "Meus compromissos do dia"}</Text>
         {selectedEntries.length ? selectedEntries.map((entry) => (
           <View key={entry.id} style={styles.entryRow}>
             <View style={styles.entryCopy}>
@@ -267,7 +267,7 @@ export function AgendaScreen() {
         )) : <Text style={styles.meta}>Nenhum evento futuro cadastrado.</Text>}
       </Card>
 
-      {!loading && !items.length ? <Text style={styles.meta}>{isAdminWithoutMember ? "Nenhum compromisso da igreja cadastrado." : "Sua agenda pessoal ainda não tem compromissos."}</Text> : null}
+      {!loading && !items.length ? <Text style={styles.meta}>Sua agenda pessoal ainda não tem compromissos.</Text> : null}
     </Screen>
   );
 }

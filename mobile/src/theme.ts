@@ -1,4 +1,5 @@
 import { TextStyle } from "react-native";
+import { parseDate } from "./services/dates";
 
 /**
  * Design tokens do Moriah app.
@@ -94,7 +95,6 @@ const statusLabels: Record<string, string> = {
   active: "Ativo",
   approved: "Aprovado",
   received: "Recebido",
-  pending_confirmation: "Aguardando confirmacao",
   rejected: "Recusado",
   needs_review: "Precisa revisao",
   tithe: "Dízimo",
@@ -111,7 +111,7 @@ export function statusLabel(value: string): string {
 
 /** Data ISO -> "12/09/2026 19:30" ou "--" se invalida. */
 export function formatDate(iso: string, withTime = false): string {
-  const date = new Date(iso);
+  const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "--";
   return withTime ? date.toLocaleString("pt-BR") : date.toLocaleDateString("pt-BR");
 }

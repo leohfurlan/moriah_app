@@ -7,7 +7,7 @@ import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
-import { describeError, UserFacingError } from "@/services/errors";
+import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
@@ -84,6 +84,7 @@ export function ScheduleDetailScreen() {
       await load();
       toast(ACTION_FEEDBACK[action].message, { tone: "success", title: ACTION_FEEDBACK[action].title });
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) await load();
       const { title, message } = describeError(
         err,
         action === "confirm"
@@ -189,9 +190,9 @@ export function ScheduleDetailScreen() {
             <View style={styles.respondedNote}>
               <Text style={styles.meta}>Esta escala foi cancelada. O periodo de respostas foi encerrado.</Text>
             </View>
-          ) : detail.status === "pending" || detail.status === "conflict" ? (
+          ) : detail.status !== "replacement_needed" ? (
             <Card>
-              <Text style={styles.sectionTitle}>Sua resposta</Text>
+              <Text style={styles.sectionTitle}>{detail.status === "pending" ? "Sua resposta" : "Alterar resposta"}</Text>
               {detail.status === "conflict" ? (
                 <Text style={styles.conflictNotice}>
                   {detail.conflict_reason || "Ha um conflito de horario nesta escala."}

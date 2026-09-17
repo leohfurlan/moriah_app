@@ -5,6 +5,7 @@ import pytest
 from apps.events.models import Event
 from apps.ministries.models import Ministry, MinistryRole
 from apps.schedules.models import PersonalCommitment, Schedule, ScheduleAssignment
+from apps.audit.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
@@ -19,6 +20,30 @@ def test_membro_cria_compromisso_e_so_enxerga_os_proprios(api_client, make_user,
     assert response.status_code == 201
     assert PersonalCommitment.objects.get().member == member
     assert api_client.get("/api/me/agenda/").data[0]["title"] == "Ensaio"
+
+
+def test_admin_tambem_so_enxerga_seus_compromissos_pessoais(api_client, make_user, make_member):
+    admin = make_user("admin@igreja.com", role="admin")
+    admin_member = make_member("Admin", user=admin)
+    other_member = make_member("Outro membro")
+    PersonalCommitment.objects.create(
+        church=admin_member.church,
+        member=admin_member,
+        title="Compromisso do admin",
+        starts_at=datetime.datetime(2026, 9, 20, 18, tzinfo=datetime.timezone.utc),
+    )
+    PersonalCommitment.objects.create(
+        church=other_member.church,
+        member=other_member,
+        title="Compromisso de outra pessoa",
+        starts_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.get("/api/me/agenda/")
+
+    assert response.status_code == 200
+    assert [item["title"] for item in response.data] == ["Compromisso do admin"]
 
 
 def test_coordenador_publica_escala_do_seu_ministerio(api_client, make_user, make_member, church):
@@ -54,6 +79,89 @@ def test_confirmacao_recusa_havendo_conflito_de_horario(api_client, make_user, m
     assert response.status_code == 409
     assignment.refresh_from_db()
     assert assignment.status == ScheduleAssignment.Status.CONFLICT
+
+
+def test_membro_nao_le_nem_responde_escala_em_rascunho(api_client, make_user, make_member, church):
+    user = make_user("membro.rascunho@igreja.com")
+    member = make_member("Maria Rascunho", user=user)
+    ministry = Ministry.objects.create(church=church, name="Louvor")
+    role = MinistryRole.objects.create(church=church, ministry=ministry, name="Vocal")
+    event = Event.objects.create(
+        church=church,
+        name="Culto em montagem",
+        start_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
+    schedule = Schedule.objects.create(
+        church=church, event=event, name="Escala em montagem", status=Schedule.Status.DRAFT
+    )
+    assignment = ScheduleAssignment.objects.create(
+        church=church, schedule=schedule, member=member, ministry_role=role
+    )
+    api_client.force_authenticate(user=user)
+
+    assert api_client.get(f"/api/me/schedules/{assignment.id}/").status_code == 404
+    response = api_client.post(
+        f"/api/me/schedules/{assignment.id}/action/", {"action": "confirm"}, format="json"
+    )
+
+    assert response.status_code == 409
+    assignment.refresh_from_db()
+    assert assignment.status == ScheduleAssignment.Status.PENDING
+
+
+def test_confirmacao_considera_compromisso_pessoal(api_client, make_user, make_member, church):
+    user = make_user("membro.compromisso@igreja.com")
+    member = make_member("Maria Compromisso", user=user)
+    ministry = Ministry.objects.create(church=church, name="Louvor")
+    role = MinistryRole.objects.create(church=church, ministry=ministry, name="Vocal")
+    event = Event.objects.create(
+        church=church,
+        name="Culto com conflito pessoal",
+        start_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
+    schedule = Schedule.objects.create(
+        church=church, event=event, name="Escala com conflito pessoal"
+    )
+    assignment = ScheduleAssignment.objects.create(
+        church=church, schedule=schedule, member=member, ministry_role=role
+    )
+    PersonalCommitment.objects.create(
+        church=church,
+        member=member,
+        title="Consulta médica",
+        starts_at=datetime.datetime(2026, 9, 20, 19, 30, tzinfo=datetime.timezone.utc),
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(
+        f"/api/me/schedules/{assignment.id}/action/", {"action": "confirm"}, format="json"
+    )
+
+    assert response.status_code == 409
+    assignment.refresh_from_db()
+    assert assignment.status == ScheduleAssignment.Status.CONFLICT
+    assert "Consulta médica" in assignment.conflict_reason
+    assert response.data["code"] == "schedule_conflict"
+    assert response.data["detail"] == assignment.conflict_reason
+
+
+def test_cancelamento_audita_estado_anterior_real(api_client, make_user, church):
+    admin = make_user("admin.cancelamento.auditoria@igreja.com", role="admin")
+    event = Event.objects.create(
+        church=church,
+        name="Culto auditado",
+        start_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
+    schedule = Schedule.objects.create(
+        church=church, event=event, name="Escala publicada", status=Schedule.Status.PUBLISHED
+    )
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.post(f"/api/schedules/{schedule.id}/cancel/")
+
+    assert response.status_code == 200
+    audit = AuditLog.objects.get(action="schedule_cancelled", object_id=str(schedule.id))
+    assert audit.payload["previous_status"] == Schedule.Status.PUBLISHED
 
 
 @pytest.mark.parametrize(

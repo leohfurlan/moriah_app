@@ -6,6 +6,7 @@ from conftest import DEFAULT_PASSWORD
 pytestmark = pytest.mark.django_db
 
 LOGIN_URL = "/api/auth/login/"
+LOCAL_LOGIN_URL = "/backend/auth/login/"
 
 
 def test_login_com_credenciais_corretas_retorna_tokens(api_client, make_user):
@@ -38,6 +39,16 @@ def test_login_com_senha_incorreta_retorna_401(api_client, make_user):
 def test_login_com_usuario_inexistente_retorna_401(api_client):
     response = api_client.post(
         LOGIN_URL,
+        {"email": "ninguem@igreja.com", "password": DEFAULT_PASSWORD},
+        format="json",
+    )
+
+    assert response.status_code == 401
+
+
+def test_login_local_com_usuario_inexistente_retorna_401(api_client):
+    response = api_client.post(
+        LOCAL_LOGIN_URL,
         {"email": "ninguem@igreja.com", "password": DEFAULT_PASSWORD},
         format="json",
     )
