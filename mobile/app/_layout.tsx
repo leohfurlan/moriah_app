@@ -9,7 +9,7 @@ import { Capacidade, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navig
 import { colors, radius, spacing } from "@/theme";
 
 /** Rotas que exigem apenas estar logado com vinculo de membro. */
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/content", "/notifications"];
+const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/agenda-new", "/content", "/notifications"];
 
 /**
  * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade

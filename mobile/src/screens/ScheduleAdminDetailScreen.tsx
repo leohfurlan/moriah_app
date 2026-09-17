@@ -45,6 +45,7 @@ export function ScheduleAdminDetailScreen() {
   const [candidatos, setCandidatos] = useState<ScheduleCandidate[]>([]);
   const [carregandoCandidatos, setCarregandoCandidatos] = useState(false);
   const [funcaoId, setFuncaoId] = useState<number | null>(null);
+  const [filtroFuncaoId, setFiltroFuncaoId] = useState<number | null>(null);
   const [candidatoId, setCandidatoId] = useState<number | null>(null);
   const [justificativa, setJustificativa] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -82,6 +83,16 @@ export function ScheduleAdminDetailScreen() {
     [candidatos, candidatoId],
   );
 
+  const candidatosVisiveis = useMemo(() => {
+    if (filtroFuncaoId === null) return candidatos;
+    const funcao = detail?.ministry_roles.find((item) => item.id === filtroFuncaoId);
+    if (!funcao) return candidatos;
+    const nomeNormalizado = funcao.name.trim().toLocaleLowerCase();
+    return candidatos.filter((candidato) =>
+      candidato.role_names.some((nome) => nome.trim().toLocaleLowerCase() === nomeNormalizado),
+    );
+  }, [candidatos, detail?.ministry_roles, filtroFuncaoId]);
+
   async function abrirPainel(proximo: Painel) {
     if (!proximo) {
       setPainel(null);
@@ -89,6 +100,7 @@ export function ScheduleAdminDetailScreen() {
     }
     setPainel(proximo);
     setFuncaoId(proximo.tipo === "substituir" ? proximo.membro.role_id : detail?.ministry_roles[0]?.id ?? null);
+    setFiltroFuncaoId(null);
     setCandidatoId(null);
     setJustificativa("");
     setCarregandoCandidatos(true);
@@ -366,45 +378,65 @@ export function ScheduleAdminDetailScreen() {
       {painel ? (
         <Modal visible transparent animationType="slide" onRequestClose={() => setPainel(null)}>
           <View style={styles.modalOverlay}>
-            <ScrollView contentContainerStyle={styles.modalContent}>
-          <Text style={styles.secao}>
-            {painel.tipo === "adicionar" ? "Adicionar integrante" : `Substituir ${painel.membro.member_name}`}
-          </Text>
-          <Text style={styles.rotulo}>Função</Text>
-          <View style={styles.chips}>
-            {detail.ministry_roles.map((funcao) => {
-              const ativa = funcao.id === funcaoId;
-              return (
-                <Pressable
-                  key={funcao.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Função ${funcao.name}`}
-                  accessibilityState={{ selected: ativa }}
-                  onPress={() => setFuncaoId(funcao.id)}
-                  style={({ pressed }) => [styles.chip, ativa && styles.chipAtivo, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.chipTexto, ativa && styles.chipTextoAtivo]}>
-                    {funcao.name}
-                    {funcao.is_filled ? " (preenchida)" : ""}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            {!detail.ministry_roles.length ? (
-              <Text style={styles.meta}>Este ministério ainda não tem funções cadastradas.</Text>
-            ) : null}
-          </View>
+            <View style={styles.modalCard}>
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.secao}>
+                  {painel.tipo === "adicionar" ? "Adicionar integrante" : `Substituir ${painel.membro.member_name}`}
+                </Text>
+                <Text style={styles.rotulo}>Função</Text>
+                <View style={styles.chips}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Todas as funções"
+                    accessibilityState={{ selected: filtroFuncaoId === null }}
+                    onPress={() => setFiltroFuncaoId(null)}
+                    style={({ pressed }) => [styles.chip, filtroFuncaoId === null && styles.chipAtivo, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.chipTexto, filtroFuncaoId === null && styles.chipTextoAtivo]}>Todos</Text>
+                  </Pressable>
+                  {detail.ministry_roles.map((funcao) => {
+                    const ativa = filtroFuncaoId === funcao.id;
+                    return (
+                      <Pressable
+                        key={funcao.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Filtrar função ${funcao.name}`}
+                        accessibilityState={{ selected: ativa }}
+                        onPress={() => {
+                          setFiltroFuncaoId(funcao.id);
+                          setFuncaoId(funcao.id);
+                        }}
+                        style={({ pressed }) => [styles.chip, ativa && styles.chipAtivo, pressed && styles.pressed]}
+                      >
+                        <Text style={[styles.chipTexto, ativa && styles.chipTextoAtivo]}>
+                          {funcao.name}
+                          {funcao.is_filled ? " (preenchida)" : ""}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  {!detail.ministry_roles.length ? (
+                    <Text style={styles.meta}>Este ministério ainda não tem funções cadastradas.</Text>
+                  ) : null}
+                </View>
+                {filtroFuncaoId === null && funcaoId ? (
+                  <Text style={styles.meta}>Função da escalação: {detail.ministry_roles.find((item) => item.id === funcaoId)?.name || "não definida"}.</Text>
+                ) : null}
 
-          <Text style={styles.rotulo}>Candidatos</Text>
-          {carregandoCandidatos ? <Text style={styles.meta}>Carregando candidatos…</Text> : null}
-          {!carregandoCandidatos && !candidatos.length ? (
-            <Text style={styles.meta}>Nenhum membro ativo disponível para escalar.</Text>
-          ) : null}
-          <View style={styles.listaCandidatos}>
-            {candidatos.map((candidato) => {
-              const escolhido = candidato.id === candidatoId;
-              return (
-                <Pressable
+                <Text style={styles.rotulo}>Candidatos</Text>
+                {carregandoCandidatos ? <Text style={styles.meta}>Carregando candidatos…</Text> : null}
+                {!carregandoCandidatos && !candidatosVisiveis.length ? (
+                  <Text style={styles.meta}>Nenhum membro ativo encontrado para esta função.</Text>
+                ) : null}
+                <View style={styles.listaCandidatos}>
+                  {candidatosVisiveis.map((candidato) => {
+                const escolhido = candidato.id === candidatoId;
+                return (
+                  <Pressable
                   key={candidato.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Escalar ${candidato.full_name}`}
@@ -416,56 +448,60 @@ export function ScheduleAdminDetailScreen() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.nomeCandidato}>{candidato.full_name}</Text>
-                  <Text style={styles.meta}>
-                    {candidato.ministry_names.length ? candidato.ministry_names.join(", ") : "Sem ministério"}
-                    {candidato.already_assigned ? " · já escalado nesta escala" : ""}
-                  </Text>
-                  {!candidato.available && candidato.conflict_reason ? (
-                    <Text style={styles.aviso}>Indisponível: {candidato.conflict_reason}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+                    <View style={styles.candidatoTexto}>
+                      <Text style={styles.nomeCandidato}>{candidato.full_name}</Text>
+                      <Text style={styles.meta}>
+                        {candidato.ministry_names.length ? candidato.ministry_names.join(", ") : "Sem ministério"}
+                        {candidato.role_names.length ? ` · ${candidato.role_names.join(", ")}` : ""}
+                        {candidato.already_assigned ? " · já escalado nesta escala" : ""}
+                      </Text>
+                      {!candidato.available && candidato.conflict_reason ? (
+                        <Text style={styles.aviso}>Indisponível: {candidato.conflict_reason}</Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+                  })}
+                </View>
 
-          <Text style={styles.rotulo}>Justificativa (opcional)</Text>
-          <Field
-            accessibilityLabel="Justificativa da escalação"
-            value={justificativa}
-            onChangeText={setJustificativa}
-            placeholder="Ex.: troca combinada com o coordenador"
-          />
+                <Text style={styles.rotulo}>Justificativa (opcional)</Text>
+                <Field
+                  accessibilityLabel="Justificativa da escalação"
+                  value={justificativa}
+                  onChangeText={setJustificativa}
+                  placeholder="Ex.: troca combinada com o coordenador"
+                />
 
-          {candidatoEscolhido && !candidatoEscolhido.available ? (
-            <InlineNotice
-              tone="warning"
-              title="Conflito de agenda"
-              message={`${candidatoEscolhido.full_name}: ${candidatoEscolhido.conflict_reason}. Escalar assim mesmo marca a situação como conflito.`}
-            />
-          ) : null}
+                {candidatoEscolhido && !candidatoEscolhido.available ? (
+                  <InlineNotice
+                    tone="warning"
+                    title="Conflito de agenda"
+                    message={`${candidatoEscolhido.full_name}: ${candidatoEscolhido.conflict_reason}. Escalar assim mesmo marca a situação como conflito.`}
+                  />
+                ) : null}
 
-          <View style={styles.acoes}>
-            <View style={styles.acao}>
-              <Button
-                loading={salvando}
-                disabled={salvando || !candidatoId}
-                onPress={painel.tipo === "adicionar" ? confirmarEscalacao : confirmarSubstituicao}
-              >
-                {candidatoEscolhido && !candidatoEscolhido.available
-                  ? "Escalar mesmo assim"
-                  : painel.tipo === "adicionar"
-                    ? "Confirmar escalação"
-                    : "Confirmar substituição"}
-              </Button>
+                <View style={styles.acoes}>
+                  <View style={styles.acao}>
+                    <Button
+                      loading={salvando}
+                      disabled={salvando || !candidatoId}
+                      onPress={painel.tipo === "adicionar" ? confirmarEscalacao : confirmarSubstituicao}
+                    >
+                      {candidatoEscolhido && !candidatoEscolhido.available
+                        ? "Escalar mesmo assim"
+                        : painel.tipo === "adicionar"
+                          ? "Confirmar escalação"
+                          : "Confirmar substituição"}
+                    </Button>
+                  </View>
+                  <View style={styles.acao}>
+                    <Button variant="secondary" onPress={() => setPainel(null)}>
+                      Fechar
+                    </Button>
+                  </View>
+                </View>
+              </ScrollView>
             </View>
-            <View style={styles.acao}>
-              <Button variant="secondary" onPress={() => setPainel(null)}>
-                Fechar
-              </Button>
-            </View>
-          </View>
-            </ScrollView>
           </View>
         </Modal>
       ) : null}
@@ -532,18 +568,22 @@ const styles = StyleSheet.create({
   chipTextoAtivo: { color: colors.onAccent },
   pressed: { opacity: 0.85 },
   modalOverlay: { flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(15, 23, 42, 0.42)" },
-  modalContent: { width: "100%", maxWidth: 760, alignSelf: "center", maxHeight: "92%", padding: spacing.lg, gap: spacing.sm, borderRadius: radius.card, backgroundColor: colors.surface },
-  listaCandidatos: { gap: 0, borderTopWidth: 1, borderTopColor: colors.borderDivider },
+  modalCard: { width: "100%", maxWidth: 760, maxHeight: "92%", alignSelf: "center", borderRadius: radius.card, backgroundColor: colors.surface, overflow: "hidden" },
+  modalScroll: { flexShrink: 1 },
+  modalContent: { padding: spacing.lg, gap: spacing.sm },
+  listaCandidatos: { borderTopWidth: 1, borderTopColor: colors.borderDivider },
   candidato: {
-    flexGrow: 1,
-    gap: 2,
+    flexDirection: "row",
+    alignItems: "center",
     width: "100%",
-    padding: spacing.md,
-    borderRadius: radius.field,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceTint,
+    minHeight: 58,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDivider,
+    backgroundColor: colors.surface,
   },
-  candidatoEscolhido: { borderColor: colors.accent, backgroundColor: colors.surfaceSelected },
+  candidatoTexto: { flex: 1, gap: 2 },
+  candidatoEscolhido: { backgroundColor: colors.surfaceSelected },
   nomeCandidato: { fontSize: 14, fontWeight: "700", color: colors.ink },
 });

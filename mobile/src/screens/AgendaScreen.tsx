@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
-import { DateTimeField, dateInputToIso } from "@/components/DateTimeField";
-import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
-import { Badge, Button, Card, Field } from "@/components/Form";
+import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
@@ -104,7 +103,6 @@ function DesktopAgenda({
 export function AgendaScreen() {
   const router = useRouter();
   const { me } = useAuth();
-  const toast = useToast();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [items, setItems] = useState<PersonalCommitment[]>([]);
@@ -112,18 +110,10 @@ export function AgendaScreen() {
   const [churchEvents, setChurchEvents] = useState<ChurchEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
   const [cursor, setCursor] = useState(new Date());
-  const [title, setTitle] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const submittingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
-  // Aviso de validacao fica preso ao formulario, logo acima do botao.
-  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
   const isAdminWithoutMember = Boolean(me?.capabilities.includes("manage_all") && !me.member_id);
 
   const load = useCallback(async () => {
@@ -186,57 +176,18 @@ export function AgendaScreen() {
   const selectedEntries = entries.filter((entry) => entry.date === selectedDate);
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
-  async function submit() {
-    if (submitting || submittingRef.current) {
-      return;
-    }
-    if (!title.trim() || !startsAt.trim()) {
-      setAviso({
-        tone: "warning",
-        title: "Dados incompletos",
-        message: "Informe o título e o início do compromisso.",
-      });
-      return;
-    }
-    const inicio = dateInputToIso(startsAt, "datetime");
-    const fim = endsAt.trim() ? dateInputToIso(endsAt, "datetime") : null;
-    if (!inicio || (endsAt.trim() && !fim)) {
-      setAviso({
-        tone: "warning",
-        title: "Data inválida",
-        message: "Use dd/mm/aaaa hh:mm. O horário deve estar no formato 24 horas.",
-      });
-      return;
-    }
-
-    submittingRef.current = true;
-    setSubmitting(true);
-    setAviso(null);
-    try {
-      await api.post<PersonalCommitment>("/me/agenda/", {
-        title: title.trim(),
-        commitment_type: "personal",
-        starts_at: inicio,
-        ends_at: fim,
-        notes,
-      });
-      setTitle("");
-      setStartsAt("");
-      setEndsAt("");
-      setNotes("");
-      toast("O compromisso ja aparece na sua agenda.", { tone: "success", title: "Compromisso adicionado" });
-      await load();
-    } catch (err) {
-      const result = describeError(err, "Nao foi possivel salvar");
-      toast(result.message, { tone: "error", title: result.title });
-    } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-    }
-  }
-
   return (
-    <Screen title={isAdminWithoutMember ? "Agenda da igreja" : "Agenda"} headerSubtitle={isAdminWithoutMember ? "Eventos, escalas e compromissos da igreja" : "Seu calendário pessoal e os eventos da igreja"} refreshing={refreshing || loading} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen
+      title={isAdminWithoutMember ? "Agenda da igreja" : "Agenda"}
+      headerSubtitle={isAdminWithoutMember ? "Eventos, escalas e compromissos da igreja" : "Seu calendário pessoal e os eventos da igreja"}
+      refreshing={refreshing || loading}
+      onRefresh={() => { setRefreshing(true); load(); }}
+      headerAccessory={!isAdminWithoutMember ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Novo compromisso" onPress={() => router.push("/agenda-new" as never)} style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}>
+          <Plus size={22} strokeWidth={2.2} color={colors.onAccent} />
+        </Pressable>
+      ) : undefined}
+    >
       {!desktop ? (
         <View style={styles.contextNav}>
           <View style={[styles.contextTab, styles.contextTabActive]}>
@@ -248,6 +199,22 @@ export function AgendaScreen() {
         </View>
       ) : null}
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
+
+      <Card>
+        <Text style={styles.sectionTitle}>{isAdminWithoutMember ? "Escalas da igreja" : "Minhas escalas"}</Text>
+        {scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}
+        {schedules.length ? schedules.slice(0, 3).map((item) => (
+          <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })} style={styles.entryRow}>
+            <View style={styles.entryCopy}>
+              <Text style={styles.entryTitle}>{item.event_name}</Text>
+              <Text style={styles.meta}>{formatDate(item.event_start_at, true)}</Text>
+              <Text style={styles.meta}>{item.ministry_name} · {item.role_name}</Text>
+            </View>
+            <Badge label={statusLabel(item.status)} tone={scheduleStatusTone(item.status)} />
+          </Pressable>
+        )) : <Text style={styles.meta}>Nenhuma escala próxima.</Text>}
+        <Button variant="ghost" onPress={() => router.push("/schedules" as never)}>{isAdminWithoutMember ? "Ver escalas" : "Ver minhas escalas"}</Button>
+      </Card>
 
       <Card>
         <View style={styles.calendarHeader}>
@@ -300,40 +267,14 @@ export function AgendaScreen() {
         )) : <Text style={styles.meta}>Nenhum evento futuro cadastrado.</Text>}
       </Card>
 
-      <Card>
-        <Text style={styles.sectionTitle}>{isAdminWithoutMember ? "Escalas da igreja" : "Minhas escalas"}</Text>
-        {scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}
-        {schedules.length ? schedules.slice(0, 3).map((item) => (
-          <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })} style={styles.entryRow}>
-            <View style={styles.entryCopy}>
-              <Text style={styles.entryTitle}>{item.event_name}</Text>
-              <Text style={styles.meta}>{formatDate(item.event_start_at, true)}</Text>
-              <Text style={styles.meta}>{item.ministry_name} · {item.role_name}</Text>
-            </View>
-            <Badge label={statusLabel(item.status)} tone={scheduleStatusTone(item.status)} />
-          </Pressable>
-        )) : <Text style={styles.meta}>Nenhuma escala próxima.</Text>}
-        <Button variant="ghost" onPress={() => router.push("/schedules" as never)}>{isAdminWithoutMember ? "Ver escalas" : "Ver minhas escalas"}</Button>
-      </Card>
-
-      {!isAdminWithoutMember ? <Card>
-        <Text style={styles.sectionTitle}>Novo compromisso</Text>
-        <Field value={title} onChangeText={setTitle} placeholder="Ex.: Ensaio do Louvor" />
-        <DateTimeField accessibilityLabel="Início do compromisso" value={startsAt} onChangeText={setStartsAt} placeholder="dd/mm/aaaa hh:mm" />
-        <DateTimeField accessibilityLabel="Fim do compromisso" mode="datetime" value={endsAt} onChangeText={setEndsAt} placeholder="dd/mm/aaaa hh:mm (opcional)" />
-        <Field value={notes} onChangeText={setNotes} placeholder="Observações (opcional)" multiline />
-        {aviso ? (
-          <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
-        ) : null}
-        <Button loading={submitting} disabled={submitting} onPress={submit}>Adicionar à agenda</Button>
-      </Card> : null}
-
       {!loading && !items.length ? <Text style={styles.meta}>{isAdminWithoutMember ? "Nenhum compromisso da igreja cadastrado." : "Sua agenda pessoal ainda não tem compromissos."}</Text> : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  pressed: { opacity: 0.75 },
+  addButton: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: colors.accent, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
   calendarHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   month: { color: colors.ink, fontSize: 16, fontWeight: "800" },
   contextNav: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 },
