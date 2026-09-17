@@ -73,6 +73,32 @@ class MemberUpdateRequest(TimestampedModel):
         verbose_name_plural = "Solicitacoes de alteracao cadastral"
         ordering = ["-created_at"]
 
+
+class MemberLinkRequest(TimestampedModel):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendente"
+        APPROVED = "approved", "Aprovada"
+        REJECTED = "rejected", "Rejeitada"
+
+    church = models.ForeignKey(Church, on_delete=models.CASCADE, related_name="member_link_requests")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="member_link_requests")
+    requested_email = models.EmailField()
+    candidate_member = models.ForeignKey(
+        Member, on_delete=models.SET_NULL, null=True, blank=True, related_name="link_requests",
+    )
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    review_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="reviewed_member_link_requests",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Solicitacao de vinculo cadastral"
+        verbose_name_plural = "Solicitacoes de vinculo cadastral"
+        ordering = ["-created_at"]
+
 class FamilyRelationship(TimestampedModel):
     class RelationshipType(models.TextChoices):
         SPOUSE = "spouse", "Conjuge"

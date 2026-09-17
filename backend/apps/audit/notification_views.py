@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import serializers
 
 from .models import Notification
+from apps.accounts.pagination import OptionalPaginationMixin
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -19,7 +20,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         )
 
 
-class MyNotificationViewSet(viewsets.ReadOnlyModelViewSet):
+class MyNotificationViewSet(OptionalPaginationMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
     queryset = Notification.objects.none()
@@ -37,7 +38,7 @@ class MyNotificationViewSet(viewsets.ReadOnlyModelViewSet):
         category = self.request.query_params.get("category")
         if category:
             queryset = queryset.filter(category=category)
-        return queryset
+        return queryset.order_by("-created_at")
 
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):

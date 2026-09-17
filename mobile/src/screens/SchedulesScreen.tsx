@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -244,6 +245,7 @@ export function SchedulesScreen() {
   const [actingId, setActingId] = useState<number | null>(null);
   const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
   const isAdmin = Boolean(me?.capabilities.includes("manage_all"));
   // Atalho para a gestao existe so para quem realmente opera escalas
   // (coordenacao/lideranca). `can_access_management` e mais amplo que isso.
@@ -251,16 +253,18 @@ export function SchedulesScreen() {
   const canCreate = podeGerenciar;
   const toast = useToast();
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     setError(null);
     if (!me?.member_id && !isAdmin) {
       setLoading(false);
       return;
     }
     try {
-      setItems(await api.get<ScheduleAssignment[]>("/me/schedules/"));
+      const result = await api.getPage<ScheduleAssignment>("/me/schedules/", targetPage);
+      setItems(result.items);
+      setPageInfo(result);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar suas escalas"));
+      setError(describeError(err, "Não foi possível carregar suas escalas"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -276,14 +280,14 @@ export function SchedulesScreen() {
         action,
         justification: justifications[id] || "",
       });
-      await load();
+      await load(pageInfo.page);
       toast(action === "confirm" ? "Presença confirmada na escala." : "A coordenação foi avisada da sua resposta.", {
         tone: "success",
         title: action === "confirm" ? "Escala confirmada" : "Resposta registrada",
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) await load();
-      const result = describeError(err, action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar");
+      const result = describeError(err, action === "confirm" ? "Não foi possível confirmar" : "Não foi possível recusar");
       toast(result.message, { tone: "error", title: result.title });
     } finally {
       actingRef.current = false;
@@ -364,6 +368,7 @@ export function SchedulesScreen() {
           <Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá aqui.</Text>
         </View>
       ) : null}
+      <PaginationControls {...pageInfo} disabled={loading || actingId !== null} onPageChange={(nextPage) => { void load(nextPage); }} />
       </>}
     </Screen>
   );

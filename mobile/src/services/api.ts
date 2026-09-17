@@ -8,6 +8,31 @@ import {
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/backend";
 
+export type ApiPage<T> = {
+  items: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
+export function normalizePage<T>(payload: unknown, page = 1, pageSize = 25): ApiPage<T> {
+  if (Array.isArray(payload)) {
+    return { items: payload as T[], count: payload.length, page, pageSize, hasNext: false, hasPrevious: page > 1 };
+  }
+  const data = payload as { results?: unknown; count?: number; next?: unknown; previous?: unknown } | null;
+  const items = Array.isArray(data?.results) ? data.results as T[] : [];
+  return {
+    items,
+    count: Number(data?.count || 0),
+    page,
+    pageSize,
+    hasNext: Boolean(data?.next),
+    hasPrevious: Boolean(data?.previous),
+  };
+}
+
 // Handler chamado quando a sessao expira de vez (refresh invalido/expirado).
 // A camada de UI (useAuth) registra aqui a rotina de logout.
 let unauthorizedHandler: (() => void) | null = null;
@@ -158,6 +183,11 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  getPage: async <T>(path: string, page = 1, pageSize = 25) => {
+    const separator = path.includes("?") ? "&" : "?";
+    const payload = await request<unknown>(`${path}${separator}page=${page}&page_size=${pageSize}`);
+    return normalizePage<T>(payload, page, pageSize);
+  },
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",

@@ -2,8 +2,9 @@ import { api } from "./api";
 import { describeError, UserFacingError } from "./errors";
 import { Notification } from "@/types/api";
 
-type Snapshot = { userId: number | null; items: Notification[]; unreadCount: number; loading: boolean; error: UserFacingError | null };
-const empty = (): Snapshot => ({ userId: null, items: [], unreadCount: 0, loading: false, error: null });
+type PageInfo = { page: number; pageSize: number; count: number; hasNext: boolean; hasPrevious: boolean };
+type Snapshot = { userId: number | null; items: Notification[]; unreadCount: number; loading: boolean; error: UserFacingError | null; pageInfo: PageInfo };
+const empty = (): Snapshot => ({ userId: null, items: [], unreadCount: 0, loading: false, error: null, pageInfo: { page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false } });
 let snapshot = empty();
 let accountGeneration = 0;
 let requestGeneration = 0;
@@ -30,7 +31,7 @@ export function resetNotifications() {
   publish(empty());
 }
 
-export function loadNotifications(userId: number | null, force = false): Promise<void> {
+export function loadNotifications(userId: number | null, force = false, page = 1): Promise<void> {
   if (snapshot.userId !== userId) {
     resetNotifications();
     publish({ ...snapshot, userId });
@@ -42,13 +43,21 @@ export function loadNotifications(userId: number | null, force = false): Promise
   const request = ++requestGeneration;
   publish({ ...snapshot, loading: true, error: null });
   const current = () => account === accountGeneration && request === requestGeneration;
+  const loadPage = async () => {
+    const path = `/me/notifications/?page=${page}&page_size=25`;
+    if (typeof api.getPage === "function") return api.getPage<Notification>("/me/notifications/", page, 25);
+    const payload = await api.get<unknown>(path);
+    if (Array.isArray(payload)) return { items: payload as Notification[], count: payload.length, page, pageSize: 25, hasNext: false, hasPrevious: page > 1 };
+    const response = payload as { results?: Notification[]; count?: number; next?: unknown; previous?: unknown };
+    return { items: response.results || [], count: response.count || 0, page, pageSize: 25, hasNext: Boolean(response.next), hasPrevious: Boolean(response.previous) };
+  };
   pending = Promise.all([
-    api.get<Notification[]>("/me/notifications/"),
+    loadPage(),
     api.get<{ count: number }>("/me/notifications/unread-count/"),
   ]).then(([items, count]) => {
     if (current()) {
       loaded = true;
-      publish({ userId, items, unreadCount: count.count, loading: false, error: null });
+      publish({ userId, items: items.items, unreadCount: count.count, loading: false, error: null, pageInfo: items });
     }
   }).catch((err) => {
     if (current()) publish({ ...snapshot, loading: false, error: describeError(err, "Não foi possível carregar as notificações") });

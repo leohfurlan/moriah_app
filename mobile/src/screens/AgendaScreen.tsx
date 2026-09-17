@@ -126,12 +126,12 @@ export function AgendaScreen() {
     ]);
 
     if (agendaResult.status === "fulfilled") setItems(agendaResult.value);
-    else setError(describeError(agendaResult.reason, "Nao foi possivel carregar a agenda"));
+    else setError(describeError(agendaResult.reason, "Não foi possível carregar a agenda"));
 
     if (schedulesResult.status === "fulfilled") setSchedules(schedulesResult.value);
     else {
       setSchedules([]);
-      setScheduleError(describeError(schedulesResult.reason, "Nao foi possivel carregar suas escalas"));
+      setScheduleError(describeError(schedulesResult.reason, "Não foi possível carregar suas escalas"));
     }
 
     if (eventsResult.status === "fulfilled") setChurchEvents(eventsResult.value);
@@ -202,7 +202,7 @@ export function AgendaScreen() {
 
       <Card>
         <Text style={styles.sectionTitle}>{isAdminWithoutMember ? "Escalas da igreja" : "Minhas escalas"}</Text>
-        {scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}
+        {scheduleError ? <Text style={styles.meta}>Não foi possível carregar suas escalas agora.</Text> : null}
         {schedules.length ? schedules.slice(0, 3).map((item) => (
           <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })} style={styles.entryRow}>
             <View style={styles.entryCopy}>

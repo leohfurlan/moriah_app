@@ -37,7 +37,7 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
         <View style={styles.logoCircle}>
           <Text style={styles.logoText}>M</Text>
         </View>
-        <Text style={styles.tagline}>Perfil, extrato, escalas e contribuicoes da igreja.</Text>
+        <Text style={styles.tagline}>Perfil, extrato, escalas e contribuições da igreja.</Text>
       </View>
 
       <View style={styles.form}>

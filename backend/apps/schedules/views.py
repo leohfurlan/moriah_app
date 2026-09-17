@@ -8,6 +8,7 @@ from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.pagination import OptionalPaginationMixin
 from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
 from apps.audit.models import AuditLog
 from apps.audit.notification_service import create_notification
@@ -87,7 +88,7 @@ def _managed_schedule_or_404(user, pk, *, lock=False):
     return schedule
 
 
-class MyScheduleAssignmentsView(generics.ListAPIView):
+class MyScheduleAssignmentsView(OptionalPaginationMixin, generics.ListAPIView):
     serializer_class = ScheduleAssignmentSerializer
     permission_classes = [HasMemberProfileOrAdmin]
     queryset = ScheduleAssignment.objects.none()
@@ -105,6 +106,15 @@ class MyScheduleAssignmentsView(generics.ListAPIView):
             if member is None:
                 return ScheduleAssignment.objects.none()
             queryset = queryset.filter(member=member)
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        ministry_filter = self.request.query_params.get("ministry")
+        if ministry_filter:
+            queryset = queryset.filter(ministry_role__ministry_id=ministry_filter)
+        search = self.request.query_params.get("q")
+        if search:
+            queryset = queryset.filter(Q(schedule__name__icontains=search) | Q(schedule__event__name__icontains=search))
         return queryset.select_related("schedule__event", "ministry_role__ministry", "member").order_by("schedule__event__start_at")
 
 
@@ -187,7 +197,7 @@ class ScheduleAssignmentActionView(APIView):
         return Response(ScheduleAssignmentSerializer(assignment).data, status=status.HTTP_200_OK)
 
 
-class ScheduleListCreateView(generics.ListCreateAPIView):
+class ScheduleListCreateView(OptionalPaginationMixin, generics.ListCreateAPIView):
     """GET lista as escalas da gestao; POST cria evento + escala (rascunho)."""
 
     permission_classes = [IsScheduleCoordinatorOrAdmin]
@@ -319,7 +329,7 @@ class ScheduleCancelView(APIView):
         return Response(detail.data, status=status.HTTP_200_OK)
 
 
-class ScheduleCandidatesView(generics.ListAPIView):
+class ScheduleCandidatesView(OptionalPaginationMixin, generics.ListAPIView):
     """Candidatos para escalar (lacuna C3): membros ativos, com conflito visivel."""
 
     serializer_class = ScheduleCandidateSerializer
@@ -511,7 +521,7 @@ class ScheduleSubstitutionView(APIView):
         return Response(ScheduleTeamMemberAdminSerializer(replacement).data, status=status.HTTP_201_CREATED)
 
 
-class PersonalCommitmentViewSet(viewsets.ModelViewSet):
+class PersonalCommitmentViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     serializer_class = PersonalCommitmentSerializer
     permission_classes = [HasMemberProfileOrAdmin]
     queryset = PersonalCommitment.objects.none()
@@ -529,7 +539,14 @@ class PersonalCommitmentViewSet(viewsets.ModelViewSet):
         member = get_member_profile(user)
         if member is None:
             return PersonalCommitment.objects.none()
-        return queryset.filter(member=member)
+        queryset = queryset.filter(member=member)
+        commitment_status = self.request.query_params.get("status")
+        if commitment_status:
+            queryset = queryset.filter(status=commitment_status)
+        commitment_type = self.request.query_params.get("commitment_type")
+        if commitment_type:
+            queryset = queryset.filter(commitment_type=commitment_type)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(church=self.request.user.church, member=get_member_profile(self.request.user))

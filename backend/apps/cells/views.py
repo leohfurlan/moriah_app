@@ -4,13 +4,14 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
 from apps.accounts.permissions import IsCellLeaderOrAdmin
+from apps.accounts.pagination import OptionalPaginationMixin
 from apps.members.models import Member
 
 from .models import Cell
 from .serializers import CellMeetingSerializer, LeaderCellMemberSerializer
 
 
-class LeaderCellMembersView(ListAPIView):
+class LeaderCellMembersView(OptionalPaginationMixin, ListAPIView):
     """Membros da celula liderada pelo usuario autenticado."""
 
     serializer_class = LeaderCellMemberSerializer

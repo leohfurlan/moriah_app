@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { Badge, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { useNotifications } from "@/hooks/useNotifications";
 import { notificationSection, notificationTime } from "@/notifications";
 import { describeError, UserFacingError } from "@/services/errors";
@@ -16,7 +17,7 @@ type Filter = (typeof filters)[number];
 export function NotificationsScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("Todas");
-  const { items, loading, error, unreadCount, reload, markRead: persistRead, markAllRead: persistAll } = useNotifications();
+  const { items, loading, error, unreadCount, pageInfo, loadPage, reload, markRead: persistRead, markAllRead: persistAll } = useNotifications();
   const [mutationError, setMutationError] = useState<UserFacingError | null>(null);
   const [retryTarget, setRetryTarget] = useState<number | "all" | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +100,7 @@ export function NotificationsScreen() {
           </View>
         );
       })}
+      <PaginationControls {...pageInfo} disabled={loading || submitting} onPageChange={(page) => { void loadPage(page).catch(() => undefined); }} />
     </Screen>
   );
 }

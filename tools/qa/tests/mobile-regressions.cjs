@@ -23,6 +23,10 @@ function load(relative, mocks = {}) {
 const dates = load("services/dates.ts");
 const theme = load("theme.ts", { "react-native": {} });
 const errors = load("services/errors.ts");
+const apiHelpers = load("services/api.ts", {
+  "./storage": { clearTokens: async () => {}, getAccessToken: async () => null, getRefreshToken: async () => null, saveAccessToken: async () => {} },
+  "./errors": errors,
+});
 const notice = (id, read = false) => ({ id, is_read: read, read_at: read ? "2026-09-17T12:00:00Z" : null });
 function store(api) {
   return load("services/notificationStore.ts", { "./api": { api }, "./errors": errors });
@@ -55,6 +59,16 @@ test("gráfico tem zero real e proporção linear", () => {
   assert.equal(dates.statementBarHeight(50, 100), 75);
   assert.equal(dates.statementBarHeight(100, 100), 150);
   assert.equal(dates.statementBarHeight(0, 0), 0);
+});
+
+test("resposta paginada e lista legada usam o mesmo adaptador", () => {
+  const page = apiHelpers.normalizePage({ count: 51, next: "/api/items/?page=2", previous: null, results: [{ id: 1 }] });
+  assert.deepEqual(page.items, [{ id: 1 }]);
+  assert.equal(page.count, 51);
+  assert.equal(page.hasNext, true);
+  const legacy = apiHelpers.normalizePage([{ id: 2 }]);
+  assert.deepEqual(legacy.items, [{ id: 2 }]);
+  assert.equal(legacy.hasNext, false);
 });
 
 test("409 de escala prioriza motivo do conflito, não nome do integrante", () => {

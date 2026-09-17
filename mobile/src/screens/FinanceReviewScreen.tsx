@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { DateTimeField, dateInputToIso } from "@/components/DateTimeField";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
@@ -52,16 +53,18 @@ export function FinanceReviewScreen() {
   const [error, setError] = useState<UserFacingError | null>(null);
   const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     const sequence = ++loadSequence.current;
     setLoading(true);
     setError(null);
     try {
-      const nextItems = await api.get<Contribution[]>(statusFilterPath(status, period.from, period.to));
+      const result = await api.getPage<Contribution>(statusFilterPath(status, period.from, period.to), targetPage);
       if (sequence !== loadSequence.current) return;
-      setItems(nextItems);
-      setSelected((current) => current ? nextItems.find((item) => item.id === current.id) || null : null);
+      setItems(result.items);
+      setPageInfo(result);
+      setSelected((current) => current ? result.items.find((item) => item.id === current.id) || null : null);
     } catch (err) {
       if (sequence === loadSequence.current) setError(describeError(err, "Não foi possível carregar as contribuições"));
     } finally {
@@ -112,7 +115,7 @@ export function FinanceReviewScreen() {
       toast(nextStatus === "approved" ? "Contribuição aprovada." : "Contribuição rejeitada.", {
         title: "Revisão registrada",
       });
-      await load();
+      await load(pageInfo.page);
     } catch (err) {
       setAviso({
         tone: "error",
@@ -202,6 +205,7 @@ export function FinanceReviewScreen() {
           ))}
         </View>
       ) : null}
+      <PaginationControls {...pageInfo} disabled={loading || submitting} onPageChange={(nextPage) => { void load(nextPage); }} />
 
       {selected ? (
         <Card>

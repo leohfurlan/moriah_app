@@ -10,7 +10,7 @@ from apps.accounts.views import MeView
 from apps.events.views import MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, MyStatementView
-from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
+from apps.members.views import MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
 from apps.ministries.views import MinistryListView
 from apps.audit.notification_views import MyNotificationViewSet
 from apps.schedules.views import (
@@ -42,6 +42,7 @@ urlpatterns = [
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/me/", MeView.as_view(), name="me"),
     path("api/me/member/", MyMemberView.as_view(), name="my-member"),
+    path("api/me/member-link-requests/", MyMemberLinkRequestView.as_view(), name="my-member-link-requests"),
     path("api/me/statement/", MyStatementView.as_view(), name="my-statement"),
     path("api/me/events/", MyChurchEventsView.as_view(), name="my-events"),
     path("api/me/schedules/", MyScheduleAssignmentsView.as_view(), name="my-schedules"),
@@ -82,6 +83,7 @@ local_api_urlpatterns = [
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
     path("me/", MeView.as_view(), name="local-me"),
     path("me/member/", MyMemberView.as_view(), name="local-my-member"),
+    path("me/member-link-requests/", MyMemberLinkRequestView.as_view(), name="local-my-member-link-requests"),
     path("me/statement/", MyStatementView.as_view(), name="local-my-statement"),
     path("me/events/", MyChurchEventsView.as_view(), name="local-my-events"),
     path("me/schedules/", MyScheduleAssignmentsView.as_view(), name="local-my-schedules"),

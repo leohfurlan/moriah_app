@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
@@ -89,13 +90,16 @@ export function StatementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     setError(null);
     try {
-      setItems(await api.get<Contribution[]>("/me/statement/"));
+      const result = await api.getPage<Contribution>("/me/statement/", targetPage);
+      setItems(result.items);
+      setPageInfo(result);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar o extrato"));
+      setError(describeError(err, "Não foi possível carregar o extrato"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -144,7 +148,7 @@ export function StatementScreen() {
               <Text style={styles.summaryLabel}>Total registrado</Text>
               <Text style={styles.summaryValue}>{formatBRL(total)}</Text>
               <Text style={styles.summaryMeta}>
-                {items.length} {items.length === 1 ? "contribuicao" : "contribuicoes"}
+                {items.length} {items.length === 1 ? "contribuição" : "contribuições"}
               </Text>
             </Card>
 
@@ -175,11 +179,12 @@ export function StatementScreen() {
         {!desktop && !loading && !error && !items.length ? (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>≣</Text>
-            <Text style={styles.emptyTitle}>Nenhuma contribuicao ainda</Text>
-            <Text style={styles.emptyText}>Quando voce enviar um dizimo ou oferta, ele aparece aqui.</Text>
+            <Text style={styles.emptyTitle}>Nenhuma contribuição ainda</Text>
+            <Text style={styles.emptyText}>Quando você enviar um dízimo ou oferta, ele aparecerá aqui.</Text>
             <Button size="compact" onPress={() => router.push("/contribution" as never)}>+ Enviar comprovante</Button>
           </View>
         ) : null}
+        <PaginationControls {...pageInfo} disabled={loading} onPageChange={(nextPage) => { void load(nextPage); }} />
     </Screen>
   );
 }

@@ -183,9 +183,13 @@ as áreas pessoais quando faltar `member`.
   diretório geral continua fora do MVP.
 - C4 pendente no app: aprovação cadastral continua no Django Admin.
 - C5 resolvido para gestão: guardas de rota por capacidade e fallback PT-BR.
-- C6 pendente: não há fluxo seguro de solicitação de vínculo cadastral.
+- C6 resolvido no complemento da Fase 5: há solicitação autenticada de vínculo
+  por e-mail, sem escolha de `member_id` pelo cliente e com aprovação humana
+  no Admin. A decisão histórica de ocultar as áreas pessoais continua válida
+  até a aprovação.
 - T1/T2 resolvidos: células filtram explicitamente `church`.
 
-Fase 5 é **parcial**, apesar da estabilização: paginação, vínculo cadastral e
-demais fundamentos não validados não devem ser declarados concluídos. Nenhum
-domínio novo da Fase 6 foi implementado nesta rodada.
+Fase 5 permanece **parcial quanto ao gate**: o complemento implementa paginação,
+vínculo cadastral e demais fundamentos locais, mas a validação integrada,
+PostgreSQL/CI e dispositivos ainda não foram concluídos. Nenhum domínio novo da
+Fase 6 foi implementado nesta rodada.

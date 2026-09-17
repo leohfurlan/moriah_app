@@ -9,7 +9,7 @@ import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
-import { MemberProfile, MemberUpdateRequest } from "@/types/api";
+import { MemberLinkRequest, MemberProfile, MemberUpdateRequest } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -125,6 +125,7 @@ export function ProfileScreen() {
   const desktop = Platform.OS === "web" && width >= 900;
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [requests, setRequests] = useState<MemberUpdateRequest[]>([]);
+  const [linkRequests, setLinkRequests] = useState<MemberLinkRequest[]>([]);
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -133,11 +134,17 @@ export function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
+  const [linkSubmitting, setLinkSubmitting] = useState(false);
   const toast = useToast();
 
   const load = useCallback(async () => {
     setError(null);
     try {
+      if (!me?.member_id) {
+        setProfile(null);
+        setLinkRequests(await api.get<MemberLinkRequest[]>("/me/member-link-requests/"));
+        return;
+      }
       const [member, memberRequests] = await Promise.all([
         api.get<MemberProfile>("/me/member/"),
         api.get<MemberUpdateRequest[]>("/me/member-requests/"),
@@ -147,12 +154,12 @@ export function ProfileScreen() {
       setPhone(member.phone);
       setAddress(member.address);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar o perfil"));
+      setError(describeError(err, "Não foi possível carregar o perfil"));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [me?.member_id]);
 
   useEffect(() => {
     setLoading(true);
@@ -177,11 +184,27 @@ export function ProfileScreen() {
       setRequests((current) => [request, ...current]);
       toast("A secretaria vai revisar seus dados.", { tone: "success", title: "Solicitação enviada" });
     } catch (err) {
-      const result = describeError(err, "Nao foi possivel enviar");
+      const result = describeError(err, "Não foi possível enviar");
       setAviso({ tone: "error", title: result.title, message: result.message });
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
+    }
+  }
+
+  async function submitLinkRequest() {
+    if (linkSubmitting) return;
+    setLinkSubmitting(true);
+    setAviso(null);
+    try {
+      const request = await api.post<MemberLinkRequest>("/me/member-link-requests/");
+      setLinkRequests((current) => current.some((item) => item.id === request.id) ? current : [request, ...current]);
+      toast("A secretaria vai conferir seu cadastro antes de fazer o vínculo.", { title: "Solicitação enviada" });
+    } catch (err) {
+      const result = describeError(err, "Não foi possível solicitar o vínculo");
+      setAviso({ tone: "error", title: result.title, message: result.message });
+    } finally {
+      setLinkSubmitting(false);
     }
   }
 
@@ -244,8 +267,13 @@ export function ProfileScreen() {
       ) : me ? (
         <Card>
           <Text style={styles.name}>{me.first_name || me.email}</Text>
-          <Text style={styles.meta}>Esta conta administrativa ainda não possui um cadastro de membro completo.</Text>
+          <Text style={styles.meta}>Esta conta ainda não possui um cadastro de membro vinculado.</Text>
           <Row label="E-mail" value={me.email} />
+          <Text style={styles.meta}>Solicite a conferência da secretaria. O vínculo só será feito após revisão humana.</Text>
+          {linkRequests.length ? <Text style={styles.meta}>Solicitação atual: {statusLabel(linkRequests[0].status)}</Text> : null}
+          <Button loading={linkSubmitting} disabled={linkSubmitting || linkRequests.some((item) => item.status === "pending")} onPress={() => void submitLinkRequest()}>
+            Solicitar vínculo cadastral
+          </Button>
         </Card>
       ) : null}
 

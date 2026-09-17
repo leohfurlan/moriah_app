@@ -89,6 +89,12 @@ export interface ScheduleCandidate {
   ministry_names: string[]; role_names: string[]; already_assigned: boolean; available: boolean; conflict_reason: string;
 }
 
+export interface MemberLinkRequest {
+  id: number;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
 export interface Notification {
   id: number;
   category: "Escalas" | "Igreja" | "Contribuições" | string;
