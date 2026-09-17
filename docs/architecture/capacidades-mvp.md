@@ -84,19 +84,19 @@ escalas que contenham função de ministério que ele coordena. O "Líder" do mo
 **Gerenciar membros → Líder: não.**
 Quem edita cadastro é a Secretaria (`manage_members`) e o Admin. O líder precisa **ler** as
 pessoas elegíveis para montar a equipe; isso é leitura, não edição. A leitura precisa de um
-endpoint próprio (`GET /api/schedules/{id}/candidates/` ou equivalente) — hoje **não existe**
-nenhum endpoint de listagem de membros da igreja, nem leitura. Isso entra na Fase 4 (formação
-de equipe), não como reuso de qualquer rota existente.
+endpoint próprio — implementado na Fase 4.2 como `GET /api/schedules/{id}/candidates/`
+(membros ativos da igreja, com conflito de agenda e marcação de já escalado) e
+`GET /api/ministries/` (ministérios que a conta pode usar), sem reuso de rota de edição.
 
 ## 4. Lacunas encontradas na auditoria (viram ticket, não ficam implícitas)
 
 | # | Lacuna | Evidência | Onde corrigir |
 |---|---|---|---|
-| C1 | `POST /api/schedules/` não chama `can_manage_schedule()`: qualquer conta com papel `coordinator` cria escala em qualquer ministério da igreja, mesmo sem coordenar nada | `schedules/views.py:118-120` vs. `:132-133` | Fase 4.1 |
+| C1 | Resolvida: `POST /api/schedules/` resolve o ministério informado e recusa (400) quando a conta não o coordena; coordenador sem `ministry_id` também é recusado | `schedules/serializers.py` (`validate`) + `apps/schedules/tests/test_schedule_admin.py` | Resolvida na Fase 4.1 |
 | C2 | Resolvida: `user_capabilities` publica `manage_schedules` para os papéis aceitos por `IsScheduleCoordinatorOrAdmin` | `backend/apps/accounts/permissions.py` e testes de capacidades | Resolvida na Fase 2 |
-| C3 | Não existe endpoint para listar membros da igreja (nem leitura) — bloqueia formação de equipe | ausente em `config/urls.py` | Fase 4.2 |
+| C3 | Resolvida: `GET /api/ministries/` (ministérios administráveis) e `GET /api/schedules/{id}/candidates/` (membros ativos com conflito de agenda e marcação de já escalado) | `ministries/views.py`, `schedules/views.py` + `apps/schedules/tests/test_schedule_admin.py` | Resolvida na Fase 4.2 |
 | C4 | Aprovação de requisição cadastral só existe no Django Admin (`member-requests` expõe só criar/listar) | `members/views.py:20-39` | Fase 3/5 |
-| C5 | Ausência de guarda de rota no cliente: membro monta o formulário de escala inteiro antes do `403` | `mobile/src/screens/ScheduleCreateScreen.tsx` | Fase 1.4 / 2 |
+| C5 | Resolvida: guarda de rota no cliente cobre `/schedule-create` **e** `/schedule-admin(/<id>)`; sem a capacidade o app não renderiza a lista administrativa (mostra aviso em PT-BR na própria página) | `mobile/app/_layout.tsx` (`ROTAS_DE_GESTAO`, `PREFIXOS_DE_GESTAO`, `AcessoRestritoEscalas`) + `tools/qa/checks/fase4.mjs` (check 1) e `fase1.mjs` (check 2) | Resolvida na Fase 1.4 / 4 |
 | C6 | Conta sem `member_profile` não tem caminho de "vincular meu cadastro" na UI | `docs/architecture/contas-e-capacidades.md` + `HasMemberProfile.message` | Fase 1.4 / 5 |
 
 ## 5. Regras de interface derivadas da matriz

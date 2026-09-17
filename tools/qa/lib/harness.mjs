@@ -51,20 +51,23 @@ export async function novaSessao(browser, { viewport = VIEWPORT_DESKTOP, mobile 
         url: resposta.url(),
       });
     }
+    // O status da escrita e fechado pela PROPRIA resposta. Antes isso era feito
+    // com `req.response()` dentro do handler de request e, por corrida, as vezes
+    // resolvia null: a evidencia ficava sem status e o check concluia "o clique
+    // nao chegou na API" com a escala ja criada no banco.
+    if (resposta.request().method() === "GET") return;
+    const escrita = estado.escritas.find((item) => item.status === null && item.url === resposta.url());
+    if (escrita) escrita.status = resposta.status();
   });
   // Requisicoes de escrita (evidencia de "o clique chegou na API").
   page.on("request", (req) => {
     if (req.method() === "GET") return;
-    const registro = {
+    estado.escritas.push({
       metodo: req.method(),
       url: req.url(),
       corpo: (req.postData() || "").slice(0, 300),
       status: null,
-    };
-    estado.escritas.push(registro);
-    req.response().then((r) => {
-      if (r) registro.status = r.status();
-    }).catch(() => {});
+    });
   });
 
   estado.limpar = () => {

@@ -41,4 +41,7 @@ export const PAPEIS = {
   admin: "admin",
   tesouraria: "tesouraria",
   lider: "lider",
+  coordenacao: "coordenacao",
+  pastor: "pastor",
+  secretaria: "secretaria",
 };

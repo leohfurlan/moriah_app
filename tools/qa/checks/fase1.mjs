@@ -93,18 +93,28 @@ export async function executar({ browser, dir }) {
     const evento = `QA escala ${marca}`;
     await digitar(sessao.page.getByPlaceholder(/Culto de celebra/i), evento);
     await digitar(sessao.page.getByPlaceholder(/Louvor/), `Escala QA ${marca}`);
-    const botao = sessao.page.getByRole("button", { name: /adicionar escala/i }).first();
+    const botao = sessao.page.getByRole("button", { name: /salvar como rascunho/i }).first();
     // Tres cliques no mesmo tick: o defeito antigo criava a escala tres vezes.
+    // (Fase 4: o formulario nasce como RASCUNHO — "Salvar como rascunho" — e nao
+    // mais publica direto, por isso o botao mudou de nome.)
+    // A confirmacao e lida EM PARALELO: os cliques 2 e 3 esperam o botao voltar a
+    // ficar habilitado e, quando resolvem, o toast de 6s pode ja ter sumido.
+    const confirmacaoPromessa = textoDoToast(sessao.page, { timeout: 12000 });
     await Promise.all([
       botao.click({ timeout: 10000 }).catch(() => {}),
       botao.click({ timeout: 10000 }).catch(() => {}),
       botao.click({ timeout: 10000 }).catch(() => {}),
     ]);
-    const confirmação = await textoDoToast(sessao.page, { timeout: 8000 });
-    const naAgenda = await esperarPor(async () => caminho(sessao.page.url()) === "/agenda", { timeout: 10000 });
+    const confirmação = await confirmacaoPromessa;
+    // Destino agora e a gestao da escala criada (o evento entra na agenda da
+    // igreja do mesmo jeito — verificado na fase 4).
+    const naGestaoDaEscala = await esperarPor(
+      async () => /^\/schedule-admin\/\d+$/.test(caminho(sessao.page.url())),
+      { timeout: 10000 },
+    );
     v.check(
-      "3. Gestão cria escala, recebe confirmação e vai para a agenda",
-      naAgenda && contemAlgum(confirmação, ["escala criada", "adicionado a agenda", "adicionado à agenda"]),
+      "3. Gestão cria escala como rascunho, recebe confirmação e cai na gestão da escala",
+      naGestaoDaEscala && contemAlgum(confirmação, ["rascunho criado", "escala publicada"]),
       `url=${caminho(sessao.page.url())} | confirmação="${confirmação.replace(/\n/g, " ")}"`,
     );
     const posts = sessao.escritas.filter((item) => item.metodo === "POST" && /\/schedules\/?$/.test(new URL(item.url).pathname));

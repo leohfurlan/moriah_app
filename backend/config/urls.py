@@ -11,12 +11,18 @@ from apps.events.views import MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, MyStatementView
 from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
+from apps.ministries.views import MinistryListView
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
     MyScheduleAssignmentsView,
     PersonalCommitmentViewSet,
     ScheduleAssignmentActionView,
-    ScheduleCreateView,
+    ScheduleAssignmentCreateView,
+    ScheduleAssignmentDeleteView,
+    ScheduleCancelView,
+    ScheduleCandidatesView,
+    ScheduleDetailView,
+    ScheduleListCreateView,
     SchedulePublishView,
     ScheduleSubstitutionView,
 )
@@ -39,13 +45,26 @@ urlpatterns = [
     path("api/me/schedules/", MyScheduleAssignmentsView.as_view(), name="my-schedules"),
     path("api/me/schedules/<int:pk>/", MyScheduleAssignmentDetailView.as_view(), name="my-schedule-detail"),
     path("api/me/schedules/<int:pk>/action/", ScheduleAssignmentActionView.as_view(), name="schedule-action"),
-    path("api/schedules/", ScheduleCreateView.as_view(), name="schedule-create"),
+    path("api/schedules/", ScheduleListCreateView.as_view(), name="schedule-create"),
+    path("api/schedules/<int:pk>/", ScheduleDetailView.as_view(), name="schedule-detail"),
     path("api/schedules/<int:pk>/publish/", SchedulePublishView.as_view(), name="schedule-publish"),
+    path("api/schedules/<int:pk>/cancel/", ScheduleCancelView.as_view(), name="schedule-cancel"),
+    path("api/schedules/<int:pk>/candidates/", ScheduleCandidatesView.as_view(), name="schedule-candidates"),
     path(
-        "api/schedules/<int:schedule_pk>/assignments/<int:assignment_pk>/substitute/",
+        "api/schedules/<int:pk>/assignments/",
+        ScheduleAssignmentCreateView.as_view(),
+        name="schedule-assignment-create",
+    ),
+    path(
+        "api/schedules/<int:schedule_pk>/assignments/<int:assignment_pk>/",
+        ScheduleAssignmentDeleteView.as_view(),
+        name="schedule-assignment-delete",
+    ),
+    path("api/schedules/<int:schedule_pk>/assignments/<int:assignment_pk>/substitute/",
         ScheduleSubstitutionView.as_view(),
         name="schedule-substitute",
     ),
+    path("api/ministries/", MinistryListView.as_view(), name="ministry-list"),
     path("api/leader/cell-members/", LeaderCellMembersView.as_view(), name="leader-cell-members"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

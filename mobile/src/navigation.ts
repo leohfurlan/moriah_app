@@ -96,6 +96,15 @@ export const MENU_LATERAL: NavGroup[] = [
     label: "Gestão",
     items: [
       criarItem({
+        id: "gestao-escalas",
+        label: "Gestão de escalas",
+        route: "schedule-admin",
+        Icon: CalendarCheck,
+        // Mesma capacidade de criar escala: montar equipe, publicar e cancelar.
+        required: CAPACIDADES_DE_ESCALA,
+        matches: ["schedule-admin"],
+      }),
+      criarItem({
         id: "criar-escala",
         label: "Criar escala",
         route: "schedule-create",

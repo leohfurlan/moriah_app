@@ -56,6 +56,56 @@ def test_confirmacao_recusa_havendo_conflito_de_horario(api_client, make_user, m
     assert assignment.status == ScheduleAssignment.Status.CONFLICT
 
 
+@pytest.mark.parametrize(
+    ("action", "expected_status"),
+    [("decline", ScheduleAssignment.Status.DECLINED), ("unavailable", ScheduleAssignment.Status.UNAVAILABLE)],
+)
+def test_membro_com_conflito_pode_recusar_ou_marcar_indisponibilidade(
+    api_client, make_user, make_member, church, action, expected_status
+):
+    user = make_user("membro.conflito.resposta@igreja.com")
+    member = make_member("Maria", user=user)
+    ministry = Ministry.objects.create(church=church, name="Louvor")
+    role = MinistryRole.objects.create(church=church, ministry=ministry, name="Vocal")
+    first_event = Event.objects.create(
+        church=church,
+        name="Culto 1",
+        start_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
+    second_event = Event.objects.create(
+        church=church,
+        name="Culto 2",
+        start_at=datetime.datetime(2026, 9, 20, 20, tzinfo=datetime.timezone.utc),
+    )
+    first = Schedule.objects.create(church=church, event=first_event, name="Escala 1")
+    second = Schedule.objects.create(church=church, event=second_event, name="Escala 2")
+    ScheduleAssignment.objects.create(
+        church=church,
+        schedule=first,
+        member=member,
+        ministry_role=role,
+        status=ScheduleAssignment.Status.CONFIRMED,
+    )
+    assignment = ScheduleAssignment.objects.create(
+        church=church,
+        schedule=second,
+        member=member,
+        ministry_role=role,
+        status=ScheduleAssignment.Status.CONFLICT,
+        conflict_reason="Ja existe outra escala no mesmo horario.",
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(
+        f"/api/me/schedules/{assignment.id}/action/",
+        {"action": action, "justification": "Nao conseguirei participar"},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.data
+    assignment.refresh_from_db()
+    assert assignment.status == expected_status
+    assert assignment.responded_at is not None
 def test_coordenador_substitui_integrante_e_preserva_historico(api_client, make_user, make_member, church):
     coordinator = make_user("coord@igreja.com", role="coordinator")
     original_user = make_user("original@igreja.com")

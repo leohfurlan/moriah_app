@@ -14,6 +14,7 @@ tools/qa/
   lib/report.mjs          acumulador PASS/FAIL + resultados.json + resumo.md
   checks/fase1.mjs        confiabilidade P0 (seção 6.1–6.6 do plano)
   checks/fase2.mjs        navegação (menu lateral, abas, avatar, busca, capacidades)
+  checks/fase4.mjs        gestão de escalas (seção 9.1–9.3 do plano)
   scripts/               diagnósticos pontuais (ex.: por que o toast não aparece)
 ```
 
@@ -25,7 +26,7 @@ Pré-requisitos: backend no ar e Expo web servindo o app.
 # app (mobile/) em http://localhost:8081 e API respondendo
 node tools/qa/run.mjs fase1      # só a fase 1
 node tools/qa/run.mjs fase2      # só a fase 2
-node tools/qa/run.mjs fase3      # revisao financeira
+node tools/qa/run.mjs fase4      # só a fase 4 (gestão de escalas)
 node tools/qa/run.mjs todas      # todas
 ```
 
@@ -74,6 +75,7 @@ node tools/qa/scripts/diagnostico-toast.mjs   # linha do tempo: o toast apareceu
 - `fase2`: 13 checks (13 PASS) — evidência `docs/qa/evidencias/fase2-2026-09-16T123353`.
 - Relatórios: `docs/qa/fase-1-confiabilidade-2026-09-16.md`,
   `docs/qa/fase-2-navegacao-2026-09-16.md`.
+
 
 ## Fase 3 — revisão financeira
 

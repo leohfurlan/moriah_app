@@ -2,6 +2,7 @@
 import datetime
 
 import pytest
+from rest_framework import status
 
 from apps.events.models import Event
 from apps.ministries.models import Ministry, MinistryRole
@@ -93,6 +94,27 @@ def test_acao_invalida_e_rejeitada(api_client, escalados):
     assert escalados["assignment_a"].status == ScheduleAssignment.Status.PENDING
 
 
+@pytest.mark.parametrize(
+    ("action", "justification"),
+    [("confirm", ""), ("decline", "Nao poderei ir"), ("unavailable", "Compromisso")],
+)
+def test_resposta_e_bloqueada_em_escala_cancelada(api_client, escalados, action, justification):
+    escala = escalados["assignment_a"].schedule
+    escala.status = Schedule.Status.CANCELLED
+    escala.save(update_fields=["status"])
+    api_client.force_authenticate(user=escalados["user_a"])
+
+    response = api_client.post(
+        f"/api/me/schedules/{escalados['assignment_a'].id}/action/",
+        {"action": action, "justification": justification},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_409_CONFLICT, response.data
+    assert "cancelada" in str(response.data["detail"])
+    escalados["assignment_a"].refresh_from_db()
+    assert escalados["assignment_a"].status == ScheduleAssignment.Status.PENDING
+    assert escalados["assignment_a"].responded_at is None
 def test_anonimo_nao_acessa_escalas(api_client, escalados):
     response = api_client.get("/api/me/schedules/")
 

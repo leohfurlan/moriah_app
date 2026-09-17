@@ -62,3 +62,43 @@ export interface PersonalCommitment {
   id: number; title: string; commitment_type: CommitmentType; starts_at: string; ends_at?: string | null;
   status: "planned" | "cancelled"; notes: string; created_at: string; updated_at: string;
 }
+
+// ---- Fase 4: gestao de escalas -------------------------------------------
+export interface MinistryRoleAdmin { id: number; name: string; ministry_id: number; ministry_name: string; is_filled: boolean; }
+export interface Ministry { id: number; name: string; description: string; roles: Array<{ id: number; name: string; description: string }>; coordinator_names: string[]; members_count: number; }
+export interface ScheduleCounts {
+  pending: number; confirmed: number; declined: number; unavailable: number; conflict: number; replacement_needed: number; total: number;
+}
+export interface ScheduleAdminItem {
+  id: number; name: string; status: ScheduleStatus; status_display: string; ministry: number | null; ministry_name: string;
+  event: number; event_name: string; event_type: string; event_start_at: string; event_location: string;
+  arrival_at?: string | null; rehearsal_at?: string | null; published_at?: string | null; counts: ScheduleCounts; created_at: string;
+}
+export interface ScheduleAdminTeamMember {
+  id: number; member_id: number; member_name: string; member_email: string; member_phone: string;
+  role_id: number; role_name: string; ministry_name: string; status: AssignmentStatus; status_display: string;
+  conflict_reason: string; justification: string; substitution_for?: number | null; replaced_member_name: string;
+  responded_at?: string | null;
+}
+export interface ScheduleSubstitutionItem {
+  id: number; substitution_for: number; original_member_name: string; replacement_member_name: string;
+  role_name: string; status: AssignmentStatus; status_display: string; justification: string; created_at: string;
+}
+export interface ScheduleCandidate {
+  id: number; full_name: string; preferred_name: string; email: string; phone: string; status: string;
+  ministry_names: string[]; already_assigned: boolean; available: boolean; conflict_reason: string;
+}
+export interface ScheduleAdminDetail extends ScheduleAdminItem {
+  notes: string; created_by?: number | null; created_by_name: string; ministry_roles: MinistryRoleAdmin[];
+  team: ScheduleAdminTeamMember[]; substitutions: ScheduleSubstitutionItem[];
+  can_edit: boolean; can_publish: boolean; can_cancel: boolean;
+}
+export interface ScheduleCreateRequest {
+  event_name: string; event_type: string; start_at: string; end_at?: string | null; location?: string;
+  schedule_name: string; notes?: string; ministry_id?: number | null; status?: ScheduleStatus;
+  arrival_at?: string | null; rehearsal_at?: string | null;
+}
+export interface ScheduleUpdateRequest {
+  name?: string; notes?: string; arrival_at?: string | null; rehearsal_at?: string | null; ministry_id?: number | null;
+  event_name?: string; event_start_at?: string; event_end_at?: string | null; event_location?: string;
+}
