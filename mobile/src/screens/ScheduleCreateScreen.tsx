@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { DateTimeField, dateInputToIso, formatDateInput } from "@/components/DateTimeField";
 import { InlineNotice, useToast } from "@/components/Feedback";
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -19,9 +20,7 @@ function dataPadrao(): Date {
 
 /** Data/hora no formato que a igreja digita: "20/12/2026 19:00". */
 export function paraTextoBr(date: Date): string {
-  const dia = String(date.getDate()).padStart(2, "0");
-  const mes = String(date.getMonth() + 1).padStart(2, "0");
-  return `${dia}/${mes}/${date.getFullYear()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  return formatDateInput(date, "datetime");
 }
 
 /**
@@ -30,21 +29,7 @@ export function paraTextoBr(date: Date): string {
  * em UTC; sem esta conversao o campo "20/12/2026 19:00" virava 400 na API.
  */
 export function paraIso(valor: string): string | null {
-  const texto = valor.trim();
-  const brasileiro = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2}))?$/.exec(texto);
-  if (brasileiro) {
-    const [, dia, mes, ano, hora, minuto] = brasileiro;
-    const date = new Date(
-      Number(ano),
-      Number(mes) - 1,
-      Number(dia),
-      Number(hora ?? 19),
-      Number(minuto ?? 0),
-    );
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-  }
-  const date = new Date(texto);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  return dateInputToIso(valor, "datetime");
 }
 
 export function ScheduleCreateScreen() {
@@ -156,13 +141,13 @@ export function ScheduleCreateScreen() {
           placeholder="Ex.: Culto de celebração"
         />
         <Text style={styles.label}>Data e horário</Text>
-        <Field
+        <DateTimeField
           accessibilityLabel="Data e horário do evento"
           value={startAt}
           onChangeText={setStartAt}
-          placeholder="20/12/2026 19:00"
+          placeholder="dd/mm/aaaa hh:mm"
         />
-        <Text style={styles.hint}>Formato: dia/mês/ano e horário (ex.: 20/12/2026 19:00).</Text>
+        <Text style={styles.hint}>Digite dd/mm/aaaa hh:mm ou use o calendário. Horário em formato 24 horas.</Text>
         <Text style={styles.label}>Local</Text>
         <Field
           accessibilityLabel="Local do evento"

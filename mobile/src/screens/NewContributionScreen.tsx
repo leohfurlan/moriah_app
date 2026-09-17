@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { DateTimeField, dateInputToIso, formatDateInput } from "@/components/DateTimeField";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -67,7 +68,7 @@ export function NewContributionScreen() {
   const submittingRef = useRef(false);
   const [amount, setAmount] = useState("100.00");
   const [category, setCategory] = useState<ContributionCategory>("tithe");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => formatDateInput(new Date(), "date"));
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<UploadableFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -123,13 +124,18 @@ export function NewContributionScreen() {
       });
       return;
     }
+    const contributionDate = dateInputToIso(date, "date");
+    if (!contributionDate) {
+      setAviso({ tone: "warning", title: "Data inválida", message: "Use o formato dd/mm/aaaa." });
+      return;
+    }
     submittingRef.current = true;
     setSubmitting(true);
     setAviso(null);
     const form = new FormData();
     form.append("amount", amount);
     form.append("category", category);
-    form.append("contribution_date", date);
+    form.append("contribution_date", contributionDate);
     form.append("notes", notes);
     try {
       for (const file of files) {
@@ -178,7 +184,7 @@ export function NewContributionScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Data da contribuição</Text>
-      <Field value={date} onChangeText={setDate} placeholder="AAAA-MM-DD" />
+      <DateTimeField accessibilityLabel="Data da contribuição" mode="date" value={date} onChangeText={setDate} placeholder="dd/mm/aaaa" />
 
       <Text style={styles.sectionTitle}>Observações (opcional)</Text>
       <Field value={notes} onChangeText={setNotes} multiline numberOfLines={3} placeholder="Ex.: campanha de missões" />

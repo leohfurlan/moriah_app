@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { DateTimeField, dateInputToIso } from "@/components/DateTimeField";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -150,16 +151,20 @@ export function FinanceReviewScreen() {
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
             <Text style={styles.label}>De</Text>
-            <Field editable={!submitting} value={dateFrom} onChangeText={setDateFrom} placeholder="AAAA-MM-DD" />
+            <DateTimeField accessibilityLabel="Data inicial do filtro" mode="date" disabled={submitting} value={dateFrom} onChangeText={setDateFrom} placeholder="dd/mm/aaaa" />
           </View>
           <View style={styles.dateField}>
             <Text style={styles.label}>Até</Text>
-            <Field editable={!submitting} value={dateTo} onChangeText={setDateTo} placeholder="AAAA-MM-DD" />
+            <DateTimeField accessibilityLabel="Data final do filtro" mode="date" disabled={submitting} value={dateTo} onChangeText={setDateTo} placeholder="dd/mm/aaaa" />
           </View>
         </View>
         <Button variant="secondary" disabled={submitting} onPress={() => {
-          const from = dateFrom.trim();
-          const to = dateTo.trim();
+          const from = dateFrom.trim() ? (dateInputToIso(dateFrom, "date") || "") : "";
+          const to = dateTo.trim() ? (dateInputToIso(dateTo, "date") || "") : "";
+          if ((dateFrom.trim() && !from) || (dateTo.trim() && !to)) {
+            setAviso({ tone: "warning", title: "Data inválida", message: "Use o formato dd/mm/aaaa." });
+            return;
+          }
           if (from === period.from && to === period.to) load();
           else setPeriod({ from, to });
         }}>Aplicar filtros</Button>
