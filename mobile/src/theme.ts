@@ -72,6 +72,7 @@ export const routeLabels: Record<string, string> = {
   notifications: "Notificações",
   notification: "Notificação",
   "schedule-create": "Adicionar escala",
+  "schedule-admin": "Gestão de escalas",
   "finance-review": "Revisão financeira",
 };
 

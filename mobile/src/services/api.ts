@@ -163,6 +163,14 @@ export const api = {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     }),
+  /** Edicao parcial (PATCH): usado pela gestao de escalas (Fase 4). */
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  /** Remocao (DELETE). Resposta 204 vira `undefined`. */
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   postForm: <T>(path: string, body: FormData) =>
     request<T>(
       path,

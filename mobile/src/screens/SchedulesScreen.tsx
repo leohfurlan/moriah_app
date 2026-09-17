@@ -7,6 +7,7 @@ import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
+import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignment } from "@/types/api";
@@ -38,9 +39,9 @@ function DesktopSchedules({
       <View style={styles.scheduleViews}><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Calendário</Text></View><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Lista</Text></View><View style={styles.scheduleViewActive}><Text style={styles.scheduleViewActiveText}>Por ministério</Text></View></View>
       <View style={styles.scheduleFilters}><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Evento: todos</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Todos os ministérios</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Status: todos</Text><Text style={styles.filterChevron}>⌄</Text></View></View>
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={onRetry} /> : null}
-      {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento e distribua as funções pelo fluxo do MVP.</Text><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
+      {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento, monte a equipe e acompanhe as respostas.</Text><Button size="compact" onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
       <View style={styles.scheduleBoard}>
-        {groups.length ? groups.map((group) => <View key={group} style={styles.scheduleGroup}><View style={styles.scheduleGroupHeader}><Text style={styles.scheduleGroupTitle}>{group}</Text><Text style={styles.scheduleGroupCount}>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).length} participações</Text></View>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).map((item) => <View key={item.id} style={styles.scheduleBoardRow}><View style={styles.scheduleBoardCopy}><Text style={styles.scheduleBoardTitle}>{item.event_name}</Text><Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.role_name}</Text></View><Badge label={statusLabel(item.status)} tone={statusTone(item.status)} /><Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button></View>)}</View>) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala cadastrada</Text><Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá por ministério aqui.</Text></View>}
+        {groups.length ? groups.map((group) => <View key={group} style={styles.scheduleGroup}><View style={styles.scheduleGroupHeader}><Text style={styles.scheduleGroupTitle}>{group}</Text><Text style={styles.scheduleGroupCount}>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).length} participações</Text></View>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).map((item) => <View key={item.id} style={styles.scheduleBoardRow}><View style={styles.scheduleBoardCopy}><Text style={styles.scheduleBoardTitle}>{item.event_name}</Text><Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.schedule_name} · {item.role_name}</Text></View><Badge label={statusLabel(item.status)} tone={statusTone(item.status)} /><Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button></View>)}</View>) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala cadastrada</Text><Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá por ministério aqui.</Text></View>}
       </View>
     </View>
   );
@@ -59,6 +60,9 @@ export function SchedulesScreen() {
   const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const canCreate = Boolean(me?.can_access_management);
+  // Atalho para a gestao existe so para quem realmente opera escalas
+  // (coordenacao/lideranca). `can_access_management` e mais amplo que isso.
+  const podeGerenciar = podeGerenciarEscalas(me?.capabilities || []);
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -122,8 +126,13 @@ export function SchedulesScreen() {
       {canCreate ? (
         <Card>
           <Text style={styles.managementTitle}>Gestão de escalas</Text>
-          <Text style={styles.meta}>Crie um evento da igreja e publique a programação diretamente no MVP.</Text>
-          <Button variant="ghost" onPress={() => router.push("/schedule-create" as never)}>Adicionar escala</Button>
+          <Text style={styles.meta}>Monte a equipe, publique e acompanhe as respostas.</Text>
+          <View style={styles.buttonRow}>
+            {podeGerenciar ? (
+              <View style={styles.buttonFlex}><Button onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button></View>
+            ) : null}
+            <View style={styles.buttonFlex}><Button variant="ghost" onPress={() => router.push("/schedule-create" as never)}>Adicionar escala</Button></View>
+          </View>
         </Card>
       ) : null}
 
@@ -134,7 +143,7 @@ export function SchedulesScreen() {
           <View style={styles.cardHeader}>
             <View style={styles.cardHeaderCol}>
               <Text style={styles.eventName}>{item.event_name}</Text>
-              <Text style={styles.meta}>{item.ministry_name} / {item.role_name}</Text>
+              <Text style={styles.meta}>{item.schedule_name} · {item.ministry_name} / {item.role_name}</Text>
               <Text style={styles.meta}>{formatDate(item.event_start_at, true)}</Text>
             </View>
             <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />

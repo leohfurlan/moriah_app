@@ -60,6 +60,12 @@ docker compose up --build
 - Tesouraria: `tesouraria@moriah.app` / `tesouraria123`
 - Membro: `membro@moriah.app` / `membro123`
 - Lider de celula: `lider.celula@moriah.app` / `lider123`
+- Secretaria: `secretaria@moriah.app` / `secretaria123`
+- Coordenacao do Louvor: `coordenacao.louvor@moriah.app` / `coordenacao123`
+- Pastor: `pastor@moriah.app` / `pastor123`
+
+A gestao de escalas e da coordenacao e da lideranca (admin/pastor). A conta de
+coordenacao so enxerga o ministerio que coordena.
 
 ## Endpoints principais
 
@@ -73,9 +79,16 @@ docker compose up --build
 - `GET /api/leader/cell-members/`
 - `GET/POST /api/me/member-requests/`
 - `GET/POST/PATCH/DELETE /api/me/agenda/`
-- `POST /api/contributions/<id>/review/` (tesouraria/admin)
-- `POST /api/schedules/<id>/publish/` (coordenacao/pastoral/admin)
+- `GET /api/ministries/`
+- `GET/POST /api/schedules/`
+- `GET/PATCH /api/schedules/<id>/`
+- `POST /api/schedules/<id>/publish/`
+- `POST /api/schedules/<id>/cancel/`
+- `GET /api/schedules/<id>/candidates/`
+- `POST /api/schedules/<id>/assignments/`
+- `DELETE /api/schedules/<schedule_id>/assignments/<assignment_id>/`
 - `POST /api/schedules/<schedule_id>/assignments/<assignment_id>/substitute/`
+- `POST /api/contributions/<id>/review/` (tesouraria/admin)
 - `POST /api/cell-meetings/`
 - `GET /api/schema/` e `GET /api/docs/` (documentacao interativa)
 

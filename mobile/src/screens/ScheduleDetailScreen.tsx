@@ -13,9 +13,25 @@ import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
 function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "confirmed") return "success";
-  if (status === "declined") return "danger";
-  if (status === "pending") return "warning";
+  if (status === "declined" || status === "conflict") return "danger";
+  if (status === "pending" || status === "unavailable") return "warning";
   return "neutral";
+}
+function responseNote(status: string): string {
+  switch (status) {
+    case "confirmed":
+      return "Voce confirmou presenca.";
+    case "declined":
+      return "Voce recusou esta escala.";
+    case "unavailable":
+      return "Voce marcou indisponibilidade para esta escala.";
+    case "conflict":
+      return "Sua confirmacao encontrou um conflito de horario. Voce ainda pode recusar ou marcar indisponibilidade.";
+    case "replacement_needed":
+      return "Esta escala aguarda uma substituicao.";
+    default:
+      return "Aguardando sua resposta.";
+  }
 }
 
 const ACTION_FEEDBACK: Record<"confirm" | "decline" | "unavailable", { title: string; message: string }> = {
@@ -65,7 +81,11 @@ export function ScheduleDetailScreen() {
     } catch (err) {
       const { title, message } = describeError(
         err,
-        action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar",
+        action === "confirm"
+          ? "Nao foi possivel confirmar"
+          : action === "decline"
+            ? "Nao foi possivel recusar"
+            : "Nao foi possivel registrar a indisponibilidade",
       );
       toast(message, { tone: "error", title });
     } finally {
@@ -158,9 +178,18 @@ export function ScheduleDetailScreen() {
             ))}
           </Card>
 
-          {detail.status === "pending" ? (
+          {detail.schedule_status === "cancelled" ? (
+            <View style={styles.respondedNote}>
+              <Text style={styles.meta}>Esta escala foi cancelada. O periodo de respostas foi encerrado.</Text>
+            </View>
+          ) : detail.status === "pending" || detail.status === "conflict" ? (
             <Card>
               <Text style={styles.sectionTitle}>Sua resposta</Text>
+              {detail.status === "conflict" ? (
+                <Text style={styles.conflictNotice}>
+                  {detail.conflict_reason || "Ha um conflito de horario nesta escala."}
+                </Text>
+              ) : null}
               <Field
                 value={justification}
                 onChangeText={setJustification}
@@ -169,7 +198,7 @@ export function ScheduleDetailScreen() {
               <View style={styles.buttonRow}>
                 <View style={styles.buttonFlex}>
                   <Button disabled={acting} loading={acting} onPress={() => act("confirm")}>
-                    {acting ? "Enviando..." : "Confirmar"}
+                    {acting ? "Enviando..." : detail.status === "conflict" ? "Tentar confirmar" : "Confirmar"}
                   </Button>
                 </View>
                 <View style={styles.buttonFlex}>
@@ -185,12 +214,11 @@ export function ScheduleDetailScreen() {
           ) : (
             <View style={styles.respondedNote}>
               <Text style={styles.meta}>
-                {detail.status === "confirmed" ? "Voce confirmou presenca." : "Voce recusou esta escala."}
-                {detail.responded_at ? ` (${formatDate(detail.responded_at, true)})` : ""}
+                {responseNote(detail.status)}
+                {detail.responded_at ? " (" + formatDate(detail.responded_at, true) + ")" : ""}
               </Text>
             </View>
-          )}
-        </>
+          )}        </>
       ) : null}
     </Screen>
   );
@@ -281,6 +309,7 @@ const styles = StyleSheet.create({
   buttonFlex: {
     flex: 1,
   },
+  conflictNotice: { fontSize: 13, color: colors.warning, fontWeight: "700", marginBottom: spacing.sm },
   respondedNote: {
     alignItems: "center",
     paddingVertical: spacing.sm,
