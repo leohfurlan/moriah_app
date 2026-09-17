@@ -70,3 +70,32 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Alias para desenvolvimento local. Algumas extensoes de bloqueio do navegador
+# interpretam o segmento `/api/` como rastreamento e impedem o fetch do Expo.
+# Mantemos `/api/` como contrato publico e oferecemos este caminho equivalente
+# apenas para que o cliente web local consiga falar com o mesmo backend.
+local_api_urlpatterns = [
+    path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
+    path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
+    path("me/", MeView.as_view(), name="local-me"),
+    path("me/member/", MyMemberView.as_view(), name="local-my-member"),
+    path("me/statement/", MyStatementView.as_view(), name="local-my-statement"),
+    path("me/events/", MyChurchEventsView.as_view(), name="local-my-events"),
+    path("me/schedules/", MyScheduleAssignmentsView.as_view(), name="local-my-schedules"),
+    path("me/schedules/<int:pk>/", MyScheduleAssignmentDetailView.as_view(), name="local-my-schedule-detail"),
+    path("me/schedules/<int:pk>/action/", ScheduleAssignmentActionView.as_view(), name="local-schedule-action"),
+    path("schedules/", ScheduleListCreateView.as_view(), name="local-schedule-create"),
+    path("schedules/<int:pk>/", ScheduleDetailView.as_view(), name="local-schedule-detail"),
+    path("schedules/<int:pk>/publish/", SchedulePublishView.as_view(), name="local-schedule-publish"),
+    path("schedules/<int:pk>/cancel/", ScheduleCancelView.as_view(), name="local-schedule-cancel"),
+    path("schedules/<int:pk>/candidates/", ScheduleCandidatesView.as_view(), name="local-schedule-candidates"),
+    path("schedules/<int:pk>/assignments/", ScheduleAssignmentCreateView.as_view(), name="local-schedule-assignment-create"),
+    path("schedules/<int:schedule_pk>/assignments/<int:assignment_pk>/", ScheduleAssignmentDeleteView.as_view(), name="local-schedule-assignment-delete"),
+    path("schedules/<int:schedule_pk>/assignments/<int:assignment_pk>/substitute/", ScheduleSubstitutionView.as_view(), name="local-schedule-substitute"),
+    path("ministries/", MinistryListView.as_view(), name="local-ministry-list"),
+    path("leader/cell-members/", LeaderCellMembersView.as_view(), name="local-leader-cell-members"),
+    path("", include(router.urls)),
+]
+
+urlpatterns += [path("local-api/", include(local_api_urlpatterns))]

@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Bell, HandCoins, Menu, Search } from "lucide-react-native";
+import { ArrowLeft, Bell, HandCoins, Menu, Search } from "lucide-react-native";
 
 import { colors, radius, routeLabels, spacing } from "@/theme";
 import { MVP_NOTIFICATIONS } from "@/notifications";
@@ -22,7 +22,8 @@ import { MeResponse } from "@/types/api";
 
 function parentOf(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length <= 1) return "";
+  const rootParents: Record<string, string> = { "agenda-new": "Agenda" };
+  if (segments.length <= 1) return rootParents[segments[0]] || "";
   const last = segments[segments.length - 1];
   if (last in routeLabels) return "";
   const parent = segments[segments.length - 2];
@@ -253,8 +254,7 @@ export function Screen({
                     onPress={() => router.back()}
                     style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
                   >
-                    <Text style={styles.backIcon}>←</Text>
-                    <Text style={styles.backLabel}>Voltar</Text>
+                    <ArrowLeft size={20} strokeWidth={2} color={colors.accent} />
                   </Pressable>
                 ) : null}
                 <View style={styles.headerRow}>
@@ -274,8 +274,7 @@ export function Screen({
                     onPress={() => router.back()}
                     style={({ pressed }) => [styles.desktopBackButton, pressed && styles.pressed]}
                   >
-                    <Text style={styles.backIcon}>←</Text>
-                    <Text style={styles.backLabel}>Voltar</Text>
+                    <ArrowLeft size={18} strokeWidth={2} color={colors.accent} />
                   </Pressable>
                 ) : null}
                 <View style={styles.desktopPageHeaderRow}>
@@ -336,7 +335,7 @@ function BottomNav({ pathname, onNavigate, capabilities }: { pathname: string; o
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.canvas },
+  safeArea: { flex: 1, position: "relative", backgroundColor: colors.canvas },
   mobileShell: { flex: 1 },
   desktopShell: { flex: 1, flexDirection: "row", backgroundColor: colors.canvas },
   desktopMain: { flex: 1, minWidth: 0, backgroundColor: colors.canvas },
@@ -397,8 +396,8 @@ const styles = StyleSheet.create({
   desktopPageHeader: { minHeight: 54, justifyContent: "center", marginBottom: 16 },
   desktopPageHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
   desktopPageSubtitle: { color: colors.inkMuted, fontSize: 12 },
-  desktopBackButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start", marginBottom: 5, paddingVertical: 2 },
-  backButton: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: spacing.xs, marginBottom: spacing.sm, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  desktopBackButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", marginBottom: 5, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  backButton: { width: 36, height: 36, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", marginBottom: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   pressed: { opacity: 0.7 },
   backIcon: { color: colors.accent, fontSize: 16, fontWeight: "700" },
   backLabel: { color: colors.inkBody, fontSize: 13, fontWeight: "600" },
@@ -409,7 +408,7 @@ const styles = StyleSheet.create({
   body: { gap: spacing.md },
   desktopBody: { gap: 16 },
   bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "stretch", justifyContent: "space-around", minHeight: 76, paddingHorizontal: spacing.xs, paddingTop: spacing.xs, paddingBottom: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderDivider, zIndex: 30, overflow: "visible" },
-  navItem: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: radius.field, paddingHorizontal: spacing.sm },
+  navItem: { flex: 1, minWidth: 0, marginTop: 18, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: radius.field, paddingHorizontal: spacing.sm },
   navItemActive: { backgroundColor: colors.surfaceSelected },
   navLabel: { fontSize: 10, color: colors.inkMuted },
   navLabelActive: { color: colors.accent, fontWeight: "700" },

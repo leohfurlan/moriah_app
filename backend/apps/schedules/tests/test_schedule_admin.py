@@ -14,7 +14,7 @@ from apps.audit.models import AuditLog
 from apps.events.models import Event
 from apps.members.models import Member
 from apps.ministries.models import Ministry, MinistryRole
-from apps.schedules.models import PersonalCommitment, Schedule, ScheduleAssignment
+from apps.schedules.models import PersonalCommitment, Schedule, ScheduleAssignment, WorshipTeam, WorshipTeamMember
 
 pytestmark = pytest.mark.django_db
 
@@ -299,6 +299,9 @@ def test_candidatos_trazem_conflito_e_nao_vazam_outra_igreja(api_client, make_us
     funcao = _funcao(gestor.church, ministerio)
     ana = make_member("Ana do Louvor")
     ministerio.members.add(ana)
+    equipe = WorshipTeam.objects.create(church=gestor.church, name="Equipe de Louvor")
+    WorshipTeamMember.objects.create(church=gestor.church, team=equipe, member=ana, role="Vocal")
+    WorshipTeamMember.objects.create(church=gestor.church, team=equipe, member=ana, role="Baixo")
     make_member("Bruno Livre")
     carlos = make_member("Carlos Ocupado")
     make_member("Dora Inativa", status=Member.Status.INACTIVE)
@@ -321,6 +324,7 @@ def test_candidatos_trazem_conflito_e_nao_vazam_outra_igreja(api_client, make_us
     assert "Forasteiro" not in por_nome
     assert linhas[0]["full_name"] == "Ana do Louvor"
     assert por_nome["Ana do Louvor"]["ministry_names"] == ["Louvor"]
+    assert por_nome["Ana do Louvor"]["role_names"] == ["Baixo", "Vocal"]
     assert por_nome["Bruno Livre"]["available"] is True
     assert por_nome["Carlos Ocupado"]["available"] is False
     assert "Ja escalado em Escala do Ensaio" in por_nome["Carlos Ocupado"]["conflict_reason"]

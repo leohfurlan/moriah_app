@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { useToast } from "@/components/Feedback";
@@ -20,6 +20,66 @@ function statusTone(status: ScheduleAssignment["status"]): "success" | "warning"
 }
 
 
+type ScheduleView = "calendar" | "list" | "ministry";
+type FilterOption = { value: string; label: string };
+
+function FilterMenu({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value)?.label || label;
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.scheduleFilter, pressed && styles.pressed]}
+      >
+        <Text style={styles.scheduleFilterText}>{selected}</Text>
+        <Text style={styles.filterChevron}>⌄</Text>
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.filterOverlay} onPress={() => setOpen(false)}>
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterMenuTitle}>{label}</Text>
+            <ScrollView>
+              {options.map((option) => (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: option.value === value }}
+                  onPress={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.filterOption, option.value === value && styles.filterOptionActive, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.filterOptionText, option.value === value && styles.filterOptionTextActive]}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+function ministryAllowsRepertoire(name: string): boolean {
+  const normalized = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+  return ["louvor", "danca", "som", "projecao", "tecnica"].some((term) => normalized.includes(term));
+}
+
 function DesktopSchedules({
   items,
   canCreate,
@@ -33,15 +93,82 @@ function DesktopSchedules({
   onRetry: () => void;
   router: ReturnType<typeof useRouter>;
 }) {
-  const groups = Array.from(new Set(items.map((item) => item.ministry_name || "Sem ministério")));
+  const [view, setView] = useState<ScheduleView>("ministry");
+  const [eventFilter, setEventFilter] = useState("all");
+  const [ministryFilter, setMinistryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const eventOptions = [
+    { value: "all", label: "Evento: todos" },
+    ...Array.from(new Set(items.map((item) => item.event_name))).sort().map((name) => ({ value: name, label: `Evento: ${name}` })),
+  ];
+  const ministryOptions = [
+    { value: "all", label: "Todos os ministérios" },
+    ...Array.from(new Set(items.map((item) => item.ministry_name || "Sem ministério"))).sort().map((name) => ({ value: name, label: name })),
+  ];
+  const statusOptions = [
+    { value: "all", label: "Status: todos" },
+    ...Array.from(new Set(items.map((item) => item.status))).sort().map((status) => ({ value: status, label: `Status: ${statusLabel(status as ScheduleAssignment["status"])}` })),
+  ];
+  const filteredItems = items.filter((item) =>
+    (eventFilter === "all" || item.event_name === eventFilter)
+      && (ministryFilter === "all" || (item.ministry_name || "Sem ministério") === ministryFilter)
+      && (statusFilter === "all" || item.status === statusFilter),
+  );
+  const groups = Array.from(new Set(filteredItems.map((item) =>
+    view === "calendar" ? new Date(item.event_start_at).toLocaleDateString("pt-BR") : item.ministry_name || "Sem ministério",
+  )));
+  const renderRow = (item: ScheduleAssignment) => (
+    <View key={item.id} style={styles.scheduleBoardRow}>
+      <View style={styles.scheduleBoardCopy}>
+        <Text style={styles.scheduleBoardTitle}>{item.event_name}</Text>
+        <Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.schedule_name} · {item.role_name}</Text>
+      </View>
+      <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+      <Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button>
+    </View>
+  );
   return (
     <View style={styles.desktopSchedules}>
-      <View style={styles.scheduleViews}><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Calendário</Text></View><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Lista</Text></View><View style={styles.scheduleViewActive}><Text style={styles.scheduleViewActiveText}>Por ministério</Text></View></View>
-      <View style={styles.scheduleFilters}><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Evento: todos</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Todos os ministérios</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Status: todos</Text><Text style={styles.filterChevron}>⌄</Text></View></View>
+      <View style={styles.scheduleViews}>
+        {(["calendar", "list", "ministry"] as ScheduleView[]).map((item) => {
+          const active = view === item;
+          const label = item === "calendar" ? "Calendário" : item === "list" ? "Lista" : "Por ministério";
+          return (
+            <Pressable
+              key={item}
+              accessibilityRole="button"
+              accessibilityLabel={`Visualização ${label}`}
+              accessibilityState={{ selected: active }}
+              onPress={() => setView(item)}
+              style={({ pressed }) => [active ? styles.scheduleViewActive : styles.scheduleViewButton, pressed && styles.pressed]}
+            >
+              <Text style={active ? styles.scheduleViewActiveText : styles.scheduleViewText}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.scheduleFilters}>
+        <FilterMenu label="Evento" options={eventOptions} value={eventFilter} onChange={setEventFilter} />
+        <FilterMenu label="Ministério" options={ministryOptions} value={ministryFilter} onChange={setMinistryFilter} />
+        <FilterMenu label="Status" options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+      </View>
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={onRetry} /> : null}
       {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento, monte a equipe e acompanhe as respostas.</Text><Button size="compact" onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
       <View style={styles.scheduleBoard}>
-        {groups.length ? groups.map((group) => <View key={group} style={styles.scheduleGroup}><View style={styles.scheduleGroupHeader}><Text style={styles.scheduleGroupTitle}>{group}</Text><Text style={styles.scheduleGroupCount}>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).length} participações</Text></View>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).map((item) => <View key={item.id} style={styles.scheduleBoardRow}><View style={styles.scheduleBoardCopy}><Text style={styles.scheduleBoardTitle}>{item.event_name}</Text><Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.schedule_name} · {item.role_name}</Text></View><Badge label={statusLabel(item.status)} tone={statusTone(item.status)} /><Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button></View>)}</View>) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala cadastrada</Text><Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá por ministério aqui.</Text></View>}
+        {groups.length ? view === "list" ? filteredItems.map(renderRow) : groups.map((group) => {
+          const groupItems = view === "calendar"
+            ? filteredItems.filter((item) => new Date(item.event_start_at).toLocaleDateString("pt-BR") === group)
+            : filteredItems.filter((item) => (item.ministry_name || "Sem ministério") === group);
+          return (
+            <View key={group} style={styles.scheduleGroup}>
+              <View style={styles.scheduleGroupHeader}>
+                <Text style={styles.scheduleGroupTitle}>{view === "calendar" ? group : group}</Text>
+                <Text style={styles.scheduleGroupCount}>{groupItems.length} participações</Text>
+              </View>
+              {groupItems.map(renderRow)}
+            </View>
+          );
+        }) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala encontrada</Text><Text style={styles.emptyText}>Ajuste os filtros ou aguarde uma escala publicada.</Text></View>}
       </View>
     </View>
   );
@@ -151,7 +278,7 @@ export function SchedulesScreen() {
           </View>
 
           <Button variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>
-            Ver equipe e repertório
+            {ministryAllowsRepertoire(item.ministry_name) ? "Ver equipe e repertório" : "Ver equipe"}
           </Button>
 
           {item.status === "pending" && !isAdmin ? (
@@ -207,6 +334,14 @@ const styles = StyleSheet.create({
   scheduleFilter: { height: 40, minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 },
   filterChevron: { color: colors.inkMuted, fontSize: 16 },
   scheduleFilterText: { color: colors.inkBody, fontSize: 11 },
+  pressed: { opacity: 0.82 },
+  filterOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg, backgroundColor: "rgba(15, 23, 42, 0.42)" },
+  filterMenu: { width: "100%", maxWidth: 420, maxHeight: "75%", padding: spacing.md, gap: spacing.sm, borderRadius: 12, backgroundColor: colors.surface },
+  filterMenuTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", paddingHorizontal: spacing.sm },
+  filterOption: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.sm, borderRadius: 8 },
+  filterOptionActive: { backgroundColor: colors.surfaceSelected },
+  filterOptionText: { color: colors.inkBody, fontSize: 13 },
+  filterOptionTextActive: { color: colors.accent, fontWeight: "800" },
   managementBanner: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#C7D2FE", borderRadius: 10 },
   managementBannerTitle: { color: colors.ink, fontSize: 13, fontWeight: "800" },
   managementBannerText: { flex: 1, color: colors.inkMuted, fontSize: 11 },

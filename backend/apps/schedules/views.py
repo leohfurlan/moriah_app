@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
@@ -317,7 +317,14 @@ class ScheduleCandidatesView(generics.ListAPIView):
             queryset = queryset.filter(
                 Q(full_name__icontains=search) | Q(preferred_name__icontains=search)
             )
-        return queryset.prefetch_related("ministries")
+        role_assignments = ScheduleAssignment.objects.filter(
+            church=self.schedule.church,
+        ).select_related("ministry_role")
+        return queryset.prefetch_related(
+            "ministries",
+            "worship_team_memberships",
+            Prefetch("schedule_assignments", queryset=role_assignments, to_attr="_candidate_role_assignments"),
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

@@ -86,7 +86,7 @@ export interface ScheduleSubstitutionItem {
 }
 export interface ScheduleCandidate {
   id: number; full_name: string; preferred_name: string; email: string; phone: string; status: string;
-  ministry_names: string[]; already_assigned: boolean; available: boolean; conflict_reason: string;
+  ministry_names: string[]; role_names: string[]; already_assigned: boolean; available: boolean; conflict_reason: string;
 }
 export interface ScheduleAdminDetail extends ScheduleAdminItem {
   notes: string; created_by?: number | null; created_by_name: string; ministry_roles: MinistryRoleAdmin[];

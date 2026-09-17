@@ -139,3 +139,25 @@ def test_escala_sem_repertorio_devolve_lista_vazia(api_client, culto):
 
     assert response.status_code == 200
     assert response.data["repertoire"] == []
+
+
+def test_detalhe_de_ministerio_sem_relacao_com_louvor_nao_exibe_repertorio(
+    api_client, culto, make_user, make_member, church
+):
+    user = make_user("recepcao@igreja.com")
+    membro = make_member("Paula Recepção", user=user)
+    ministerio = Ministry.objects.create(church=church, name="Recepção")
+    role = MinistryRole.objects.create(church=church, ministry=ministerio, name="Acolhimento")
+    assignment = ScheduleAssignment.objects.create(
+        church=church,
+        schedule=culto["escala"],
+        member=membro,
+        ministry_role=role,
+        status=ScheduleAssignment.Status.PENDING,
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.get(f"/api/me/schedules/{assignment.id}/")
+
+    assert response.status_code == 200
+    assert response.data["repertoire"] == []

@@ -6,7 +6,7 @@ import {
   saveAccessToken,
 } from "./storage";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/local-api";
 
 // Handler chamado quando a sessao expira de vez (refresh invalido/expirado).
 // A camada de UI (useAuth) registra aqui a rotina de logout.

@@ -11,6 +11,11 @@ import { describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
+function ministryAllowsRepertoire(name: string): boolean {
+  const normalized = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+  return ["louvor", "danca", "som", "projecao", "tecnica"].some((term) => normalized.includes(term));
+}
+
 function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "confirmed") return "success";
   if (status === "declined" || status === "conflict") return "danger";
@@ -122,43 +127,45 @@ export function ScheduleDetailScreen() {
             </Card>
           ) : null}
 
-          <Card>
-            <Text style={styles.sectionTitle}>Repertorio ({detail.repertoire.length})</Text>
-            {detail.repertoire.length ? (
-              detail.repertoire.map((item) => (
-                <View key={item.id} style={styles.row}>
-                  <View style={styles.orderCircle}>
-                    <Text style={styles.orderText}>{item.order}</Text>
-                  </View>
-                  <View style={styles.rowBody}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.meta}>
-                      {item.item_type_display}
-                      {item.song_key ? ` · Tom ${item.song_key}` : ""}
-                    </Text>
-                    {item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}
-                    <Button
-                      variant="ghost"
-                      onPress={() => router.push({ pathname: "/song/[id]", params: { id: item.id, scheduleId: detail.schedule } })}
-                    >
-                      Ver detalhes da musica
-                    </Button>
-                    {item.reference_url ? (
-                      <Text
-                        accessibilityRole="link"
-                        onPress={() => Linking.openURL(item.reference_url)}
-                        style={styles.link}
-                      >
-                        Abrir cifra/referencia ↗
+          {ministryAllowsRepertoire(detail.ministry_name) ? (
+            <Card>
+              <Text style={styles.sectionTitle}>Repertorio ({detail.repertoire.length})</Text>
+              {detail.repertoire.length ? (
+                detail.repertoire.map((item) => (
+                  <View key={item.id} style={styles.row}>
+                    <View style={styles.orderCircle}>
+                      <Text style={styles.orderText}>{item.order}</Text>
+                    </View>
+                    <View style={styles.rowBody}>
+                      <Text style={styles.itemTitle}>{item.title}</Text>
+                      <Text style={styles.meta}>
+                        {item.item_type_display}
+                        {item.song_key ? ` · Tom ${item.song_key}` : ""}
                       </Text>
-                    ) : null}
+                      {item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}
+                      <Button
+                        variant="ghost"
+                        onPress={() => router.push({ pathname: "/song/[id]", params: { id: item.id, scheduleId: detail.schedule } })}
+                      >
+                        Ver detalhes da musica
+                      </Button>
+                      {item.reference_url ? (
+                        <Text
+                          accessibilityRole="link"
+                          onPress={() => Linking.openURL(item.reference_url)}
+                          style={styles.link}
+                        >
+                          Abrir cifra/referencia ↗
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.meta}>Repertorio ainda nao publicado.</Text>
-            )}
-          </Card>
+                ))
+              ) : (
+                <Text style={styles.meta}>Repertorio ainda nao publicado.</Text>
+              )}
+            </Card>
+          ) : null}
 
           <Card>
             <Text style={styles.sectionTitle}>Equipe escalada ({detail.team.length})</Text>

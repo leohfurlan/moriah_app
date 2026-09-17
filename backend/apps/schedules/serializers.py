@@ -1,3 +1,5 @@
+import unicodedata
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
@@ -8,6 +10,15 @@ from apps.ministries.models import Ministry, MinistryRole
 
 from . import services
 from .models import PersonalCommitment, Schedule, ScheduleAssignment, ScheduleItem
+
+
+REPERTOIRE_MINISTRY_TERMS = ("louvor", "danca", "som", "projecao", "tecnica")
+
+
+def ministry_allows_repertoire(name: str) -> bool:
+    normalized = unicodedata.normalize("NFKD", name or "")
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char)).lower()
+    return any(term in normalized for term in REPERTOIRE_MINISTRY_TERMS)
 
 
 class ScheduleAssignmentSerializer(serializers.ModelSerializer):
@@ -109,7 +120,8 @@ class ScheduleAssignmentDetailSerializer(ScheduleAssignmentSerializer):
         return TeamMemberSerializer(assignments, many=True, context={"member_id": obj.member_id}).data
 
     def get_repertoire(self, obj) -> list:
-        if obj.schedule.status == obj.schedule.Status.CANCELLED:
+        ministry_name = obj.ministry_role.ministry.name
+        if obj.schedule.status == obj.schedule.Status.CANCELLED or not ministry_allows_repertoire(ministry_name):
             return []
         items = obj.schedule.items.select_related("song").all()
         return ScheduleItemSerializer(items, many=True).data
@@ -343,6 +355,7 @@ class ScheduleCandidateSerializer(serializers.ModelSerializer):
     """Candidato para escalar, com elegibilidade e choque de agenda (C3)."""
 
     ministry_names = serializers.SerializerMethodField()
+    role_names = serializers.SerializerMethodField()
     already_assigned = serializers.SerializerMethodField()
     available = serializers.SerializerMethodField()
     conflict_reason = serializers.SerializerMethodField()
@@ -351,11 +364,23 @@ class ScheduleCandidateSerializer(serializers.ModelSerializer):
         model = Member
         fields = (
             "id", "full_name", "preferred_name", "email", "phone", "status",
-            "ministry_names", "already_assigned", "available", "conflict_reason",
+            "ministry_names", "role_names", "already_assigned", "available", "conflict_reason",
         )
 
     def get_ministry_names(self, obj) -> list:
         return [ministry.name for ministry in obj.ministries.all()]
+
+    def get_role_names(self, obj) -> list:
+        """Funções declaradas nas equipes ou usadas em escalas desta igreja."""
+        names = {membership.role for membership in obj.worship_team_memberships.all() if membership.active}
+        assignments = getattr(obj, "_candidate_role_assignments", None)
+        if assignments is None:
+            schedule = self.context.get("schedule")
+            assignments = obj.schedule_assignments.select_related("ministry_role")
+            if schedule is not None:
+                assignments = assignments.filter(church=schedule.church)
+        names.update(assignment.ministry_role.name for assignment in assignments)
+        return sorted(names)
 
     def get_already_assigned(self, obj) -> bool:
         schedule = self.context["schedule"]
