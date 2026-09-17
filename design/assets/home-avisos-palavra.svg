@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF7ED"/>
+      <stop offset="1" stop-color="#FED7AA"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="320" rx="28" fill="url(#bg)"/>
+  <circle cx="612" cy="102" r="92" fill="#FDBA74" opacity=".38"/>
+  <path d="M550 82c36 2 64 16 82 42v112c-18-26-46-40-82-42zM632 124c18-26 46-40 82-42v112c-36 2-64 16-82 42z" fill="#fff" stroke="#C2410C" stroke-width="7" stroke-linejoin="round"/>
+  <text x="46" y="70" fill="#C2410C" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="3">NOVA MENSAGEM</text>
+  <text x="46" y="134" fill="#431407" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="800">Uma palavra para hoje</text>
+  <text x="46" y="178" fill="#7C2D12" font-family="Inter,Arial,sans-serif" font-size="24">Acesse a reflexão da semana da sua igreja.</text>
+  <rect x="46" y="218" width="152" height="48" rx="24" fill="#C2410C"/>
+  <text x="78" y="249" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="800">Ler agora</text>
+</svg>

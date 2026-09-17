@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { DateTimeField } from "@/components/DateTimeField";
 import { InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -36,8 +37,6 @@ type Painel = { tipo: "adicionar" } | { tipo: "substituir"; membro: ScheduleAdmi
 export function ScheduleAdminDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const desktop = Platform.OS === "web" && width >= 900;
   const toast = useToast();
   const [detail, setDetail] = useState<ScheduleAdminDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,7 +300,7 @@ export function ScheduleAdminDetailScreen() {
           <Text style={styles.rotulo}>Evento da igreja</Text>
           <Field accessibilityLabel="Editar nome do evento" value={form.event_name} onChangeText={(valor) => setForm((atual) => ({ ...atual, event_name: valor }))} />
           <Text style={styles.rotulo}>Data e horário</Text>
-          <Field accessibilityLabel="Editar data e horário do evento" value={form.event_start_at} onChangeText={(valor) => setForm((atual) => ({ ...atual, event_start_at: valor }))} placeholder="20/12/2026 19:00" />
+          <DateTimeField accessibilityLabel="Editar data e horário do evento" value={form.event_start_at} onChangeText={(valor) => setForm((atual) => ({ ...atual, event_start_at: valor }))} placeholder="dd/mm/aaaa hh:mm" />
           <Text style={styles.rotulo}>Local</Text>
           <Field accessibilityLabel="Editar local do evento" value={form.event_location} onChangeText={(valor) => setForm((atual) => ({ ...atual, event_location: valor }))} />
           <Text style={styles.rotulo}>Observações</Text>
@@ -365,7 +364,9 @@ export function ScheduleAdminDetailScreen() {
       </Card>
 
       {painel ? (
-        <Card>
+        <Modal visible transparent animationType="slide" onRequestClose={() => setPainel(null)}>
+          <View style={styles.modalOverlay}>
+            <ScrollView contentContainerStyle={styles.modalContent}>
           <Text style={styles.secao}>
             {painel.tipo === "adicionar" ? "Adicionar integrante" : `Substituir ${painel.membro.member_name}`}
           </Text>
@@ -399,7 +400,7 @@ export function ScheduleAdminDetailScreen() {
           {!carregandoCandidatos && !candidatos.length ? (
             <Text style={styles.meta}>Nenhum membro ativo disponível para escalar.</Text>
           ) : null}
-          <View style={desktop ? styles.listaCandidatos : undefined}>
+          <View style={styles.listaCandidatos}>
             {candidatos.map((candidato) => {
               const escolhido = candidato.id === candidatoId;
               return (
@@ -464,7 +465,9 @@ export function ScheduleAdminDetailScreen() {
               </Button>
             </View>
           </View>
-        </Card>
+            </ScrollView>
+          </View>
+        </Modal>
       ) : null}
 
       <Card>
@@ -528,11 +531,13 @@ const styles = StyleSheet.create({
   chipTexto: { color: colors.inkBody, fontSize: 13, fontWeight: "700" },
   chipTextoAtivo: { color: colors.onAccent },
   pressed: { opacity: 0.85 },
-  listaCandidatos: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  modalOverlay: { flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(15, 23, 42, 0.42)" },
+  modalContent: { width: "100%", maxWidth: 760, alignSelf: "center", maxHeight: "92%", padding: spacing.lg, gap: spacing.sm, borderRadius: radius.card, backgroundColor: colors.surface },
+  listaCandidatos: { gap: 0, borderTopWidth: 1, borderTopColor: colors.borderDivider },
   candidato: {
     flexGrow: 1,
     gap: 2,
-    minWidth: 240,
+    width: "100%",
     padding: spacing.md,
     borderRadius: radius.field,
     borderWidth: 1,

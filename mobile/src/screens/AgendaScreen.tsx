@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from
 import { useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { DateTimeField, dateInputToIso } from "@/components/DateTimeField";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
@@ -197,6 +198,17 @@ export function AgendaScreen() {
       });
       return;
     }
+    const inicio = dateInputToIso(startsAt, "datetime");
+    const fim = endsAt.trim() ? dateInputToIso(endsAt, "datetime") : null;
+    if (!inicio || (endsAt.trim() && !fim)) {
+      setAviso({
+        tone: "warning",
+        title: "Data inválida",
+        message: "Use dd/mm/aaaa hh:mm. O horário deve estar no formato 24 horas.",
+      });
+      return;
+    }
+
     submittingRef.current = true;
     setSubmitting(true);
     setAviso(null);
@@ -204,8 +216,8 @@ export function AgendaScreen() {
       await api.post<PersonalCommitment>("/me/agenda/", {
         title: title.trim(),
         commitment_type: "personal",
-        starts_at: startsAt,
-        ends_at: endsAt || null,
+        starts_at: inicio,
+        ends_at: fim,
         notes,
       });
       setTitle("");
@@ -307,8 +319,8 @@ export function AgendaScreen() {
       {!isAdminWithoutMember ? <Card>
         <Text style={styles.sectionTitle}>Novo compromisso</Text>
         <Field value={title} onChangeText={setTitle} placeholder="Ex.: Ensaio do Louvor" />
-        <Field value={startsAt} onChangeText={setStartsAt} placeholder="Início: 2026-09-20T18:00:00-03:00" />
-        <Field value={endsAt} onChangeText={setEndsAt} placeholder="Fim (opcional): 2026-09-20T20:00:00-03:00" />
+        <DateTimeField accessibilityLabel="Início do compromisso" value={startsAt} onChangeText={setStartsAt} placeholder="dd/mm/aaaa hh:mm" />
+        <DateTimeField accessibilityLabel="Fim do compromisso" mode="datetime" value={endsAt} onChangeText={setEndsAt} placeholder="dd/mm/aaaa hh:mm (opcional)" />
         <Field value={notes} onChangeText={setNotes} placeholder="Observações (opcional)" multiline />
         {aviso ? (
           <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />

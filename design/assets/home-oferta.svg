@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="400" viewBox="0 0 720 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="400" rx="30" fill="url(#bg)"/>
+  <circle cx="594" cy="110" r="116" fill="#A5B4FC" opacity=".23"/>
+  <circle cx="660" cy="324" r="142" fill="#C4B5FD" opacity=".18"/>
+  <path d="M526 264c34-28 76-28 110 0l-10 56H536z" fill="#FDE68A" opacity=".95"/>
+  <path d="M550 240c12-26 28-39 48-39s36 13 48 39v19h-96z" fill="#fff" opacity=".95"/>
+  <path d="M574 202v-34M622 202v-34M574 168h48" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+  <text x="48" y="82" fill="#C7D2FE" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="3">GENEROSIDADE</text>
+  <text x="48" y="152" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="52" font-weight="800">Oferta com propósito</text>
+  <text x="48" y="202" fill="#E0E7FF" font-family="Inter,Arial,sans-serif" font-size="26">Contribua para a missão da igreja.</text>
+  <rect x="48" y="260" width="196" height="54" rx="27" fill="#fff"/>
+  <text x="82" y="295" fill="#4338CA" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="800">Nova contribuição</text>
+</svg>

@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Bell, Menu, Search } from "lucide-react-native";
+import { Bell, HandCoins, Menu, Search } from "lucide-react-native";
 
 import { colors, radius, routeLabels, spacing } from "@/theme";
 import { MVP_NOTIFICATIONS } from "@/notifications";
@@ -294,24 +294,43 @@ export function Screen({
 }
 
 function BottomNav({ pathname, onNavigate, capabilities }: { pathname: string; onNavigate: (route: string) => void; capabilities: string[] }) {
+  const itens = ABAS.filter((item) => temAcesso(item, capabilities) && item.id !== "aba-contribuicoes");
+  const esquerda = itens.slice(0, 2);
+  const direita = itens.slice(2);
+  const contribuicaoAtiva = rotaAtiva(pathname, ["contribution", "statement"]);
+
+  const renderItem = (item: (typeof ABAS)[number]) => {
+    const ativo = rotaAtiva(pathname, item.matches);
+    return (
+      <Pressable
+        key={item.id}
+        accessibilityRole="link"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: ativo }}
+        onPress={() => onNavigate(item.route)}
+        style={({ pressed }) => [styles.navItem, ativo && styles.navItemActive, pressed && styles.pressed]}
+      >
+        <item.Icon size={19} strokeWidth={1.8} color={ativo ? colors.accent : colors.inkMuted} />
+        <Text numberOfLines={1} style={[styles.navLabel, ativo && styles.navLabelActive]}>{item.label}</Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.bottomNav}>
-      {ABAS.filter((item) => temAcesso(item, capabilities)).map((item) => {
-        const ativo = rotaAtiva(pathname, item.matches);
-        return (
-          <Pressable
-            key={item.id}
-            accessibilityRole="link"
-            accessibilityLabel={item.label}
-            accessibilityState={{ selected: ativo }}
-            onPress={() => onNavigate(item.route)}
-            style={({ pressed }) => [styles.navItem, ativo && styles.navItemActive, pressed && styles.pressed]}
-          >
-            <item.Icon size={19} strokeWidth={1.8} color={ativo ? colors.accent : colors.inkMuted} />
-            <Text numberOfLines={1} style={[styles.navLabel, ativo && styles.navLabelActive]}>{item.label}</Text>
-          </Pressable>
-        );
-      })}
+      {esquerda.map(renderItem)}
+      <View style={styles.navContributionSlot}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Nova contribuição"
+          accessibilityState={{ selected: contribuicaoAtiva }}
+          onPress={() => onNavigate("contribution")}
+          style={({ pressed }) => [styles.navContribution, contribuicaoAtiva && styles.navContributionActive, pressed && styles.pressed]}
+        >
+          <HandCoins size={24} strokeWidth={1.8} color={colors.onAccent} />
+        </Pressable>
+      </View>
+      {direita.map(renderItem)}
     </View>
   );
 }
@@ -389,9 +408,12 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 11, color: colors.inkMuted },
   body: { gap: spacing.md },
   desktopBody: { gap: 16 },
-  bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "stretch", justifyContent: "space-around", minHeight: 76, paddingHorizontal: spacing.xs, paddingTop: spacing.xs, paddingBottom: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderDivider },
+  bottomNav: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "stretch", justifyContent: "space-around", minHeight: 76, paddingHorizontal: spacing.xs, paddingTop: spacing.xs, paddingBottom: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderDivider, zIndex: 30, overflow: "visible" },
   navItem: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: radius.field, paddingHorizontal: spacing.sm },
   navItemActive: { backgroundColor: colors.surfaceSelected },
   navLabel: { fontSize: 10, color: colors.inkMuted },
   navLabelActive: { color: colors.accent, fontWeight: "700" },
+  navContributionSlot: { flex: 1, alignItems: "center", justifyContent: "flex-start" },
+  navContribution: { width: 64, height: 64, marginTop: -22, borderRadius: 32, alignItems: "center", justifyContent: "center", backgroundColor: colors.accent, borderWidth: 4, borderColor: colors.surface, shadowColor: "#101828", shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 5 },
+  navContributionActive: { backgroundColor: "#4338CA" },
 });

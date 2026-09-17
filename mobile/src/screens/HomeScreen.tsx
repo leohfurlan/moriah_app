@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { Bell } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
 
 import { Badge, Button, Card } from "@/components/Form";
 import { ErrorNotice } from "@/components/ErrorNotice";
@@ -9,7 +10,7 @@ import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ChurchEvent, Contribution, MeResponse, PersonalCommitment, ScheduleAssignment } from "@/types/api";
-import { colors, formatBRL, formatDate, spacing, statusLabel } from "@/theme";
+import { colors, formatBRL, formatDate, radius, spacing, statusLabel } from "@/theme";
 
 /**
  * Painel pessoal do membro.
@@ -35,12 +36,6 @@ function initials(me: MeResponse): string {
 function headerDate(): string {
   const value = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function scheduleTone(status: ScheduleAssignment["status"]): "success" | "warning" | "danger" {
-  if (status === "confirmed") return "success";
-  if (status === "declined" || status === "unavailable") return "danger";
-  return "warning";
 }
 
 function dataValida(valor?: string | null): number {
@@ -71,6 +66,31 @@ function rotuloHora(valor?: string | null): string {
   const quando = dataValida(valor);
   if (Number.isNaN(quando)) return "";
   return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(quando));
+}
+
+type QuickShortcutId = "contribution" | "agenda" | "schedules" | "content" | "statement" | "finance-review" | "schedule-create";
+
+type QuickShortcut = {
+  id: QuickShortcutId;
+  label: string;
+  route: string;
+  Icon: typeof HandCoins;
+};
+
+const QUICK_SHORTCUTS: QuickShortcut[] = [
+  { id: "contribution", label: "Contribuir", route: "contribution", Icon: HandCoins },
+  { id: "agenda", label: "Agenda", route: "agenda", Icon: CalendarDays },
+  { id: "schedules", label: "Escalas", route: "schedules", Icon: CalendarCheck },
+  { id: "content", label: "Conteúdo", route: "content", Icon: BookOpen },
+  { id: "statement", label: "Extrato", route: "statement", Icon: HandCoins },
+  { id: "finance-review", label: "Revisão", route: "finance-review", Icon: BookOpen },
+  { id: "schedule-create", label: "Criar escala", route: "schedule-create", Icon: CalendarCheck },
+];
+
+const DEFAULT_SHORTCUTS: QuickShortcutId[] = ["contribution", "agenda", "schedules"];
+
+function shortcutsKey(me: MeResponse): string {
+  return `moriah:home-shortcuts:${me.id}`;
 }
 
 function DesktopDashboard({
@@ -262,6 +282,7 @@ export function HomeScreen({
   onLogout: () => void;
 }) {
   const isMember = Boolean(me.member_id);
+  const canLoadHome = isMember || canAccessManagement;
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [schedules, setSchedules] = useState<ScheduleAssignment[]>([]);
@@ -271,9 +292,12 @@ export function HomeScreen({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const [shortcuts, setShortcuts] = useState<QuickShortcutId[]>(DEFAULT_SHORTCUTS);
+  const [shortcutDraft, setShortcutDraft] = useState<QuickShortcutId[]>(DEFAULT_SHORTCUTS);
+  const [editingShortcuts, setEditingShortcuts] = useState(false);
 
   const load = useCallback(async () => {
-    if (!isMember) {
+    if (!canLoadHome) {
       setLoading(false);
       return;
     }
@@ -296,22 +320,36 @@ export function HomeScreen({
     setError(failures.length ? { title: "Dados incompletos", message: failures.map((item) => item.message).join(" ") } : null);
     setLoading(false);
     setRefreshing(false);
-  }, [isMember]);
+  }, [canLoadHome]);
 
   useEffect(() => {
     setLoading(true);
     void load();
   }, [load]);
 
+  useEffect(() => {
+    let ativo = true;
+    void AsyncStorage.getItem(shortcutsKey(me)).then((value) => {
+      if (!ativo || !value) return;
+      try {
+        const saved = JSON.parse(value) as QuickShortcutId[];
+        const valid = saved.filter((id) => QUICK_SHORTCUTS.some((shortcut) => shortcut.id === id)).slice(0, 3);
+        if (valid.length) {
+          setShortcuts(valid);
+          setShortcutDraft(valid);
+        }
+      } catch {
+        // Uma preferência inválida não impede a Home de carregar.
+      }
+    });
+    return () => { ativo = false; };
+  }, [me]);
+
   function onRefresh() {
     setRefreshing(true);
     void load();
   }
 
-  const contributionTotal = useMemo(
-    () => contributions.reduce((total, item) => total + Number(item.amount || 0), 0),
-    [contributions],
-  );
   const proximaEscala = useMemo(
     () => futuros(schedules.filter((item) => !["declined", "unavailable"].includes(item.status)), (item) => item.event_start_at)[0] || null,
     [schedules],
@@ -319,6 +357,46 @@ export function HomeScreen({
   const proximoCompromisso = useMemo(() => futuros(commitments, (item) => item.starts_at)[0] || null, [commitments]);
   const canCreateSchedule = podeGerenciarEscalas(me.capabilities || []);
   const canReviewContributions = (me.capabilities || []).some(capability => ["review_contributions", "manage_all"].includes(capability));
+  const availableShortcuts = useMemo(
+    () => QUICK_SHORTCUTS.filter((shortcut) => {
+      if (["contribution", "agenda", "schedules", "content", "statement"].includes(shortcut.id)) return true;
+      if (shortcut.id === "finance-review") return canReviewContributions;
+      return shortcut.id === "schedule-create" && canCreateSchedule;
+    }),
+    [canCreateSchedule, canReviewContributions],
+  );
+  const visibleShortcuts = shortcuts.filter((id) => availableShortcuts.some((shortcut) => shortcut.id === id));
+
+  const destaque = useMemo(() => {
+    const escala = proximaEscala ? {
+      kind: "Escala",
+      title: proximaEscala.event_name,
+      detail: formatDate(proximaEscala.event_start_at, true),
+      badge: [proximaEscala.ministry_name, proximaEscala.role_name].filter(Boolean).join(" · "),
+      route: `schedule/${proximaEscala.id}`,
+    } : null;
+    if (escala) return escala;
+    if (proximoCompromisso) {
+      return {
+        kind: "Próximo compromisso",
+        title: proximoCompromisso.title,
+        detail: `${formatDate(proximoCompromisso.starts_at)} · ${rotuloHora(proximoCompromisso.starts_at)}`,
+        badge: "Agenda pessoal",
+        route: "agenda",
+      };
+    }
+    const evento = futuros(events, (item) => item.start_at)[0];
+    if (evento) {
+      return {
+        kind: "Próximo compromisso",
+        title: evento.name,
+        detail: [formatDate(evento.start_at), evento.location].filter(Boolean).join(" · "),
+        badge: evento.event_type_display || "Agenda da igreja",
+        route: "agenda",
+      };
+    }
+    return null;
+  }, [events, proximaEscala, proximoCompromisso]);
 
   const itensProximos = useMemo(() => {
     const compromissos = futuros(commitments, (item) => item.starts_at).map((item) => ({
@@ -336,14 +414,34 @@ export function HomeScreen({
     return [...compromissos, ...eventos].sort((left, right) => dataValida(left.quando) - dataValida(right.quando)).slice(0, 3);
   }, [commitments, events]);
 
+  function abrirEditorAtalhos() {
+    setShortcutDraft(shortcuts);
+    setEditingShortcuts(true);
+  }
+
+  function alternarAtalho(id: QuickShortcutId) {
+    setShortcutDraft((atual) => {
+      if (atual.includes(id)) return atual.filter((item) => item !== id);
+      if (atual.length >= 3) return atual;
+      return [...atual, id];
+    });
+  }
+
+  async function salvarAtalhos() {
+    const next = shortcutDraft.length ? shortcutDraft : DEFAULT_SHORTCUTS;
+    setShortcuts(next);
+    setEditingShortcuts(false);
+    await AsyncStorage.setItem(shortcutsKey(me), JSON.stringify(next));
+  }
+
   return (
     <Screen
       title={`Olá, ${firstName(me)} 👋`}
       headerSubtitle={headerDate()}
-      showBottomNav={isMember || canReviewContributions}
+      showBottomNav={canLoadHome || canReviewContributions}
       refreshing={refreshing || loading}
       onRefresh={onRefresh}
-      headerAccessory={!desktop && isMember ? (<View style={styles.headerActions}>
+      headerAccessory={!desktop && canLoadHome ? (<View style={styles.headerActions}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{initials(me)}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Notificações" onPress={() => onNavigate("notifications")} style={styles.notificationButton}>
             <Bell size={20} strokeWidth={1.8} color={colors.accent} />
@@ -364,76 +462,121 @@ export function HomeScreen({
           onNavigate={onNavigate}
         />
       ) : <>
-      {canAccessManagement ? (
+      {!canLoadHome ? (
         <Card style={styles.managementCard}>
-          <Text style={styles.eyebrow}>ACESSO DE GESTÃO</Text>
-          <Text style={styles.cardTitle}>Painel de gestão</Text>
-          <Text style={styles.meta}>Esta conta possui permissões administrativas além da experiência pessoal.</Text>
-          {canReviewContributions ? <Button size="compact" onPress={() => onNavigate("finance-review")}>Abrir revisão financeira</Button> : null}
+          <Text style={styles.cardTitle}>Acesso limitado</Text>
+          <Text style={styles.meta}>Vincule um cadastro de membro para personalizar sua experiência no Moriah.</Text>
         </Card>
-      ) : null}
+      ) : (
+        <View style={styles.mobileHome}>
+          {canAccessManagement && !isMember ? (
+            <Card style={styles.adminHomeCard}>
+              <View style={styles.adminHomeCopy}>
+                <Text style={styles.eyebrow}>ACESSO DE GESTÃO</Text>
+                <Text style={styles.cardTitle}>Visão administrativa</Text>
+                <Text style={styles.meta}>Você pode visualizar as áreas da igreja e gerenciar os conteúdos disponíveis.</Text>
+              </View>
+              {canReviewContributions ? <Button size="compact" onPress={() => onNavigate("finance-review")}>Abrir revisão</Button> : null}
+            </Card>
+          ) : null}
 
-      {!isMember ? (
-        <Card style={styles.managementCard}>
-          <Text style={styles.cardTitle}>Conta administrativa sem membro vinculado</Text>
-          <Text style={styles.meta}>As áreas de perfil, contribuições, escalas e agenda ficam ocultas porque esta conta não possui um cadastro de membro associado.</Text>
-          {canCreateSchedule ? <Button size="compact" onPress={() => onNavigate("schedule-create")}>Abrir gestão de escalas</Button> : null}
-        </Card>
-      ) : null}
+          <View style={styles.homeSearch}>
+            <TextInput accessibilityLabel="Buscar na igreja" placeholder="Buscar na igreja" placeholderTextColor={colors.inkPlaceholder} style={styles.homeSearchInput} />
+            <Text style={styles.homeSearchHint}>⌕</Text>
+          </View>
 
-      {isMember ? <>
-      <Card style={styles.scheduleCard}>
-        <Text style={styles.eyebrow}>MINHA PRÓXIMA ESCALA</Text>
-        {proximaEscala ? (
-          <>
-            <Text style={styles.scheduleTitle}>{proximaEscala.event_name}</Text>
-            <Text style={styles.meta}>{formatDate(proximaEscala.event_start_at, true)}</Text>
-            <Badge label={proximaEscala.status === "pending" ? "Convite pendente" : statusLabel(proximaEscala.status)} tone={scheduleTone(proximaEscala.status)} />
-            <Text style={styles.role}>{proximaEscala.ministry_name} · {proximaEscala.role_name}</Text>
-            <View style={styles.buttonRow}>
-              <View style={styles.buttonFlex}><Button size="compact" onPress={() => onNavigate("schedule/" + proximaEscala.id)}>Confirmar</Button></View>
-              <View style={[styles.buttonFlex, styles.buttonFlexSmall]}><Button size="compact" variant="secondary" onPress={() => onNavigate("schedule/" + proximaEscala.id)}>Não posso</Button></View>
+          <Card style={styles.quickCard}>
+            <View style={styles.quickHeader}>
+              <Text style={styles.sectionTitle}>Acessos rápidos</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Editar acessos rápidos" onPress={abrirEditorAtalhos} style={styles.editShortcutButton}>
+                <Settings2 size={13} color={colors.accent} />
+                <Text style={styles.linkText}>Editar</Text>
+              </Pressable>
             </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.scheduleTitle}>Nenhuma escala próxima</Text>
-            <Text style={styles.meta}>Quando você for escalado, os detalhes aparecerão aqui.</Text>
-          </>
-        )}
-      </Card>
+            <View style={styles.quickGrid}>
+              {visibleShortcuts.map((id) => {
+                const shortcut = QUICK_SHORTCUTS.find((item) => item.id === id);
+                if (!shortcut) return null;
+                const Icon = shortcut.Icon;
+                return (
+                  <Pressable key={shortcut.id} accessibilityRole="button" accessibilityLabel={shortcut.label} onPress={() => onNavigate(shortcut.route)} style={({ pressed }) => [styles.quickTile, pressed && styles.pressed]}>
+                    <Icon size={17} strokeWidth={1.8} color={colors.accent} />
+                    <Text numberOfLines={1} style={styles.quickTileText}>{shortcut.label}</Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable accessibilityRole="button" accessibilityLabel="Mais acessos rápidos" onPress={abrirEditorAtalhos} style={({ pressed }) => [styles.quickTile, pressed && styles.pressed]}>
+                <MoreHorizontal size={17} strokeWidth={1.8} color={colors.inkMuted} />
+                <Text numberOfLines={1} style={styles.quickTileText}>Mais</Text>
+              </Pressable>
+            </View>
+          </Card>
 
-      <Card style={styles.contributionCard}>
-        <Text style={styles.cardTitle}>Contribuições</Text>
-        <Text style={styles.contributionValue}>
-          {contributions.length ? `Última contribuição  •  ${formatBRL(contributionTotal)}` : "Nenhuma contribuição registrada"}
-        </Text>
-        <Text style={styles.successMeta}>
-          {contributions[0]
-            ? `${formatDate(contributions[0].contribution_date)} • ${statusLabel(contributions[0].category)} • ${statusLabel(contributions[0].status)}`
-            : "Sem dados disponíveis"}
-        </Text>
-        <View style={styles.contributionActions}>
-          <Button size="compact" onPress={() => onNavigate("contribution")}>Enviar comprovante</Button>
-          <Pressable accessibilityRole="button" accessibilityLabel="Ver histórico de contribuições" onPress={() => onNavigate("statement")} style={styles.historyButton}><Text style={styles.linkText}>Ver histórico</Text></Pressable>
+          <Card style={styles.priorityCard} onPress={() => destaque && onNavigate(destaque.route)}>
+            <View style={styles.priorityAccent} />
+            <View style={styles.priorityCopy}>
+              <View style={styles.priorityHeader}>
+                <Text style={styles.eyebrow}>{destaque?.kind.toUpperCase() || "PRÓXIMO COMPROMISSO"}</Text>
+                <ChevronRight size={18} color={colors.accent} />
+              </View>
+              <Text style={styles.priorityTitle}>{destaque?.title || "Nenhum compromisso próximo"}</Text>
+              <Text style={styles.meta}>{destaque?.detail || "Quando houver uma escala ou evento, ele aparecerá aqui."}</Text>
+              {destaque?.badge ? <Badge label={destaque.badge} tone="neutral" /> : null}
+            </View>
+          </Card>
+
+          <View style={styles.offerBanner}>
+            <View style={styles.offerCopy}>
+              <Text style={styles.offerEyebrow}>GENEROSIDADE</Text>
+              <Text style={styles.offerTitle}>Oferta com propósito.</Text>
+              <Text style={styles.offerMeta}>Contribua com a igreja de forma simples e segura.</Text>
+              <Button size="compact" onPress={() => onNavigate("contribution")}>Contribuir agora</Button>
+            </View>
+            <View style={styles.offerArt}>
+              <View style={styles.offerArtCircle} />
+              <HandCoins size={54} strokeWidth={1.45} color={colors.accent} />
+            </View>
+          </View>
+
+          <Card style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <Text style={styles.sectionTitle}>Hoje na igreja</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Ver agenda" onPress={() => onNavigate("agenda")}><Text style={styles.linkText}>Ver agenda</Text></Pressable>
+            </View>
+            {itensProximos.length === 0 ? <Text style={styles.mutedSmall}>Sem compromissos ou eventos publicados.</Text> : itensProximos.slice(0, 2).map((item) => (
+              <View key={item.id} style={styles.todayRow}>
+                <View style={styles.todayDay}><Text style={styles.todayDayText}>{item.dia}</Text></View>
+                <Text numberOfLines={2} style={styles.todayEvent}>{item.texto}</Text>
+              </View>
+            ))}
+          </Card>
+
+          <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text><Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}><Text style={styles.logoutText}>Sair</Text></Pressable></View>
         </View>
-      </Card>
-
-      <Card style={styles.upcomingCard}>
-        <Text style={styles.cardTitle}>Próximos</Text>
-        {itensProximos.length === 0 ? (
-          <Text style={styles.mutedSmall}>Sem dados disponíveis</Text>
-        ) : (
-          itensProximos.map((item) => (
-            <View key={item.id} style={styles.eventRow}><Text style={styles.day}>{item.dia}</Text><Text style={styles.event}>{item.texto}</Text></View>
-          ))
-        )}
-        <Pressable accessibilityRole="button" accessibilityLabel="Abrir minha agenda" onPress={() => onNavigate("agenda")} style={styles.readButton}><Text style={styles.linkText}>Ver agenda completa</Text></Pressable>
-      </Card>
-
-      <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text><Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}><Text style={styles.logoutText}>Sair</Text></Pressable></View>
-      </> : <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text><Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}><Text style={styles.logoutText}>Sair</Text></Pressable></View>}
+      )}
       </>}
+      <Modal visible={editingShortcuts} transparent animationType="slide" onRequestClose={() => setEditingShortcuts(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.shortcutModal}>
+            <View style={styles.modalHeader}>
+              <View><Text style={styles.modalTitle}>Editar acessos rápidos</Text><Text style={styles.meta}>Escolha até 3 atalhos para a Home.</Text></View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Fechar editor de acessos rápidos" onPress={() => setEditingShortcuts(false)}><Text style={styles.modalClose}>×</Text></Pressable>
+            </View>
+            {availableShortcuts.map((shortcut) => {
+              const selected = shortcutDraft.includes(shortcut.id);
+              const Icon = shortcut.Icon;
+              return (
+                <Pressable key={shortcut.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => alternarAtalho(shortcut.id)} style={styles.shortcutOption}>
+                  <Icon size={17} color={selected ? colors.accent : colors.inkMuted} />
+                  <Text style={styles.shortcutOptionText}>{shortcut.label}</Text>
+                  <View style={[styles.shortcutCheck, selected && styles.shortcutCheckSelected]}>{selected ? <Text style={styles.shortcutCheckText}>✓</Text> : null}</View>
+                </Pressable>
+              );
+            })}
+            <Button size="compact" onPress={() => void salvarAtalhos()}>Salvar acessos</Button>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -444,6 +587,47 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 6, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 12, fontWeight: "700", color: colors.accent },
   notificationButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  mobileHome: { gap: spacing.md },
+  adminHomeCard: { gap: spacing.sm, backgroundColor: colors.surfaceSelected, borderColor: "#C7D2FE" },
+  adminHomeCopy: { gap: spacing.xs },
+  homeSearch: { height: 46, flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.field, paddingHorizontal: spacing.md },
+  homeSearchInput: { flex: 1, color: colors.inkBody, fontSize: 13, paddingVertical: 0 },
+  homeSearchHint: { color: colors.inkMuted, fontSize: 23, lineHeight: 23, transform: [{ rotate: "-20deg" }] },
+  quickCard: { gap: spacing.md, padding: spacing.md },
+  quickHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionTitle: { fontSize: 15, fontWeight: "800", color: colors.ink },
+  editShortcutButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs },
+  quickGrid: { flexDirection: "row", gap: spacing.sm },
+  quickTile: { flex: 1, minWidth: 0, minHeight: 58, alignItems: "center", justifyContent: "center", gap: spacing.xs, borderRadius: 10, backgroundColor: "#F8F9FF", borderWidth: 1, borderColor: "#EEF0FF", paddingHorizontal: spacing.xs },
+  quickTileText: { color: colors.inkBody, fontSize: 10, fontWeight: "700" },
+  priorityCard: { minHeight: 116, flexDirection: "row", padding: 0, overflow: "hidden" },
+  priorityAccent: { width: 4, backgroundColor: colors.accent },
+  priorityCopy: { flex: 1, gap: spacing.xs, padding: spacing.md },
+  priorityHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  priorityTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  offerBanner: { minHeight: 172, flexDirection: "row", overflow: "hidden", borderRadius: radius.card, backgroundColor: "#F4E9DE", borderWidth: 1, borderColor: "#F1DCCA", padding: spacing.lg },
+  offerCopy: { flex: 1, alignItems: "flex-start", gap: spacing.sm },
+  offerEyebrow: { color: "#A66D4B", fontSize: 9, fontWeight: "800", letterSpacing: 1.1 },
+  offerTitle: { color: colors.ink, fontSize: 19, lineHeight: 23, fontWeight: "800" },
+  offerMeta: { maxWidth: 190, color: colors.inkMuted, fontSize: 11, lineHeight: 15 },
+  offerArt: { width: 94, alignItems: "center", justifyContent: "center", position: "relative" },
+  offerArtCircle: { position: "absolute", width: 96, height: 96, borderRadius: 48, backgroundColor: "#F8D6B9", opacity: 0.8 },
+  todayCard: { gap: spacing.md, padding: spacing.md },
+  todayHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  todayRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  todayDay: { width: 48, minHeight: 31, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: colors.surfaceSelected },
+  todayDayText: { color: colors.accent, fontSize: 10, fontWeight: "800" },
+  todayEvent: { flex: 1, color: colors.inkBody, fontSize: 11, lineHeight: 16 },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(16,24,40,0.42)" },
+  shortcutModal: { gap: spacing.sm, backgroundColor: colors.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: spacing.xl, paddingBottom: 28 },
+  modalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: spacing.sm },
+  modalTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
+  modalClose: { color: colors.inkMuted, fontSize: 28, lineHeight: 26, paddingHorizontal: spacing.xs },
+  shortcutOption: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderDivider },
+  shortcutOptionText: { flex: 1, color: colors.inkBody, fontSize: 13, fontWeight: "600" },
+  shortcutCheck: { width: 22, height: 22, borderRadius: 7, borderWidth: 1, borderColor: colors.borderStrong, alignItems: "center", justifyContent: "center" },
+  shortcutCheckSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  shortcutCheckText: { color: colors.onAccent, fontSize: 14, fontWeight: "800" },
   scheduleCard: { minHeight: 170 },
   managementCard: { minHeight: 112 },
   eyebrow: { fontSize: 10, fontWeight: "700", color: colors.inkMuted },
