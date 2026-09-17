@@ -55,6 +55,18 @@ def test_tesoureiro_lista_filtrando_status_e_periodo(api_client, make_user, make
     assert response.data[0]["member_name"] == "Maria"
 
 
+def test_admin_sem_membro_lista_contribuicoes_da_igreja(api_client, make_user, make_member):
+    admin = make_user("admin.financeiro@igreja.com", role="admin")
+    member = make_member("Maria")
+    contribution = _criar_contribuicao(member)
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.get("/api/me/statement/")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.data] == [contribution.id]
+    assert response.data[0]["member_name"] == "Maria"
+
 def test_membro_nao_lista_contribuicoes_administrativas(api_client, make_user, make_member):
     user = make_user("membro@igreja.com")
     make_member("Maria", user=user)

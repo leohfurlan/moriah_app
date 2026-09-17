@@ -11,6 +11,7 @@ from .models import PersonalCommitment, Schedule, ScheduleAssignment, ScheduleIt
 
 
 class ScheduleAssignmentSerializer(serializers.ModelSerializer):
+    member_name = serializers.CharField(source="member.full_name", read_only=True)
     event_name = serializers.CharField(source="schedule.event.name", read_only=True)
     event_start_at = serializers.DateTimeField(source="schedule.event.start_at", read_only=True)
     schedule_name = serializers.CharField(source="schedule.name", read_only=True)
@@ -23,7 +24,7 @@ class ScheduleAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScheduleAssignment
         fields = (
-            "id", "schedule", "schedule_name", "schedule_status", "event_name", "event_start_at",
+            "id", "schedule", "member_name", "schedule_name", "schedule_status", "event_name", "event_start_at",
             "arrival_at", "rehearsal_at", "role_name", "ministry_name", "status", "justification",
             "conflict_reason", "substitution_for", "responded_at",
         )

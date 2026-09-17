@@ -59,6 +59,7 @@ export function SchedulesScreen() {
   const [actingId, setActingId] = useState<number | null>(null);
   const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
+  const isAdmin = Boolean(me?.capabilities.includes("manage_all"));
   const canCreate = Boolean(me?.can_access_management);
   // Atalho para a gestao existe so para quem realmente opera escalas
   // (coordenacao/lideranca). `can_access_management` e mais amplo que isso.
@@ -67,7 +68,7 @@ export function SchedulesScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    if (!me?.member_id) {
+    if (!me?.member_id && !isAdmin) {
       setLoading(false);
       return;
     }
@@ -79,7 +80,7 @@ export function SchedulesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [me?.member_id]);
+  }, [me?.member_id, isAdmin]);
 
   async function act(id: number, action: "confirm" | "decline" | "unavailable") {
     if (actingId !== null || actingRef.current) return;
@@ -116,8 +117,8 @@ export function SchedulesScreen() {
 
   return (
     <Screen
-      title="Minhas escalas"
-      headerSubtitle="Responda e acompanhe suas participações"
+      title={isAdmin ? "Escalas da igreja" : "Minhas escalas"}
+      headerSubtitle={isAdmin ? "Visualize as escalas e equipes da igreja" : "Responda e acompanhe suas participações"}
       refreshing={refreshing}
       onRefresh={onRefresh}
       headerAccessory={canCreate ? <Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Adicionar escala</Button> : null}
@@ -153,7 +154,7 @@ export function SchedulesScreen() {
             Ver equipe e repertório
           </Button>
 
-          {item.status === "pending" ? (
+          {item.status === "pending" && !isAdmin ? (
             <View style={styles.respondBox}>
               <Field
                 value={justifications[item.id] || ""}
@@ -170,11 +171,11 @@ export function SchedulesScreen() {
         </Card>
       ))}
 
-      {!loading && !error && me?.member_id && !items.length ? (
+      {!loading && !error && (me?.member_id || isAdmin) && !items.length ? (
         <View style={styles.empty}>
           <Text style={styles.emptyGlyph}>♪</Text>
           <Text style={styles.emptyTitle}>Nenhuma escala no momento</Text>
-          <Text style={styles.emptyText}>Quando a equipe for escalada para um culto, você verá aqui.</Text>
+          <Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá aqui.</Text>
         </View>
       ) : null}
       </>}

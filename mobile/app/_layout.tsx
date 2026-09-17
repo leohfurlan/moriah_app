@@ -9,7 +9,7 @@ import { Capacidade, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navig
 import { colors, radius, spacing } from "@/theme";
 
 /** Rotas que exigem apenas estar logado com vinculo de membro. */
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/notifications"];
+const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/content", "/notifications"];
 
 /**
  * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade
@@ -59,7 +59,7 @@ function LayoutComGuarda() {
   const toast = useToast();
   const exige = capacidadesDaRota(pathname);
   const precisaLogin = Boolean(!loading && !me && isMemberPath(pathname));
-  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige);
+  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management);
   const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
   const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
   // Gestao de escalas avisa na propria pagina: jogar o membro direto em

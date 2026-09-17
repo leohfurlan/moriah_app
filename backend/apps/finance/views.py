@@ -5,28 +5,37 @@ from django.utils import timezone
 from rest_framework import generics, mixins, parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 
-from apps.accounts.permissions import HasMemberProfile, IsTreasurerOrAdmin, get_member_profile
+from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsTreasurerOrAdmin, get_member_profile, is_admin_user
 
 from .models import Contribution
 from .serializers import ContributionReviewSerializer, ContributionSerializer
 
 
 class MyStatementView(generics.ListAPIView):
-    """Extrato do membro autenticado."""
+    """Extrato pessoal; para admin, leitura consolidada da igreja."""
 
     serializer_class = ContributionSerializer
-    permission_classes = [HasMemberProfile]
+    permission_classes = [HasMemberProfileOrAdmin]
     queryset = Contribution.objects.none()
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Contribution.objects.none()
+        user = self.request.user
+        if is_admin_user(user):
+            return Contribution.objects.filter(
+                church=user.church,
+            ).select_related("member", "reviewed_by").prefetch_related("attachments")
+        member = get_member_profile(user)
+        if member is None:
+            return Contribution.objects.none()
         return Contribution.objects.filter(
-            member=get_member_profile(self.request.user),
-            church=self.request.user.church,
+            member=member,
+            church=user.church,
         ).prefetch_related("attachments")
 
 

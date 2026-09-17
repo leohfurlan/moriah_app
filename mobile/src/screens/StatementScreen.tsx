@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { Contribution } from "@/types/api";
@@ -51,6 +52,7 @@ function DesktopStatement({ items, total, onRegister }: { items: Contribution[];
 
 export function StatementScreen() {
   const router = useRouter();
+  const { me } = useAuth();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [items, setItems] = useState<Contribution[]>([]);
@@ -81,15 +83,29 @@ export function StatementScreen() {
   }
 
   const total = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const isAdmin = me?.capabilities.includes("manage_all") ?? false;
+  const canReview = Boolean(me?.capabilities.some((capability) => ["review_contributions", "manage_all"].includes(capability)));
 
   return (
     <Screen
-      title="Minhas contribuições"
-      headerSubtitle="Apenas seu histórico pessoal"
+      title={isAdmin ? "Contribuições" : "Minhas contribuições"}
+      headerSubtitle={isAdmin ? "Contribuições da sua igreja" : "Apenas seu histórico pessoal"}
       refreshing={refreshing}
       onRefresh={onRefresh}
       headerAccessory={<Button size="compact" onPress={() => router.push("/contribution" as never)}>+ Enviar comprovante</Button>}
     >
+      {!desktop ? (
+        <View style={styles.contextNav}>
+          <View style={[styles.contextTab, styles.contextTabActive]}>
+            <Text style={styles.contextTabActiveText}>Contribuições</Text>
+          </View>
+          {canReview ? (
+            <Button size="compact" variant="ghost" onPress={() => router.replace("/finance-review" as never)}>
+              Revisão
+            </Button>
+          ) : null}
+        </View>
+      ) : null}
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
 
         {desktop && !error ? <DesktopStatement items={items} total={total} onRegister={() => router.push("/contribution" as never)} /> : !error && items.length ? (
@@ -139,6 +155,10 @@ export function StatementScreen() {
 }
 
 const styles = StyleSheet.create({
+  contextNav: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 },
+  contextTab: { minHeight: 36, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md, borderRadius: 10 },
+  contextTabActive: { backgroundColor: colors.surfaceSelected },
+  contextTabActiveText: { color: colors.accent, fontSize: 13, fontWeight: "800" },
   summaryLabel: {
     fontSize: 12,
     fontWeight: "700",

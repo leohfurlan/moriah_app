@@ -65,7 +65,7 @@ def test_membro_admin_mantem_apis_pessoais_e_ganha_gestao(api_client, make_user,
     assert api_client.get("/api/leader/cell-members/").status_code == 200
 
 
-def test_admin_tecnico_sem_membro_fica_so_na_gestao(api_client, make_user):
+def test_admin_tecnico_sem_membro_acessa_leituras_administrativas(api_client, make_user):
     admin = make_user("admin.tecnico@igreja.com", role=User.Role.ADMIN, is_staff=True, is_superuser=True)
     api_client.force_authenticate(user=admin)
 
@@ -75,8 +75,9 @@ def test_admin_tecnico_sem_membro_fica_so_na_gestao(api_client, make_user):
     assert me.data["has_member_profile"] is False
     assert me.data["member_id"] is None
     assert me.data["can_access_management"] is True
-    for url in PERSONAL_ENDPOINTS[1:]:
-        assert api_client.get(url).status_code == 403
+    assert api_client.get("/api/me/member/").status_code == 403
+    for url in ["/api/me/statement/", "/api/me/schedules/", "/api/me/agenda/"]:
+        assert api_client.get(url).status_code == 200
     assert api_client.get("/api/leader/cell-members/").status_code == 200
 
 

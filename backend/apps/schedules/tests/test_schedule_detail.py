@@ -120,13 +120,14 @@ def test_membro_nao_abre_detalhe_de_escala_alheia(api_client, culto, make_user, 
     assert response.status_code == 404
 
 
-def test_usuario_sem_cadastro_de_membro_nao_abre_detalhe(api_client, culto, make_user):
+def test_admin_sem_cadastro_de_membro_abre_detalhe_administrativo(api_client, culto, make_user):
     admin = make_user("admin.detalhe@igreja.com", role=User.Role.ADMIN)
     api_client.force_authenticate(user=admin)
 
     response = api_client.get(f"/api/me/schedules/{culto['equipe']['Vocal'].id}/")
 
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.data["member_name"] == "Maria Silva"
 
 
 def test_escala_sem_repertorio_devolve_lista_vazia(api_client, culto):

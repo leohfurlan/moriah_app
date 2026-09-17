@@ -41,6 +41,19 @@ def escalados(make_user, make_member, church):
     }
 
 
+def test_admin_sem_membro_lista_todas_as_escalas(api_client, escalados, make_user):
+    admin = make_user("admin.agenda@igreja.com", role="admin")
+    api_client.force_authenticate(user=admin)
+
+    response = api_client.get("/api/me/schedules/")
+
+    assert response.status_code == 200
+    assert {item["id"] for item in response.data} == {
+        escalados["assignment_a"].id,
+        escalados["assignment_b"].id,
+    }
+    assert {item["member_name"] for item in response.data} == {"Escalado A", "Escalado B"}
+
 def test_membro_lista_apenas_as_proprias_escalas(api_client, escalados):
     api_client.force_authenticate(user=escalados["user_a"])
 

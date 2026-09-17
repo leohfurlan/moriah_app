@@ -4,10 +4,11 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import HasMemberProfile, IsScheduleCoordinatorOrAdmin, get_member_profile
+from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
 from apps.audit.models import AuditLog
 from apps.members.models import Member
 from apps.ministries.models import Ministry
@@ -69,35 +70,41 @@ def _managed_schedule_or_404(user, pk):
 
 class MyScheduleAssignmentsView(generics.ListAPIView):
     serializer_class = ScheduleAssignmentSerializer
-    permission_classes = [HasMemberProfile]
+    permission_classes = [HasMemberProfileOrAdmin]
     queryset = ScheduleAssignment.objects.none()
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ScheduleAssignment.objects.none()
-        return (
-            ScheduleAssignment.objects.filter(
-                member=get_member_profile(self.request.user),
-                church=self.request.user.church,
-                schedule__status=Schedule.Status.PUBLISHED,
-            )
-            .select_related("schedule__event", "ministry_role__ministry")
-            .order_by("schedule__event__start_at")
+        user = self.request.user
+        queryset = ScheduleAssignment.objects.filter(
+            church=user.church,
+            schedule__status=Schedule.Status.PUBLISHED,
         )
+        if not is_admin_user(user):
+            member = get_member_profile(user)
+            if member is None:
+                return ScheduleAssignment.objects.none()
+            queryset = queryset.filter(member=member)
+        return queryset.select_related("schedule__event", "ministry_role__ministry", "member").order_by("schedule__event__start_at")
 
 
 class MyScheduleAssignmentDetailView(generics.RetrieveAPIView):
     serializer_class = ScheduleAssignmentDetailSerializer
-    permission_classes = [HasMemberProfile]
+    permission_classes = [HasMemberProfileOrAdmin]
     queryset = ScheduleAssignment.objects.none()
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ScheduleAssignment.objects.none()
-        return ScheduleAssignment.objects.filter(
-            member=get_member_profile(self.request.user),
-            church=self.request.user.church,
-        ).select_related("schedule__event", "ministry_role__ministry", "schedule__worship_team")
+        user = self.request.user
+        queryset = ScheduleAssignment.objects.filter(church=user.church)
+        if not is_admin_user(user):
+            member = get_member_profile(user)
+            if member is None:
+                return ScheduleAssignment.objects.none()
+            queryset = queryset.filter(member=member)
+        return queryset.select_related("schedule__event", "ministry_role__ministry", "member", "schedule__worship_team")
 
 
 class ScheduleAssignmentActionView(APIView):
@@ -446,16 +453,25 @@ class ScheduleSubstitutionView(APIView):
 
 class PersonalCommitmentViewSet(viewsets.ModelViewSet):
     serializer_class = PersonalCommitmentSerializer
-    permission_classes = [HasMemberProfile]
+    permission_classes = [HasMemberProfileOrAdmin]
     queryset = PersonalCommitment.objects.none()
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [HasMemberProfileOrAdmin()]
+        return [HasMemberProfile()]
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return PersonalCommitment.objects.none()
-        return PersonalCommitment.objects.filter(
-            member=get_member_profile(self.request.user),
-            church=self.request.user.church,
-        )
+        user = self.request.user
+        queryset = PersonalCommitment.objects.filter(church=user.church)
+        if not is_admin_user(user):
+            member = get_member_profile(user)
+            if member is None:
+                return PersonalCommitment.objects.none()
+            queryset = queryset.filter(member=member)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(church=self.request.user.church, member=get_member_profile(self.request.user))

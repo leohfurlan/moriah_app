@@ -6,6 +6,7 @@ import { ErrorNotice } from "@/components/ErrorNotice";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ChurchEvent, PersonalCommitment, ScheduleAssignment } from "@/types/api";
@@ -101,6 +102,7 @@ function DesktopAgenda({
 
 export function AgendaScreen() {
   const router = useRouter();
+  const { me } = useAuth();
   const toast = useToast();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
@@ -121,6 +123,7 @@ export function AgendaScreen() {
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
   // Aviso de validacao fica preso ao formulario, logo acima do botao.
   const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
+  const isAdminWithoutMember = Boolean(me?.capabilities.includes("manage_all") && !me.member_id);
 
   const load = useCallback(async () => {
     setError(null);
@@ -221,7 +224,17 @@ export function AgendaScreen() {
   }
 
   return (
-    <Screen title="Agenda" headerSubtitle="Seu calendário pessoal e os eventos da igreja" refreshing={refreshing || loading} onRefresh={() => { setRefreshing(true); load(); }}>
+    <Screen title={isAdminWithoutMember ? "Agenda da igreja" : "Agenda"} headerSubtitle={isAdminWithoutMember ? "Eventos, escalas e compromissos da igreja" : "Seu calendário pessoal e os eventos da igreja"} refreshing={refreshing || loading} onRefresh={() => { setRefreshing(true); load(); }}>
+      {!desktop ? (
+        <View style={styles.contextNav}>
+          <View style={[styles.contextTab, styles.contextTabActive]}>
+            <Text style={styles.contextTabActiveText}>Agenda</Text>
+          </View>
+          <Button size="compact" variant="ghost" onPress={() => router.replace("/schedules" as never)}>
+            Escalas
+          </Button>
+        </View>
+      ) : null}
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
 
       <Card>
@@ -276,7 +289,7 @@ export function AgendaScreen() {
       </Card>
 
       <Card>
-        <Text style={styles.sectionTitle}>Minhas escalas</Text>
+        <Text style={styles.sectionTitle}>{isAdminWithoutMember ? "Escalas da igreja" : "Minhas escalas"}</Text>
         {scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}
         {schedules.length ? schedules.slice(0, 3).map((item) => (
           <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })} style={styles.entryRow}>
@@ -288,10 +301,10 @@ export function AgendaScreen() {
             <Badge label={statusLabel(item.status)} tone={scheduleStatusTone(item.status)} />
           </Pressable>
         )) : <Text style={styles.meta}>Nenhuma escala próxima.</Text>}
-        <Button variant="ghost" onPress={() => router.push("/schedules" as never)}>Ver minhas escalas</Button>
+        <Button variant="ghost" onPress={() => router.push("/schedules" as never)}>{isAdminWithoutMember ? "Ver escalas" : "Ver minhas escalas"}</Button>
       </Card>
 
-      <Card>
+      {!isAdminWithoutMember ? <Card>
         <Text style={styles.sectionTitle}>Novo compromisso</Text>
         <Field value={title} onChangeText={setTitle} placeholder="Ex.: Ensaio do Louvor" />
         <Field value={startsAt} onChangeText={setStartsAt} placeholder="Início: 2026-09-20T18:00:00-03:00" />
@@ -301,9 +314,9 @@ export function AgendaScreen() {
           <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
         ) : null}
         <Button loading={submitting} disabled={submitting} onPress={submit}>Adicionar à agenda</Button>
-      </Card>
+      </Card> : null}
 
-      {!loading && !items.length ? <Text style={styles.meta}>Sua agenda pessoal ainda não tem compromissos.</Text> : null}
+      {!loading && !items.length ? <Text style={styles.meta}>{isAdminWithoutMember ? "Nenhum compromisso da igreja cadastrado." : "Sua agenda pessoal ainda não tem compromissos."}</Text> : null}
     </Screen>
   );
 }
@@ -311,6 +324,10 @@ export function AgendaScreen() {
 const styles = StyleSheet.create({
   calendarHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   month: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  contextNav: { flexDirection: "row", alignItems: "center", gap: spacing.xs, padding: spacing.xs, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 14 },
+  contextTab: { minHeight: 36, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md, borderRadius: 10 },
+  contextTabActive: { backgroundColor: colors.surfaceSelected },
+  contextTabActiveText: { color: colors.accent, fontSize: 13, fontWeight: "800" },
   weekRow: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.md },
   weekday: { width: "14.28%", textAlign: "center", color: colors.inkMuted, fontSize: 11, fontWeight: "800" },
   calendarGrid: { flexDirection: "row", flexWrap: "wrap", marginTop: spacing.xs },

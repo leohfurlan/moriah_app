@@ -69,6 +69,7 @@ export const routeLabels: Record<string, string> = {
   schedules: "Minha Escala",
   schedule: "Minha Escala",
   agenda: "Minha Agenda",
+  content: "Conteúdo",
   notifications: "Notificações",
   notification: "Notificação",
   "schedule-create": "Adicionar escala",

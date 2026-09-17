@@ -9,6 +9,7 @@
  * menu — nada de rota vazia para "preencher" o desenho.
  */
 import {
+  BookOpen,
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
@@ -75,7 +76,13 @@ export const MENU_LATERAL: NavGroup[] = [
   {
     label: "Ministérios",
     items: [
-      criarItem({ id: "escalas", label: "Escalas", route: "schedules", Icon: CalendarCheck, required: ["member"], matches: ["schedules", "schedule", "song", "schedule-create"] }),
+      criarItem({ id: "escalas", label: "Escalas", route: "schedules", Icon: CalendarCheck, required: ["member"], matches: ["schedules", "schedule", "song"] }),
+    ],
+  },
+  {
+    label: "Conteúdo",
+    items: [
+      criarItem({ id: "conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member"], matches: ["content"] }),
     ],
   },
   {
@@ -117,13 +124,12 @@ export const MENU_LATERAL: NavGroup[] = [
   },
 ];
 
-/** Abas (mobile). Rotulos conforme a decisao D3 do plano (Contribuicoes, nao Conteudo). */
+/** Abas principais do mobile; Escalas e Revisao ficam dentro dos modulos relacionados. */
 export const ABAS: NavItem[] = [
   criarItem({ id: "aba-inicio", label: "Início", route: "home", Icon: House, matches: ["home"] }),
-  criarItem({ id: "aba-revisao-financeira", label: "Revisão", route: "finance-review", Icon: HandCoins, required: ["review_contributions", "manage_all"], matches: ["finance-review"] }),
   criarItem({ id: "aba-agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
-  criarItem({ id: "aba-escalas", label: "Escalas", route: "schedules", Icon: CalendarCheck, required: ["member"], matches: ["schedules", "schedule", "song", "schedule-create"] }),
   criarItem({ id: "aba-contribuicoes", label: "Contribuições", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
+  criarItem({ id: "aba-conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member"], matches: ["content"] }),
   criarItem({ id: "aba-perfil", label: "Perfil", route: "profile", Icon: UserRound, required: ["member"], matches: ["profile"] }),
 ];
 
@@ -137,6 +143,7 @@ export function rotaAtiva(pathname: string, matches: string[]): boolean {
 }
 
 export function temAcesso(item: NavItem, capabilities: string[]): boolean {
+  if (capabilities.includes("manage_all")) return true;
   if (item.required.length === 0) return true;
   return item.required.some((capacidade) => capabilities.includes(capacidade));
 }
