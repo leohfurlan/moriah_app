@@ -106,6 +106,13 @@ def user_capabilities(user) -> list[str]:
         capabilities.add("manage_schedules")
     if user.has_role(User.Role.CELL_LEADER):
         capabilities.add("manage_cells")
+    if user.church_id:
+        member = get_member_profile(user)
+        publisher = user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR)
+        if publisher:
+            capabilities.add("manage_content")
+        if publisher or (member and member.church_id == user.church_id):
+            capabilities.add("read_content")
     return sorted(capabilities)
 
 

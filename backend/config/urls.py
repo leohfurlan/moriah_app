@@ -7,6 +7,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import MeView
+from apps.content.views import ContentViewSet
 from apps.events.views import MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, MyStatementView
@@ -30,6 +31,7 @@ from apps.schedules.views import (
 
 
 router = DefaultRouter()
+router.register("content", ContentViewSet, basename="content")
 router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")

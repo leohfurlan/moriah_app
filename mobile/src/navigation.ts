@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
+  BookOpen,
   DollarSign,
   HandCoins,
   House,
@@ -24,6 +25,8 @@ export type NavIcon = typeof House;
 /** Capacidades publicadas por `GET /api/me/` (ver apps/accounts/permissions.py). */
 export type Capacidade =
   | "member"
+  | "read_content"
+  | "manage_content"
   | "manage_all"
   | "manage_pastoral"
   | "manage_members"
@@ -71,6 +74,7 @@ export const MENU_LATERAL: NavGroup[] = [
     label: "Cultos e eventos",
     items: [
       criarItem({ id: "agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
+      criarItem({ id: "conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["read_content"], matches: ["content"] }),
     ],
   },
   {
@@ -118,11 +122,12 @@ export const MENU_LATERAL: NavGroup[] = [
   },
 ];
 
-/** Abas principais do mobile; Escalas e Revisao ficam dentro dos modulos relacionados. */
+/** Abas principais do mobile; a contribuicao continua como acao central. */
 export const ABAS: NavItem[] = [
   criarItem({ id: "aba-inicio", label: "Início", route: "home", Icon: House, matches: ["home"] }),
   criarItem({ id: "aba-agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
   criarItem({ id: "aba-contribuicoes", label: "Contribuições", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
+  criarItem({ id: "aba-conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["read_content"], matches: ["content"] }),
   criarItem({ id: "aba-perfil", label: "Perfil", route: "profile", Icon: UserRound, required: ["member"], matches: ["profile"] }),
 ];
 

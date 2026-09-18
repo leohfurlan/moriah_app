@@ -16,6 +16,7 @@ tools/qa/
   checks/fase2.mjs        navegação (menu lateral, abas, avatar, busca, capacidades)
   checks/fase4.mjs        gestão de escalas (seção 9.1–9.3 do plano)
   checks/fase5.mjs        estabilização de notificações/extrato/conflito com API simulada
+  checks/fase6.mjs        Conteúdo: lista/detalhe/rascunho/publicação, desktop/mobile
   tests/mobile-regressions.cjs  regressões dos módulos reais, sem React Native/banco
   scripts/               diagnósticos pontuais (ex.: por que o toast não aparece)
 ```
@@ -23,7 +24,7 @@ tools/qa/
 ## Como rodar
 
 Pré-requisitos: Expo web servindo o app; fases 1/2/4 também exigem backend.
-Fases 3/5 usam API simulada. A fase 5 intercepta os prefixos `/api`, `/backend`
+Fases 3/5/6 usam API simulada. As fases 5/6 interceptam os prefixos `/api`, `/backend`
 e `/local-api`; nenhum endpoint interceptado é repassado a um backend real.
 
 ```bash
@@ -32,6 +33,7 @@ node tools/qa/run.mjs fase1      # só a fase 1
 node tools/qa/run.mjs fase2      # só a fase 2
 node tools/qa/run.mjs fase4      # só a fase 4 (gestão de escalas)
 node tools/qa/run.mjs fase5      # regressões focadas, API simulada, desktop/mobile web
+node tools/qa/run.mjs fase6      # Conteúdo completo, desktop/mobile web, API simulada
 node tools/qa/run.mjs todas      # todas
 ```
 
@@ -120,6 +122,7 @@ npm run typecheck
 
 O teste de navegador é focado e simulado: não atesta PostgreSQL, integração
 end-to-end com JWT, deploy ou comportamento em dispositivos Android/iOS nativos.
-O QA da fase 2 deixou de exigir Conteúdo e de contar dados de `MVP_NOTIFICATIONS`;
-usa o badge específico e o contador devolvido pela API. Seu resultado de 16/09
-continua sendo histórico, não uma reexecução com este working tree.
+O QA da fase 2 agora confere o destino real de Conteúdo no mobile. O check da fase
+5 também valida o item e a rota de Conteúdo. A fase 6 cobre sua primeira fatia
+vertical; consulte `docs/qa/fase-6-conteudo-mobile-2026-09-17.md`. O resultado histórico de 16/09 continua sendo histórico, não uma
+reexecução com este working tree.
