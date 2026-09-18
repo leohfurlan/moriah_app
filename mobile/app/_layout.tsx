@@ -27,6 +27,7 @@ const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
  */
 const PREFIXOS_DE_GESTAO: Array<{ prefixo: string; capacidades: Capacidade[] }> = [
   { prefixo: "/schedule-admin", capacidades: CAPACIDADES_DE_ESCALA },
+  { prefixo: "/content", capacidades: ["read_content"] },
 ];
 
 function capacidadesDaRota(pathname: string): Capacidade[] | null {
@@ -71,6 +72,11 @@ function LayoutComGuarda() {
     else if (semVinculo) router.replace(destinoSemVinculo);
     else if (semCapacidade && !avisoNaTela) {
       const rotaFinanceira = pathname === "/finance-review";
+      if (pathname === "/content" || pathname.startsWith("/content/")) {
+        toast("Sua conta não tem permissão para acessar conteúdo.", { tone: "error", title: "Acesso restrito" });
+        router.replace("/home");
+        return;
+      }
       toast(rotaFinanceira ? "Sua conta não tem permissão para revisar contribuições." : "Sua conta não tem permissão para criar escalas.", { tone: "error", title: "Acesso restrito" });
       router.replace(rotaFinanceira ? "/home" : "/schedules");
     }

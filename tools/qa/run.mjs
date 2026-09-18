@@ -25,6 +25,7 @@ const FASES = {
   fase3: () => import("./checks/fase3.mjs"),
   fase4: () => import("./checks/fase4.mjs"),
   fase5: () => import("./checks/fase5.mjs"),
+  fase6: () => import("./checks/fase6.mjs"),
 };
 
 async function servidorResponde(base = BASE) {

@@ -1,7 +1,7 @@
 # Inventário de navegação e rotas — classificação do MVP
 
 **Data:** 17/09/2026
-**Base atual:** working tree sobre `402b3c2` (`codex/moriah-navigation-admin`).
+**Base atual:** working tree sobre `0564ca5`, incluindo a fatia Conteúdo da Fase 6.
 **Baseline histórica:** `40ebc25`, usada somente nas seções 1 e 2.
 **Fontes:** `mobile/src/navigation.ts` e `mobile/src/components/Screen.tsx` (sidebar + navegação inferior), `mobile/app/*` (rotas),
 `backend/config/urls.py` (API), `backend/apps/*/models.py` (domínio disponível).
@@ -56,30 +56,32 @@ Fora disso, ocultar. "Em breve" só é aceitável se não existir rota — nunca
 ## 3. Navegação atual
 
 A sidebar do membro contém Visão geral (`/home`), Agenda (`/agenda`), Escalas
-(`/schedules`) e Meu extrato (`/statement`). Revisão financeira (`/finance-review`)
+(`/schedules`), Conteúdo (`/content`, capacidade `read_content`) e Meu extrato (`/statement`). Revisão financeira (`/finance-review`)
 exige `review_contributions` ou `manage_all`; Gestão de escalas (`/schedule-admin`)
 e Criar escala (`/schedule-create`) exigem capacidade de escalas. A fonte única
 é `mobile/src/navigation.ts`, filtrada pelas capacidades do perfil.
 
-No mobile são **três abas e uma ação central**, quatro destinos visíveis:
+No mobile são **quatro abas e uma ação central**, cinco destinos visíveis:
 
 | Tab | Rota | Status | Observação |
 |---|---|---|---|
 | Início | `/home` | Implementado | Dados da API e estados vazios |
 | Agenda | `/agenda` | Implementado | Eventos + compromissos pessoais reais |
 | Nova contribuição (ação central) | `/contribution` | Implementado | O rótulo acessível é "Nova contribuição", não uma aba de extrato |
+| Conteúdo | `/content` | Implementado na Fase 6 | Lista, detalhe e fluxo de publicação; acesso via `read_content` |
 | Perfil | `/profile` | Implementado | Sem edição direta (via requisição) |
 
 Escalas é acessível pelo módulo Agenda; o extrato tem acesso pelo perfil.
 O array `ABAS` inclui Contribuições, mas `BottomNav` substitui esse item pela ação
 central acima. Os verificadores devem conferir o que é renderizado, não só o array.
 
-O mockup canônico usa **Conteúdo** no lugar de Contribuições. Decisão D3 em
-`docs/fase-0-decisoes-2026-09-16.md`: manter Contribuições no MVP (há dado real) e adiar Conteúdo
-(sem modelo). A rota técnica pode existir para deep links, mas Conteúdo não é item de sidebar nem aba;
-quando acessada diretamente, informa que o domínio está fora do MVP.
+O mockup canônico usa **Conteúdo** no lugar de Contribuições. A decisão D3 registrou a
+prioridade de Contribuições no MVP e o adiamento de Conteúdo por falta de modelo. Na abertura da
+Fase 6, Conteúdo retorna como item do menu mobile e mantém a ação central de contribuição; a
+entrada agora leva à lista real, com detalhe e publicação para `manage_content`.
+O contrato atual está em `docs/architecture/conteudo-api.md`; D3 permanece registro histórico do MVP.
 
-## 4. Rotas de aplicação (19 arquivos)
+## 4. Rotas de aplicação
 
 | Rota | Tela | Status | API |
 |---|---|---|---|
@@ -93,7 +95,8 @@ quando acessada diretamente, informa que o domínio está fora do MVP.
 | `/schedule-admin/[id]` | `ScheduleAdminDetailScreen` | Implementado com guarda | detalhe, edição, candidatos, equipe, publicação, cancelamento e substituição |
 | `/finance-review` | `FinanceReviewScreen` | Implementado com guarda | `/api/contributions/`, `.../{id}/review/` |
 | `/agenda-new` | `NewCommitmentScreen` | Implementado | `POST /api/me/agenda/` |
-| `/content` | `ContentScreen` | Domínio fora do MVP; aviso explícito | — |
+| `/content` | `ContentScreen` | Implementado na Fase 6 | `/api/content/` |
+| `/content/[id]` | `ContentScreen` (detalhe) | Implementado na Fase 6 | `/api/content/{id}/`, `/publish/`, `/unpublish/` |
 | `/statement` | `StatementScreen` | Implementado | `/api/me/statement/` |
 | `/contribution` | `NewContributionScreen` | Implementado | `POST /api/contributions/` |
 | `/profile` | `ProfileScreen` | Implementado | `/api/me/member/`, `/api/me/member-requests/` |

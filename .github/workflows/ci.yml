@@ -100,4 +100,4 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres
+      - run: python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests apps/content/tests -q --ds=config.settings_test_postgres
