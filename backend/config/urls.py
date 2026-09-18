@@ -7,9 +7,10 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import MeView
-from apps.events.views import MyChurchEventsView
+from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
-from apps.finance.views import ContributionViewSet, MyStatementView
+from apps.finance.views import ContributionViewSet, FinancialEntryViewSet, MyStatementView
+from apps.content.views import ContentViewSet
 from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
@@ -24,6 +25,9 @@ from apps.schedules.views import (
 
 router = DefaultRouter()
 router.register("contributions", ContributionViewSet, basename="contribution")
+router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
+router.register("content", ContentViewSet, basename="content")
+router.register("event-announcements", EventAnnouncementViewSet, basename="event-announcement")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")

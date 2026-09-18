@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from apps.accounts.models import Church, TimestampedModel
 
@@ -28,3 +30,31 @@ class Event(TimestampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+def event_announcement_path(instance: "EventAnnouncement", filename: str) -> str:
+    return f"event-announcements/{instance.church_id}/{instance.event_id}/{filename}"
+
+
+class EventAnnouncement(TimestampedModel):
+    """Folder visual de um evento exibido no carrossel da Home."""
+
+    church = models.ForeignKey(Church, on_delete=models.CASCADE, related_name="event_announcements")
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="announcements")
+    title = models.CharField(max_length=255, blank=True)
+    image = models.FileField(upload_to=event_announcement_path)
+    position = models.PositiveSmallIntegerField(default=1)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_event_announcements")
+
+    class Meta:
+        verbose_name = "Aviso do carrossel"
+        verbose_name_plural = "Avisos do carrossel"
+        ordering = ["position", "created_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(position__gte=1, position__lte=4), name="event_announcement_position_1_4"),
+            models.UniqueConstraint(fields=("church", "position"), condition=Q(active=True), name="active_event_announcement_position_unique"),
+        ]
+
+    def __str__(self) -> str:
+        return self.title or f"{self.event} · posição {self.position}"

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Contribution, ContributionAttachment
+from .models import Contribution, ContributionAttachment, FinancialEntry
 
 
 class ContributionAttachmentInline(admin.TabularInline):
@@ -42,3 +42,12 @@ class ContributionAdmin(admin.ModelAdmin):
 class ContributionAttachmentAdmin(admin.ModelAdmin):
     list_display = ("contribution", "original_name", "uploaded_by", "created_at")
     autocomplete_fields = ("contribution", "uploaded_by")
+
+
+@admin.register(FinancialEntry)
+class FinancialEntryAdmin(admin.ModelAdmin):
+    list_display = ("description", "entry_type", "category", "amount", "due_date", "status", "church")
+    list_filter = ("entry_type", "category", "status", "source", "church")
+    search_fields = ("description", "notes", "member__full_name", "event__name")
+    autocomplete_fields = ("church", "member", "event", "contribution", "created_by")
+    date_hierarchy = "due_date"

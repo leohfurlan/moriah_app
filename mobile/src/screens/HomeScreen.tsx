@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { Bell } from "lucide-react-native";
+import { Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Bell, ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
-import { Contribution, MeResponse, PersonalCommitment, ScheduleAssignment } from "@/types/api";
+import { ChurchContent, ChurchEvent, Contribution, EventAnnouncement, MeResponse, PersonalCommitment, ScheduleAssignment } from "@/types/api";
 import { colors, formatBRL, formatDate, spacing, statusLabel } from "@/theme";
 
 function firstName(me: MeResponse): string {
@@ -28,6 +28,115 @@ function scheduleTone(status: ScheduleAssignment["status"]): "success" | "warnin
   return "warning";
 }
 
+type NoticeSlide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  meta: string;
+  route: string;
+  imageUrl?: string;
+};
+
+function NoticeCarousel({
+  announcements,
+  events,
+  contents,
+  onNavigate,
+  compact = false,
+}: {
+  announcements: EventAnnouncement[];
+  events: ChurchEvent[];
+  contents: ChurchContent[];
+  onNavigate: (route: string) => void;
+  compact?: boolean;
+}) {
+  const [index, setIndex] = useState(0);
+  const slides = useMemo<NoticeSlide[]>(() => [
+    ...announcements.map((announcement) => ({
+      id: `announcement-${announcement.id}`,
+      eyebrow: "AVISO DE EVENTO",
+      title: announcement.title || announcement.event_name,
+      description: announcement.event_location || "Confira os detalhes deste evento na agenda.",
+      meta: formatDate(announcement.event_start_at, true),
+      route: `agenda?event=${announcement.event}`,
+      imageUrl: announcement.image_url,
+    })),
+    ...contents.map((content) => ({
+      id: `content-${content.id}`,
+      eyebrow: "COMUNICADO",
+      title: content.title,
+      description: content.summary || content.body,
+      meta: content.published_at ? formatDate(content.published_at, true) : "Publicado pela igreja",
+      route: `content/${content.id}`,
+    })),
+    ...events.map((event) => ({
+      id: `event-${event.id}`,
+      eyebrow: event.event_type_display || "EVENTO",
+      title: event.name,
+      description: event.description || "Confira os detalhes deste evento da igreja.",
+      meta: `${formatDate(event.start_at, true)}${event.location ? ` · ${event.location}` : ""}`,
+      route: `agenda?event=${event.id}`,
+    })),
+  ].slice(0, 4), [announcements, contents, events]);
+
+  useEffect(() => {
+    setIndex((current) => Math.min(current, Math.max(0, slides.length - 1)));
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = setInterval(() => {
+      setIndex((current) => (current + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  if (!slides.length) {
+    return (
+      <View style={compact ? styles.noticeEmptyMobile : styles.noticeEmptyDesktop}>
+        <Text style={styles.noticeEmptyText}>Nenhum aviso ou evento publicado no momento.</Text>
+      </View>
+    );
+  }
+
+  const slide = slides[index];
+  const goTo = (nextIndex: number) => setIndex((nextIndex + slides.length) % slides.length);
+
+  return (
+    <View style={compact ? styles.noticeCarouselMobile : styles.noticeCarouselDesktop}>
+      {slide.imageUrl ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)}>
+          <Image source={{ uri: slide.imageUrl }} resizeMode="cover" style={compact ? styles.noticeImageMobile : styles.noticeImageDesktop} />
+        </Pressable>
+      ) : null}
+      <View style={styles.noticeCopy}>
+        <Text style={styles.noticeEyebrow}>{slide.eyebrow}</Text>
+        <Text numberOfLines={2} style={styles.noticeTitle}>{slide.title}</Text>
+        <Text numberOfLines={3} style={styles.noticeDescription}>{slide.description}</Text>
+        <Text numberOfLines={1} style={styles.noticeMeta}>{slide.meta}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)} style={styles.noticeLink}>
+          <Text style={styles.noticeLinkText}>Ver detalhes</Text>
+          <ChevronRight size={14} color={colors.accent} />
+        </Pressable>
+      </View>
+      <View style={styles.noticeControls}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Aviso anterior" onPress={() => goTo(index - 1)} style={styles.noticeArrow}>
+          <ChevronLeft size={16} color={colors.inkBody} />
+        </Pressable>
+        <View style={styles.noticeDots}>
+          {slides.map((item, itemIndex) => (
+            <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Ir para aviso ${itemIndex + 1}`} onPress={() => goTo(itemIndex)} style={[styles.noticeDot, itemIndex === index && styles.noticeDotActive]} />
+          ))}
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Próximo aviso" onPress={() => goTo(index + 1)} style={styles.noticeArrow}>
+          <ChevronRight size={16} color={colors.inkBody} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 
 function DesktopDashboard({
   me,
@@ -35,6 +144,9 @@ function DesktopDashboard({
   schedule,
   contributions,
   commitment,
+  announcements,
+  events,
+  contents,
   onNavigate,
 }: {
   me: MeResponse;
@@ -42,6 +154,9 @@ function DesktopDashboard({
   schedule: ScheduleAssignment | null;
   contributions: Contribution[];
   commitment: PersonalCommitment | null;
+  announcements: EventAnnouncement[];
+  events: ChurchEvent[];
+  contents: ChurchContent[];
   onNavigate: (route: string) => void;
 }) {
   const contributionTotal = contributions.reduce((total, item) => total + Number(item.amount || 0), 0);
@@ -63,6 +178,7 @@ function DesktopDashboard({
           </View>
         ))}
       </View>
+      <NoticeCarousel announcements={announcements} events={events} contents={contents} onNavigate={onNavigate} />
       <View style={styles.desktopDashboardRow}>
         <View style={styles.desktopChartCard}>
           <Text style={styles.desktopPanelTitle}>Contribuições — últimos 6 meses</Text>
@@ -128,6 +244,24 @@ export function HomeScreen({
   const [schedule, setSchedule] = useState<ScheduleAssignment | null>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [commitment, setCommitment] = useState<PersonalCommitment | null>(null);
+  const [events, setEvents] = useState<ChurchEvent[]>([]);
+  const [contents, setContents] = useState<ChurchContent[]>([]);
+  const [announcements, setAnnouncements] = useState<EventAnnouncement[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([
+      api.get<ChurchEvent[]>("/me/events/"),
+      api.get<ChurchContent[]>("/content/"),
+      api.get<EventAnnouncement[]>("/event-announcements/"),
+    ]).then(([eventsResult, contentsResult, announcementsResult]) => {
+      if (!mounted) return;
+      if (eventsResult.status === "fulfilled") setEvents(eventsResult.value);
+      if (contentsResult.status === "fulfilled") setContents(contentsResult.value);
+      if (announcementsResult.status === "fulfilled") setAnnouncements(announcementsResult.value.slice(0, 4));
+    });
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     if (!isMember) return;
@@ -176,7 +310,7 @@ export function HomeScreen({
           </Pressable>
         </View>) : undefined}
     >
-      {desktop ? <DesktopDashboard me={me} canAccessManagement={canAccessManagement} schedule={schedule} contributions={contributions} commitment={commitment} onNavigate={onNavigate} /> : <>
+      {desktop ? <DesktopDashboard me={me} canAccessManagement={canAccessManagement} schedule={schedule} contributions={contributions} commitment={commitment} announcements={announcements} events={events} contents={contents} onNavigate={onNavigate} /> : <>
       {canAccessManagement ? (
         <Card style={styles.managementCard}>
           <Text style={styles.eyebrow}>ACESSO DE GESTÃO</Text>
@@ -191,6 +325,8 @@ export function HomeScreen({
           <Text style={styles.meta}>As áreas de perfil, contribuições, escalas e agenda ficam ocultas porque esta conta não possui um cadastro de membro associado.</Text>
         </Card>
       ) : null}
+
+      <NoticeCarousel announcements={announcements} events={events} contents={contents} onNavigate={onNavigate} compact />
 
       {isMember ? <>
       <Card style={styles.scheduleCard}>
@@ -300,6 +436,25 @@ const styles = StyleSheet.create({
   desktopMetricLabel: { color: colors.inkMuted, fontSize: 11, fontWeight: "700" },
   desktopMetricValue: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   desktopMetricDetail: { color: colors.inkMuted, fontSize: 11 },
+  noticeCarouselDesktop: { minHeight: 176, flexDirection: "row", justifyContent: "space-between", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 20, overflow: "hidden" },
+  noticeCarouselMobile: { minHeight: 168, flexDirection: "row", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 16, overflow: "hidden" },
+  noticeEmptyDesktop: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
+  noticeEmptyMobile: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  noticeEmptyText: { color: colors.inkMuted, fontSize: 12 },
+  noticeImageDesktop: { width: 240, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 18 },
+  noticeImageMobile: { width: 112, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 14 },
+  noticeCopy: { flex: 1, gap: 6, minWidth: 0 },
+  noticeEyebrow: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  noticeTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
+  noticeDescription: { color: colors.inkBody, fontSize: 12, lineHeight: 17, maxWidth: 720 },
+  noticeMeta: { color: colors.inkMuted, fontSize: 11 },
+  noticeLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingVertical: 4 },
+  noticeLinkText: { color: colors.accent, fontSize: 12, fontWeight: "800" },
+  noticeControls: { alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 12 },
+  noticeArrow: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
+  noticeDots: { flexDirection: "row", alignItems: "center", gap: 4, maxWidth: 100 },
+  noticeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#B8C1F0" },
+  noticeDotActive: { width: 18, backgroundColor: colors.accent },
   desktopDashboardRow: { flexDirection: "row", gap: 24 },
   desktopChartCard: { flex: 1.84, height: 336, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
   desktopQuickCard: { flex: 1, height: 336, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 9 },

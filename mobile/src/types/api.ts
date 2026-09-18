@@ -25,8 +25,14 @@ export interface MemberUpdateRequest {
 }
 export interface ContributionAttachment { id: number; original_name: string; file_url: string; created_at: string; }
 export interface Contribution {
-  id: number; category: string; status: string; amount: string; contribution_date: string;
+  id: number; member_name?: string; category: string; status: string; amount: string; contribution_date: string;
   notes: string; attachments: ContributionAttachment[]; created_at: string;
+}
+export interface FinancialEntry {
+  id: number; entry_type: "income" | "expense"; entry_type_display: string; category: string; category_display: string;
+  source: string; source_display: string; status: string; status_display: string; description: string; amount: string;
+  due_date: string; paid_at?: string | null; notes: string; member?: number | null; member_name?: string | null;
+  event?: number | null; event_name?: string | null; contribution?: number | null; created_at: string;
 }
 export type ScheduleStatus = "draft" | "published" | "cancelled";
 export type AssignmentStatus = "pending" | "confirmed" | "declined" | "unavailable" | "conflict" | "replacement_needed";
@@ -52,6 +58,11 @@ export interface ScheduleAssignmentDetail extends ScheduleAssignment {
   team: TeamMember[]; repertoire: ScheduleItem[];
 }
 export interface ChurchEvent { id: number; name: string; event_type: string; event_type_display: string; start_at: string; end_at?: string | null; location: string; description: string; }
+export interface ChurchContent { id: number; title: string; summary: string; body: string; status: string; published_at: string | null; }
+export interface EventAnnouncement {
+  id: number; event: number; event_name: string; event_start_at: string; event_location: string;
+  title: string; image_url: string; position: number; active: boolean; created_at: string; updated_at: string;
+}
 export type CommitmentType = "personal" | "ministry" | "cell" | "meeting" | "other";
 export interface PersonalCommitment {
   id: number; title: string; commitment_type: CommitmentType; starts_at: string; ends_at?: string | null;

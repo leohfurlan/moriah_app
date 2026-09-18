@@ -22,6 +22,21 @@ class IsTreasurerOrAdmin(BasePermission):
         )
 
 
+class IsFinancialManager(BasePermission):
+    """Acesso ao livro financeiro administrativo da igreja."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.TREASURER)
+            )
+        )
+
+
 class IsCellLeaderOrAdmin(BasePermission):
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -65,6 +80,18 @@ class IsScheduleCoordinatorOrAdmin(BasePermission):
         )
 
 
+class IsEventManager(BasePermission):
+    """Permite administrar eventos e os folders do carrossel."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR))
+        )
+
+
 def user_capabilities(user) -> list[str]:
     """Expõe capacidades de produto sem transformar superuser em membro."""
     capabilities: set[str] = set()
@@ -78,6 +105,12 @@ def user_capabilities(user) -> list[str]:
         capabilities.add("manage_members")
     if user.has_role(User.Role.TREASURER):
         capabilities.add("review_contributions")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.TREASURER):
+        capabilities.add("manage_finance")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR):
+        capabilities.add("manage_content")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR):
+        capabilities.add("manage_events")
     if user.has_role(User.Role.COORDINATOR):
         capabilities.add("manage_schedules")
     if user.has_role(User.Role.CELL_LEADER):
@@ -87,5 +120,5 @@ def user_capabilities(user) -> list[str]:
 
 def can_access_management(user) -> bool:
     return bool(set(user_capabilities(user)).intersection(
-        {"manage_all", "manage_pastoral", "manage_members", "review_contributions", "manage_schedules", "manage_cells"}
+        {"manage_all", "manage_pastoral", "manage_members", "review_contributions", "manage_schedules", "manage_cells", "manage_events"}
     ))

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Badge, Button, Card, Field } from "@/components/Form";
@@ -35,6 +35,14 @@ function scheduleStatusTone(status: ScheduleAssignment["status"]): "success" | "
   if (status === "conflict" || status === "replacement_needed") return "danger";
   if (status === "pending") return "warning";
   return "success";
+}
+
+function EventDetails({ event }: { event: ChurchEvent }) {
+  return <View style={styles.eventDetail}>
+    <Text style={styles.entryTitle}>{event.name}</Text>
+    <Text style={styles.meta}>{formatDate(event.start_at, true)}{event.location ? ` · ${event.location}` : ""}</Text>
+    {event.description ? <Text style={styles.eventDescription}>{event.description}</Text> : <Text style={styles.meta}>Sem descrição adicional.</Text>}
+  </View>;
 }
 
 type AgendaEntry = {
@@ -100,6 +108,7 @@ function DesktopAgenda({
 
 export function AgendaScreen() {
   const router = useRouter();
+  const { event: eventParam } = useLocalSearchParams<{ event?: string }>();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [items, setItems] = useState<PersonalCommitment[]>([]);
@@ -116,6 +125,7 @@ export function AgendaScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
+  const requestedEventId = Array.isArray(eventParam) ? eventParam[0] : eventParam;
 
   const load = useCallback(async () => {
     setError(null);
@@ -146,6 +156,12 @@ export function AgendaScreen() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!requestedEventId) return;
+    const event = churchEvents.find((item) => String(item.id) === requestedEventId);
+    if (event) setSelectedDate(dateKey(event.start_at));
+  }, [churchEvents, requestedEventId]);
+
   const entries = useMemo<AgendaEntry[]>(() => [
     ...churchEvents.map((event) => ({
       id: "event-" + event.id,
@@ -175,6 +191,7 @@ export function AgendaScreen() {
 
   const days = useMemo(() => calendarDays(cursor), [cursor]);
   const selectedEntries = entries.filter((entry) => entry.date === selectedDate);
+  const selectedEvent = requestedEventId ? churchEvents.find((event) => String(event.id) === requestedEventId) || null : null;
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
   async function submit() {
@@ -233,7 +250,7 @@ export function AgendaScreen() {
 
       <Card>
         <Text style={styles.sectionTitle}>{selectedDate === dateKey(new Date()) ? "Hoje" : "Compromissos do dia"}</Text>
-        {selectedEntries.length ? selectedEntries.map((entry) => (
+        {selectedEvent ? <EventDetails event={selectedEvent} /> : selectedEntries.length ? selectedEntries.map((entry) => (
           <View key={entry.id} style={styles.entryRow}>
             <View style={styles.entryCopy}>
               <Text style={styles.entryTitle}>{entry.title}</Text>
@@ -308,6 +325,8 @@ const styles = StyleSheet.create({
   entryCopy: { flex: 1, gap: 2 },
   entryTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
   meta: { color: colors.inkMuted, fontSize: 12 },
+  eventDetail: { gap: 6, paddingVertical: spacing.sm },
+  eventDescription: { color: colors.inkBody, fontSize: 13, lineHeight: 19 },
   link: { color: colors.accent, fontSize: 11, fontWeight: "700" },
 
   desktopAgenda: { gap: 20 },

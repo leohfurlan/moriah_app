@@ -14,11 +14,13 @@ import {
 
 import { colors, radius, routeLabels, spacing } from "@/theme";
 import { MVP_NOTIFICATIONS } from "@/notifications";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Bell,
   BookOpen,
   CalendarDays,
-
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   HandCoins,
   House,
@@ -47,20 +49,27 @@ type SidebarItem = {
 };
 
 const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
-  { label: "Dashboard", items: [{ label: "Visão geral", route: "home", Icon: LayoutDashboard }] },
   {
-    label: "Pessoas",
+    label: "Home",
     items: [
+      { label: "Início", route: "home", Icon: LayoutDashboard },
       { label: "Membros", route: "profile", Icon: Users },
       { label: "Visitantes", route: "profile", Icon: UserRound },
     ],
   },
   {
+    label: "Agenda",
+    items: [
+      { label: "Agenda", route: "agenda", Icon: CalendarDays },
+      { label: "Cultos e eventos", route: "events", Icon: House },
+    ],
+  },
+  {
     label: "Financeiro",
     items: [
-      { label: "Visão geral", route: "home", Icon: WalletCards },
+      { label: "Visão geral", route: "finance", Icon: WalletCards },
       { label: "Contribuições", route: "statement", Icon: HandCoins },
-      { label: "Relatórios", route: "statement", Icon: ClipboardList },
+      { label: "Gestão financeira", route: "finance", Icon: ClipboardList },
     ],
   },
   {
@@ -78,6 +87,7 @@ const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
       { label: "Bandas", route: "schedules", Icon: HandCoins },
     ],
   },
+  { label: "Conteúdo", items: [{ label: "Palavras", route: "content", Icon: BookOpen }] },
   {
     label: "Ensino",
     items: [
@@ -85,14 +95,6 @@ const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
       { label: "Turmas", route: "agenda", Icon: Users },
     ],
   },
-  {
-    label: "Cultos e eventos",
-    items: [
-      { label: "Agenda", route: "agenda", Icon: CalendarDays },
-      { label: "Cultos", route: "agenda", Icon: House },
-    ],
-  },
-  { label: "Conteúdo", items: [{ label: "Palavras", route: "home", Icon: BookOpen }] },
 ];
 
 const mobileNavItems = [
@@ -106,6 +108,8 @@ const mobileNavItems = [
 function isActiveRoute(route: string, activeRoute: string) {
   if (route === "home") return activeRoute === "home";
   if (route === "agenda") return activeRoute === "agenda";
+  if (route === "events") return activeRoute === "events";
+  if (route === "finance") return activeRoute === "finance";
   if (route === "schedules") return ["schedules", "schedule", "song", "schedule-create"].includes(activeRoute);
   if (route === "statement") return ["statement", "contribution"].includes(activeRoute);
   if (route === "profile") return activeRoute === "profile";
@@ -114,6 +118,14 @@ function isActiveRoute(route: string, activeRoute: string) {
 
 function Sidebar({ pathname, onNavigate }: { pathname: string; onNavigate: (route: string) => void }) {
   const activeRoute = pathname.split("/").filter(Boolean)[0] || "home";
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const { me } = useAuth();
+  const visibleGroups = sidebarGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.route !== "finance" || Boolean(me?.capabilities.includes("manage_finance"))),
+    }))
+    .filter((group) => group.items.length);
   return (
     <View style={styles.sidebar}>
       <View style={styles.brand}>
@@ -125,17 +137,19 @@ function Sidebar({ pathname, onNavigate }: { pathname: string; onNavigate: (rout
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarGroups}>
-        {sidebarGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <View key={group.label} style={styles.sidebarGroup}>
-            <Text style={styles.sidebarGroupLabel}>{group.label.toUpperCase()}</Text>
-            {group.items.map((item, index) => {
-              const active =
-                (item.label === "Membros" && activeRoute === "profile") ||
-                (item.label === "Contribuições" && activeRoute === "statement") ||
-                (item.label === "Escalas" && ["schedules", "schedule", "schedule-create", "song"].includes(activeRoute)) ||
-                (item.label === "Agenda" && activeRoute === "agenda") ||
-                (item.label === "Visão geral" && activeRoute === "home" && group.label === "Dashboard") ||
-                (item.label === "Cultos" && activeRoute === "agenda" && group.label === "Cultos e eventos");
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: !collapsedGroups[group.label] }}
+              onPress={() => setCollapsedGroups((current) => ({ ...current, [group.label]: !current[group.label] }))}
+              style={({ pressed }) => [styles.sidebarGroupHeader, pressed && styles.pressed]}
+            >
+              <Text style={styles.sidebarGroupLabel}>{group.label.toUpperCase()}</Text>
+              {collapsedGroups[group.label] ? <ChevronRight size={14} color="#667085" /> : <ChevronDown size={14} color="#667085" />}
+            </Pressable>
+            {!collapsedGroups[group.label] && group.items.map((item, index) => {
+              const active = isActiveRoute(item.route, activeRoute);
               return (
                 <Pressable
                   key={group.label + item.label + index}
@@ -365,6 +379,7 @@ const styles = StyleSheet.create({
   brandSubtitle: { color: "#98A2B3", fontSize: 11, marginTop: 2 },
   sidebarGroups: { gap: 15, paddingBottom: 16 },
   sidebarGroup: { gap: 2 },
+  sidebarGroupHeader: { minHeight: 24, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sidebarGroupLabel: { color: "#667085", fontSize: 10, fontWeight: "800", letterSpacing: 0.8, marginBottom: 5 },
   sidebarItem: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 27, borderRadius: 6, paddingHorizontal: 10 },
   sidebarItemActive: { backgroundColor: "#27315A" },
