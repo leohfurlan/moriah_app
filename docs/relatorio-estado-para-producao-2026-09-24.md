@@ -45,7 +45,7 @@ substitui a leitura de "onde estamos".
 | Branches locais | `master`, `codex/fase-3-gestao-financeira`, `codex/fase-4-correcoes`, `codex/fase-5-escalas`, `codex/moriah-navigation-admin`, `codex/finance-contribution-ledger` (atual) |
 | `origin/master` | contido em HEAD (merge feito) |
 | Stashes | 2 — `stash@{0}` "codex preserve pre-branch work"; `stash@{1}` "fase-3 parcial truncado" |
-| Diferença do branch para `origin/master` | 66 arquivos (app `content`, anúncios de evento, livro financeiro `FinancialEntry`, docs, PRD, telas novas) |
+| Diferença do branch para `origin/master` | 70 arquivos (app `content`, anúncios de evento, livro financeiro `FinancialEntry`, docs, PRD, telas novas e os ajustes de app/QA desta sessão) |
 
 ### 2.2 Backend
 
