@@ -484,8 +484,11 @@ Postgres do próprio Compose — **não** é um ambiente de piloto real.
 
 ### 11.7 O que falta para o piloto (fases seguintes do plano)
 
-1. **Decisão de produto/infra:** servir `/static/` pelo whitenoise (estado atual,
-   simples e suficiente para grupo pequeno) ou por proxy/CDN.
+1. ~~Decisão de produto/infra sobre `/static/`~~ — **decidido em 24/09/2026:
+   fica no whitenoise**, sem CDN/proxy de estáticos no piloto. O cache usa
+   `WHITENOISE_MAX_AGE` derivado de `DJANGO_DEBUG` (0 em dev, 1 h em produção)
+   para não servir CSS antigo depois de um deploy; se um dia entrar CDN, ajustar
+   essa janela e o cache do proxy.
 2. Fase 2 — provisionar a VPS (Docker, usuário de deploy, firewall, domínio).
 3. Fase 3 — criar projeto/branch do Neon, credencial da aplicação, bucket privado
    de comprovantes e o primeiro backup remoto com TLS.

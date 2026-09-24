@@ -100,6 +100,10 @@ A imagem de produção (`backend/Dockerfile.prod`) roda como usuário sem
 privilégio (`uid 10001`), coleta os estáticos na build e sobe o gunicorn — trocar
 `GUNICORN_*` não exige rebuild.
 
+- Estáticos: servidos pelo whitenoise a partir da imagem. O cache usa
+  `WHITENOISE_MAX_AGE` derivado de `DJANGO_DEBUG` (0 em dev, 1 h em produção).
+  **Decisão de 24/09/2026:** sem CDN/proxy para `/static/` no piloto.
+
 ## 5. Saúde e observabilidade mínima
 
 | Endpoint | O que responde | Uso |
@@ -134,8 +138,10 @@ privilégio (`uid 10001`), coleta os estáticos na build e sobe o gunicorn — t
 
 - sem alta disponibilidade: um host, um container de aplicação; se a VPS cair, o
   piloto fica fora até o restart;
-- sem CDN para `/static/` (o whitenoise serve do container, suficiente para um
-  grupo pequeno);
+- sem CDN para `/static/`: **decisão registrada em 24/09/2026** — o whitenoise
+  serve do container, o que basta para um grupo pequeno. Reavaliar se o piloto
+  crescer ou se os estáticos passarem de poucos MB por deploy (nesse caso,
+  ajustar `WHITENOISE_MAX_AGE` e o cache do proxy).
 - sem fila/worker assíncrono: o que é síncrono hoje continua síncrono;
 - sem observabilidade de verdade (APM/tracing): logs + `/health/` + alerta de
   backup são o mínimo combinado para o piloto.
