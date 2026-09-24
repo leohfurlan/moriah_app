@@ -10,23 +10,90 @@ import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { Contribution } from "@/types/api";
-import { parseDate, statementBarHeight, statementCutoff } from "@/services/dates";
-import { colors, formatDate, formatBRL, spacing, statusLabel } from "@/theme";
+import { parseDate, statementBarHeight, statementCutoff, type StatementPeriod } from "@/services/dates";
+import { colors, formatDate, formatBRL, spacing, statusLabel, statusTone } from "@/theme";
 
-function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
-  if (status === "received" || status === "approved") return "success";
-  if (status === "pending" || status === "needs_review") return "warning";
-  if (status === "rejected") return "danger";
-  return "neutral";
+type FilterKey = "period" | "category" | "status";
+type FilterOption = { value: string; label: string };
+
+/**
+ * Dropdown de filtro: abre a lista de opcoes e deixa escolher qualquer uma.
+ * Antes era um botao que avancava para o proximo valor a cada clique — nao
+ * mostrava a lista e nao deixava voltar direto para uma opcao.
+ */
+function DesktopFilter({
+  label,
+  options,
+  value,
+  open,
+  onToggle,
+  onChange,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((option) => option.value === value) || options[0];
+  return (
+    <View style={styles.filterWrap}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: open }}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.filterPill, pressed && styles.pressed]}
+      >
+        <Text style={styles.filterText}>{selected.label}</Text>
+        <Text style={styles.filterChevron}>⌄</Text>
+      </Pressable>
+      {open ? (
+        <View style={styles.filterMenu}>
+          {options.map((option) => (
+            <Pressable
+              key={option.value}
+              accessibilityRole="menuitem"
+              accessibilityState={{ selected: option.value === value }}
+              onPress={() => onChange(option.value)}
+              style={({ pressed }) => [styles.filterOption, option.value === value && styles.filterOptionSelected, pressed && styles.pressed]}
+            >
+              <Text style={[styles.filterOptionText, option.value === value && styles.filterOptionTextSelected]}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
-
 function DesktopStatement({ items, onRegister }: { items: Contribution[]; onRegister: () => void }) {
-  const [period, setPeriod] = useState<"all" | "3m" | "6m" | "year">("all");
+  const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
+  const [period, setPeriod] = useState<StatementPeriod>("all");
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
-  const categories = useMemo(() => ["all", ...Array.from(new Set(items.map((item) => item.category))).sort()], [items]);
-  const statuses = useMemo(() => ["all", ...Array.from(new Set(items.map((item) => item.status))).sort()], [items]);
+  const periodOptions: FilterOption[] = [
+    { value: "all", label: "Todo o período" },
+    { value: "3m", label: "Últimos 3 meses" },
+    { value: "6m", label: "Últimos 6 meses" },
+    { value: "year", label: "Último ano" },
+  ];
+  // Categoria e status saem do que existe neste extrato: sem opcao que nao filtra nada.
+  const categoryOptions = useMemo<FilterOption[]>(() => [
+    { value: "all", label: "Todas as categorias" },
+    ...Array.from(new Set(items.map((item) => item.category))).sort().map((value) => ({ value, label: statusLabel(value) })),
+  ], [items]);
+  const statusOptions = useMemo<FilterOption[]>(() => [
+    { value: "all", label: "Todos os status" },
+    ...Array.from(new Set(items.map((item) => item.status))).sort().map((value) => ({ value, label: statusLabel(value) })),
+  ], [items]);
+  const changeFilter = (key: FilterKey, value: string) => {
+    if (key === "period") setPeriod(value as StatementPeriod);
+    if (key === "category") setCategory(value);
+    if (key === "status") setStatus(value);
+    setOpenFilter(null);
+  };
   const filteredItems = useMemo(() => {
     const cutoff = statementCutoff(period);
     return items.filter((item) => (!cutoff || parseDate(item.contribution_date) >= cutoff)
@@ -46,8 +113,6 @@ function DesktopStatement({ items, onRegister }: { items: Contribution[]; onRegi
   }, []);
   const monthlyTotals = months.map((month) => filteredItems.filter((item) => item.contribution_date.startsWith(month.key)).reduce((sum, item) => sum + Number(item.amount || 0), 0));
   const maxMonthly = Math.max(...monthlyTotals, 0);
-  const cycle = <T extends string>(current: T, values: T[], setter: (value: T) => void) => setter(values[(values.indexOf(current) + 1) % values.length]);
-  const periodLabels = { all: "Todos os períodos", "3m": "Últimos 3 meses", "6m": "Últimos 6 meses", year: "Último ano" };
   return (
     <View style={styles.desktopStatement}>
       <View style={styles.statementSummaryRow}>
@@ -65,9 +130,9 @@ function DesktopStatement({ items, onRegister }: { items: Contribution[]; onRegi
       </View>
 
       <View style={styles.statementFilters}>
-        <Pressable style={styles.filterPill} onPress={() => cycle(period, ["all", "3m", "6m", "year"], setPeriod)}><Text style={styles.filterText}>{periodLabels[period]}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
-        <Pressable style={styles.filterPill} onPress={() => cycle(category, categories, setCategory)}><Text style={styles.filterText}>{category === "all" ? "Todas as categorias" : statusLabel(category)}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
-        <Pressable style={styles.filterPill} onPress={() => cycle(status, statuses, setStatus)}><Text style={styles.filterText}>{status === "all" ? "Todos os status" : statusLabel(status)}</Text><Text style={styles.filterChevron}>⌄</Text></Pressable>
+        <DesktopFilter label="Filtrar por período" options={periodOptions} value={period} open={openFilter === "period"} onToggle={() => setOpenFilter(openFilter === "period" ? null : "period")} onChange={(value) => changeFilter("period", value)} />
+        <DesktopFilter label="Filtrar por categoria" options={categoryOptions} value={category} open={openFilter === "category"} onToggle={() => setOpenFilter(openFilter === "category" ? null : "category")} onChange={(value) => changeFilter("category", value)} />
+        <DesktopFilter label="Filtrar por status" options={statusOptions} value={status} open={openFilter === "status"} onToggle={() => setOpenFilter(openFilter === "status" ? null : "status")} onChange={(value) => changeFilter("status", value)} />
         <Button size="compact" onPress={onRegister}>+ Registrar contribuição</Button>
       </View>
 
@@ -292,10 +357,17 @@ const styles = StyleSheet.create({
   statementBars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around", paddingHorizontal: 60, paddingTop: 24, paddingBottom: 5 },
   statementBarColumn: { height: 180, alignItems: "center", justifyContent: "flex-end", gap: 8 },
   statementBar: { width: 44, borderRadius: 6, backgroundColor: colors.accent },
-  statementFilters: { height: 52, flexDirection: "row", alignItems: "center", gap: 10 },
+  statementFilters: { height: 52, flexDirection: "row", alignItems: "center", gap: 10, zIndex: 20 },
+  filterWrap: { position: "relative", zIndex: 21 },
   filterPill: { height: 40, minWidth: 154, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 18, paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 },
   filterText: { color: colors.inkBody, fontSize: 11 },
   filterChevron: { color: colors.inkMuted, fontSize: 16 },
+  filterMenu: { position: "absolute", top: 44, left: 0, minWidth: 190, padding: 4, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, shadowColor: colors.ink, shadowOpacity: 0.14, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 8, zIndex: 30 },
+  filterOption: { minHeight: 36, justifyContent: "center", paddingHorizontal: 10, borderRadius: 6 },
+  filterOptionSelected: { backgroundColor: colors.surfaceSelected },
+  filterOptionText: { color: colors.inkBody, fontSize: 11 },
+  filterOptionTextSelected: { color: colors.accent, fontWeight: "700" },
+  pressed: { opacity: 0.85 },
   statementTable: { minHeight: 312, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: "hidden" },
   tableHeader: { height: 48, flexDirection: "row", alignItems: "center", paddingHorizontal: 18, backgroundColor: "#F9FAFB", borderBottomWidth: 1, borderBottomColor: colors.borderDivider },
   tableHeaderCell: { flex: 1, color: colors.inkMuted, fontSize: 10, fontWeight: "800", textTransform: "uppercase" },

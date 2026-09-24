@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
-import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
+import { Image, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
 
 import { Badge, Button, Card } from "@/components/Form";
 import { ErrorNotice } from "@/components/ErrorNotice";
@@ -9,7 +9,7 @@ import { Screen } from "@/components/Screen";
 import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
-import { ChurchEvent, Contribution, MeResponse, PersonalCommitment, ScheduleAssignment } from "@/types/api";
+import { ChurchContent, ChurchEvent, Contribution, EventAnnouncement, MeResponse, PersonalCommitment, ScheduleAssignment } from "@/types/api";
 import { colors, formatBRL, formatDate, radius, spacing, statusLabel } from "@/theme";
 
 /**
@@ -93,6 +93,116 @@ function shortcutsKey(me: MeResponse): string {
   return `moriah:home-shortcuts:${me.id}`;
 }
 
+type NoticeSlide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  meta: string;
+  route: string;
+  imageUrl?: string;
+};
+
+function NoticeCarousel({
+  announcements,
+  events,
+  contents,
+  onNavigate,
+  compact = false,
+}: {
+  announcements: EventAnnouncement[];
+  events: ChurchEvent[];
+  contents: ChurchContent[];
+  onNavigate: (route: string) => void;
+  compact?: boolean;
+}) {
+  const [index, setIndex] = useState(0);
+  const slides = useMemo<NoticeSlide[]>(() => [
+    ...announcements.map((announcement) => ({
+      id: `announcement-${announcement.id}`,
+      eyebrow: "AVISO DE EVENTO",
+      title: announcement.title || announcement.event_name,
+      description: announcement.event_location || "Confira os detalhes deste evento na agenda.",
+      meta: formatDate(announcement.event_start_at, true),
+      route: `agenda?event=${announcement.event}`,
+      imageUrl: announcement.image_url,
+    })),
+    ...contents.map((content) => ({
+      id: `content-${content.id}`,
+      eyebrow: "COMUNICADO",
+      title: content.title,
+      description: content.summary || content.body,
+      meta: content.published_at ? formatDate(content.published_at, true) : "Publicado pela igreja",
+      route: `content/${content.id}`,
+    })),
+    ...events.map((event) => ({
+      id: `event-${event.id}`,
+      eyebrow: event.event_type_display || "EVENTO",
+      title: event.name,
+      description: event.description || "Confira os detalhes deste evento da igreja.",
+      meta: `${formatDate(event.start_at, true)}${event.location ? ` · ${event.location}` : ""}`,
+      route: `agenda?event=${event.id}`,
+    })),
+  ].slice(0, 4), [announcements, contents, events]);
+
+  useEffect(() => {
+    setIndex((current) => Math.min(current, Math.max(0, slides.length - 1)));
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = setInterval(() => {
+      setIndex((current) => (current + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  if (!slides.length) {
+    return (
+      <View style={compact ? styles.noticeEmptyMobile : styles.noticeEmptyDesktop}>
+        <Text style={styles.noticeEmptyText}>Nenhum aviso ou evento publicado no momento.</Text>
+      </View>
+    );
+  }
+
+  const slide = slides[index];
+  const goTo = (nextIndex: number) => setIndex((nextIndex + slides.length) % slides.length);
+
+  return (
+    <View style={compact ? styles.noticeCarouselMobile : styles.noticeCarouselDesktop}>
+      {slide.imageUrl ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)}>
+          <Image source={{ uri: slide.imageUrl }} resizeMode="cover" style={compact ? styles.noticeImageMobile : styles.noticeImageDesktop} />
+        </Pressable>
+      ) : null}
+      <View style={styles.noticeCopy}>
+        <Text style={styles.noticeEyebrow}>{slide.eyebrow}</Text>
+        <Text numberOfLines={2} style={styles.noticeTitle}>{slide.title}</Text>
+        <Text numberOfLines={3} style={styles.noticeDescription}>{slide.description}</Text>
+        <Text numberOfLines={1} style={styles.noticeMeta}>{slide.meta}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)} style={styles.noticeLink}>
+          <Text style={styles.noticeLinkText}>Ver detalhes</Text>
+          <ChevronRight size={14} color={colors.accent} />
+        </Pressable>
+      </View>
+      <View style={styles.noticeControls}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Aviso anterior" onPress={() => goTo(index - 1)} style={styles.noticeArrow}>
+          <ChevronLeft size={16} color={colors.inkBody} />
+        </Pressable>
+        <View style={styles.noticeDots}>
+          {slides.map((item, itemIndex) => (
+            <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Ir para aviso ${itemIndex + 1}`} onPress={() => goTo(itemIndex)} style={[styles.noticeDot, itemIndex === index && styles.noticeDotActive]} />
+          ))}
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Próximo aviso" onPress={() => goTo(index + 1)} style={styles.noticeArrow}>
+          <ChevronRight size={16} color={colors.inkBody} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+
 function DesktopDashboard({
   me,
   canAccessManagement,
@@ -100,6 +210,8 @@ function DesktopDashboard({
   contributions,
   commitments,
   events,
+  announcements,
+  contents,
   canCreateSchedule,
   hasError,
   onNavigate,
@@ -110,6 +222,8 @@ function DesktopDashboard({
   contributions: Contribution[];
   commitments: PersonalCommitment[];
   events: ChurchEvent[];
+  announcements: EventAnnouncement[];
+  contents: ChurchContent[];
   canCreateSchedule: boolean;
   hasError: boolean;
   onNavigate: (route: string) => void;
@@ -190,6 +304,9 @@ function DesktopDashboard({
           </View>
         ))}
       </View>
+
+      <NoticeCarousel announcements={announcements} events={events} contents={contents} onNavigate={onNavigate} />
+
       <View style={styles.desktopDashboardRow}>
         <View style={styles.desktopChartCard}>
           <Text style={styles.desktopPanelTitle}>Minhas contribuições — últimos 6 meses</Text>
@@ -289,6 +406,8 @@ export function HomeScreen({
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [commitments, setCommitments] = useState<PersonalCommitment[]>([]);
   const [events, setEvents] = useState<ChurchEvent[]>([]);
+  const [announcements, setAnnouncements] = useState<EventAnnouncement[]>([]);
+  const [contents, setContents] = useState<ChurchContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
@@ -302,11 +421,13 @@ export function HomeScreen({
       return;
     }
     setError(null);
-    const [escalas, extrato, agenda, eventos] = await Promise.allSettled([
+    const [escalas, extrato, agenda, eventos, avisos, conteudos] = await Promise.allSettled([
       api.get<ScheduleAssignment[]>("/me/schedules/"),
       api.get<Contribution[]>("/me/statement/"),
       api.get<PersonalCommitment[]>("/me/agenda/"),
       api.get<ChurchEvent[]>("/me/events/"),
+      api.get<EventAnnouncement[]>("/event-announcements/"),
+      api.get<ChurchContent[]>("/content/"),
     ]);
     const failures: UserFacingError[] = [];
     if (escalas.status === "fulfilled") setSchedules(escalas.value);
@@ -317,6 +438,12 @@ export function HomeScreen({
     else failures.push(describeError(agenda.reason, "Não foi possível carregar sua agenda"));
     if (eventos.status === "fulfilled") setEvents(eventos.value);
     else failures.push(describeError(eventos.reason, "Não foi possível carregar os eventos"));
+    // Avisos e comunicados alimentam o carrossel da visao geral (abaixo dos
+    // cards, antes dos graficos); falha aqui tambem entra no aviso da tela.
+    if (avisos.status === "fulfilled") setAnnouncements(avisos.value);
+    else failures.push(describeError(avisos.reason, "Não foi possível carregar os avisos"));
+    if (conteudos.status === "fulfilled") setContents(conteudos.value);
+    else failures.push(describeError(conteudos.reason, "Não foi possível carregar os comunicados"));
     setError(failures.length ? { title: "Dados incompletos", message: failures.map((item) => item.message).join(" ") } : null);
     setLoading(false);
     setRefreshing(false);
@@ -457,6 +584,8 @@ export function HomeScreen({
           contributions={contributions}
           commitments={commitments}
           events={events}
+          announcements={announcements}
+          contents={contents}
           canCreateSchedule={canCreateSchedule}
           hasError={Boolean(error)}
           onNavigate={onNavigate}
@@ -661,6 +790,25 @@ const styles = StyleSheet.create({
   desktopMetricLabel: { color: colors.inkMuted, fontSize: 11, fontWeight: "700" },
   desktopMetricValue: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   desktopMetricDetail: { color: colors.inkMuted, fontSize: 11 },
+  noticeCarouselDesktop: { minHeight: 176, flexDirection: "row", justifyContent: "space-between", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 20, overflow: "hidden" },
+  noticeCarouselMobile: { minHeight: 168, flexDirection: "row", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 16, overflow: "hidden" },
+  noticeEmptyDesktop: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
+  noticeEmptyMobile: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  noticeEmptyText: { color: colors.inkMuted, fontSize: 12 },
+  noticeImageDesktop: { width: 240, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 18 },
+  noticeImageMobile: { width: 112, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 14 },
+  noticeCopy: { flex: 1, gap: 6, minWidth: 0 },
+  noticeEyebrow: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  noticeTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
+  noticeDescription: { color: colors.inkBody, fontSize: 12, lineHeight: 17, maxWidth: 720 },
+  noticeMeta: { color: colors.inkMuted, fontSize: 11 },
+  noticeLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingVertical: 4 },
+  noticeLinkText: { color: colors.accent, fontSize: 12, fontWeight: "800" },
+  noticeControls: { alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 12 },
+  noticeArrow: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
+  noticeDots: { flexDirection: "row", alignItems: "center", gap: 4, maxWidth: 100 },
+  noticeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#B8C1F0" },
+  noticeDotActive: { width: 18, backgroundColor: colors.accent },
   desktopDashboardRow: { flexDirection: "row", gap: 24 },
   desktopChartCard: { flex: 1.84, height: 336, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
   desktopQuickCard: { flex: 1, height: 336, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 9 },

@@ -187,15 +187,15 @@ atalho a partir do extrato/contribuições, ou manter como está.
 
 | Comando | Resultado |
 | --- | --- |
-| `cd backend && python -m pytest -q` (SQLite de `config.settings_test`) | **151 passed** (149 do merge + 2 testes novos de notificação) |
-| `POSTGRES_HOST=localhost python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres` (mesmo recorte do job `finance-postgres` do CI) | **99 passed** |
+| `cd backend && python -m pytest -q` (SQLite de `config.settings_test`) | **157 passed** (149 do merge + testes de notificação e de permissão de compromisso) |
+| `POSTGRES_HOST=localhost python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres` (mesmo recorte do job `finance-postgres` do CI) | **105 passed** |
 | `cd mobile && npx tsc --noEmit` | limpo (0 erros) |
 | `node --test tools/qa/tests/mobile-regressions.cjs` | **11/11** |
 | `docker start moriah_app-db-1` + `moriah_app-backend-1` | backend no ar, `manage.py migrate` aplicou `finance.0004_merge_20260924_0952` **no Postgres real com dados existentes** |
 
 **Verificação executada:** `node tools/qa/run.mjs todas` com
-`QA_BASE=http://localhost:9000` (ver §6.1) — **fase1 18/18, fase2 13/13,
-fase3 13/13 (1 AVISO), fase4 11/11, fase5 12/12**, todas com evidência em
+`QA_BASE=http://localhost:9000` (ver §6.1) — **fase1 20/20, fase2 14/14,
+fase3 13/13 (1 AVISO), fase4 11/11, fase5 13/13**, todas com evidência em
 `docs/qa/evidencias/` (`output/playwright/` na fase 5).
 
 **O que a rodada revelou e foi corrigido nesta sessão:**
@@ -298,7 +298,53 @@ provisionamento**).
 
 ---
 
-## 8. Próximo módulo: emissão fiscal (NFe/NFCe)
+## 9. Ajustes de UI e de contrato pedidos na revisão do produto (24/09)
+
+Quatro ajustes vieram da revisão do produto (não do aceite) e cada um ganhou
+verificação própria:
+
+1. **Extrato: os filtros voltaram a ser dropdown.** Os três filtros do extrato
+   desktop eram botões que *ciclavam* para o próximo valor (`cycle()`), sem
+   mostrar a lista nem permitir escolher direto. Voltaram a abrir a lista de
+   opções (a implementação do branch foi portada para a tela consolidada, que
+   mantém o gráfico com dado real e o `testID statement-bar-<mês>`).
+2. **Escala recusada aparecia verde.** Cada tela reimplementava o mapa de tom do
+   status, e a agenda tratava tudo que não era conflito/pendente como sucesso. O
+   mapa virou fonte única (`statusTone` em `mobile/src/theme.ts`), usada por
+   agenda, lista de escalas, detalhe da escala e extrato.
+3. **Novo compromisso é da liderança.** O formulário inline saiu da agenda e a
+   função virou um ícone circular (+) acima do calendário, oferecido apenas a
+   quem cria compromisso: liderança de ministério (coordenação), liderança de
+   célula, pastores e admin. O contrato vive no backend
+   (`IsMinistryOrCellLeader` + exigência de vínculo de membro, porque o
+   compromisso pertence a um `Member`); o app só não oferece o caminho e
+   `/agenda-new` tem guarda de capacidade.
+4. **Carrossel de anúncios na visão geral.** O carrossel (aviso de evento,
+   comunicado e evento, com dado real de `/event-announcements/` e `/content/`)
+   voltou para a Home, **entre os cards e os gráficos**.
+
+Verificação acrescentada ao aceite (cada item virou um check):
+
+- fase 1 check 10 — o carrossel existe, tem conteúdo e fica acima do gráfico;
+- fase 2 check 2b — o membro não vê o (+), e digitar `/agenda-new` na mão recebe
+  o aviso de acesso restrito e volta;
+- fase 5 "Extrato: filtro abre a lista de opções e aplica a escolha" — com dois
+  lançamentos (um aprovado, um pendente), escolher no dropdown filtra a lista.
+
+Testes de backend: `apps/schedules/tests/test_personal_commitment_permissions.py`
+(membro 403; coordenação, líder de célula, pastor e admin 201; liderança sem
+vínculo 403). O teste antigo que afirmava "membro cria compromisso" foi
+atualizado com o porquê e manteve a assertiva de isolamento por membro.
+
+**Nota de dados de demonstração:** a conta de coordenação do seed
+(`coordenacao.louvor@moriah.app`) **não tem vínculo de membro**, então ela não vê
+o (+). É coerente com o backend (sem `Member` não há agenda pessoal para gravar);
+se a demonstração precisar mostrar o atalho, o seed precisa criar o membro da
+coordenação.
+
+---
+
+## 10. Próximo módulo: emissão fiscal (NFe/NFCe)
 
 Fora do escopo do MVP atual e sem código no repositório. Quando começar, o
 material de estudo está em `~/nfse_estudo` e o roteiro em

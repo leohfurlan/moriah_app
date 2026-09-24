@@ -9,19 +9,13 @@ import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
 import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
-import { colors, formatDate, spacing, statusLabel } from "@/theme";
+import { colors, formatDate, spacing, statusLabel, statusTone } from "@/theme";
 
 function ministryAllowsRepertoire(name: string): boolean {
   const normalized = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
   return ["louvor", "danca", "som", "projecao", "tecnica"].some((term) => normalized.includes(term));
 }
 
-function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
-  if (status === "confirmed") return "success";
-  if (status === "declined" || status === "conflict") return "danger";
-  if (status === "pending" || status === "unavailable") return "warning";
-  return "neutral";
-}
 function responseNote(status: string): string {
   switch (status) {
     case "confirmed":

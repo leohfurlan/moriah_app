@@ -108,6 +108,26 @@ export async function executar({ browser, dir }) {
     await sessaoAdmin.context.close();
   }
 
+  // ---- 2b. novo compromisso: so a lideranca (ministerio/celula) ------------
+  {
+    const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
+    await login(sessao.page, membro);
+    await irPara(sessao.page, "/agenda");
+    const membroVe = (await sessao.page.getByLabel("Novo compromisso").count()) > 0;
+    // Digitar a URL na mao tambem nao abre: a guarda avisa e manda de volta.
+    await irPara(sessao.page, "/agenda-new");
+    const conteudo = await texto(sessao.page);
+    const guarda = contem(conteudo, "acesso restrito") || contem(conteudo, "nao tem permissao");
+    const saiuDaTela = caminho(sessao.page.url()) !== "/agenda-new";
+    await v.screenshot(sessao.page, "2b-compromisso-restrito");
+    await sessao.context.close();
+    v.check(
+      "2b. Novo compromisso não é oferecido ao membro e a rota é bloqueada (liderança de ministério/célula)",
+      !membroVe && guarda && saiuDaTela,
+      `membro vê o atalho=${membroVe} | aviso de acesso restrito=${guarda} | saiu de /agenda-new=${saiuDaTela} | url=${caminho(sessao.page.url())}`,
+    );
+  }
+
   // ---- 3. nenhum rotulo decorativo no menu --------------------------------
   {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });

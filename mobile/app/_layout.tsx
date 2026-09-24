@@ -5,17 +5,17 @@ import { usePathname, useRouter } from "expo-router";
 
 import { ToastProvider, useToast } from "@/components/Feedback";
 import { useAuth } from "@/hooks/useAuth";
-import { Capacidade, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navigation";
+import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navigation";
 import { colors, radius, spacing } from "@/theme";
 
 /**
  * Rotas que exigem apenas estar logado com vinculo de membro. As areas de
- * gestao (financeiro, membros, conteudo, eventos) ficam em ROTAS_DE_GESTAO:
- * quem opera o painel (admin, pastor, tesouraria, secretaria) costuma nao ter
- * cadastro de membro, e exigir vinculo ali fechava a tela para quem tem a
- * permissao no backend.
+ * gestao (financeiro, membros, conteudo, eventos, novo compromisso) ficam em
+ * ROTAS_DE_GESTAO: quem opera o painel (admin, pastor, tesouraria, secretaria,
+ * coordenacao) costuma nao ter cadastro de membro, e exigir vinculo ali fechava
+ * a tela para quem tem a permissao no backend.
  */
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/ministries", "/setlists", "/repertoire", "/bands", "/bible-school", "/classes", "/agenda", "/agenda-new", "/notifications"];
+const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/ministries", "/setlists", "/repertoire", "/bands", "/bible-school", "/classes", "/agenda", "/notifications"];
 
 /**
  * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade
@@ -31,6 +31,8 @@ const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
   "/visitors": CAPACIDADES_DE_DIRETORIO,
   "/events": ["member", "manage_events"],
   "/content": ["member", "manage_content"],
+  // Compromisso na agenda e da lideranca de ministerio ou de celula.
+  "/agenda-new": CAPACIDADES_DE_COMPROMISSO,
 };
 
 /**

@@ -26,7 +26,12 @@ export async function executar({ browser, dir }) {
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const contribution_date = `${month}-17`;
-  const statements = [{ id: 1, amount: "100.00", category: "tithe", status: "approved", contribution_date, notes: "", attachments: [] }];
+  const statements = [
+    { id: 1, amount: "100.00", category: "tithe", status: "approved", contribution_date, notes: "", attachments: [] },
+    // Segundo lancamento com outro status (mesmo mes, outro dia: o check do
+    // grafico conta 5 meses zerados e procura a data civil do primeiro).
+    { id: 2, amount: "50.00", category: "offering", status: "pending", contribution_date: `${month}-18`, notes: "", attachments: [] },
+  ];
   await context.route((url) => /^\/(api|backend|local-api)\//.test(url.pathname), async (route) => {
     const endpoint = new URL(route.request().url()).pathname.replace(/^\/(api|backend|local-api)/, "");
     const send = (body, code = 200) => route.fulfill({ status: code, contentType: "application/json", body: JSON.stringify(body) });
@@ -139,6 +144,18 @@ export async function executar({ browser, dir }) {
       assert.equal(heights.filter((height) => height === 0).length, 5);
     });
     await v.screenshot(page, "extrato-desktop");
+    await check("Extrato: filtro abre a lista de opções e aplica a escolha", async () => {
+      await go("/statement");
+      // O filtro tem que ser dropdown: abre a lista e aceita a escolha direta.
+      await page.getByRole("button", { name: "Filtrar por status", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Pendente", exact: true }).click();
+      await page.getByText("R$ 50,00", { exact: true }).first().waitFor();
+      assert.equal(await page.getByText("R$ 100,00", { exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Filtrar por status", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Aprovado", exact: true }).click();
+      await page.getByText("R$ 100,00", { exact: true }).first().waitFor();
+      assert.equal(await page.getByText("R$ 50,00", { exact: true }).count(), 0);
+    });
     await check("Confirmar com 409 mostra motivo e recarrega status de conflito", async () => {
       await go("/schedule/7");
       await page.getByRole("button", { name: "Confirmar", exact: true }).click();

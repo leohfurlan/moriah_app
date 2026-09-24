@@ -120,6 +120,22 @@ export function statusLabel(value: string): string {
   return statusLabels[value] || value;
 }
 
+/**
+ * Tom visual de um status (badge). Fonte unica: cada tela reimplementava o
+ * mapeamento e uma delas pintava "Recusado" de verde (a agenda tratava tudo que
+ * nao era conflito/pendente como sucesso).
+ *
+ * Regra: confirmado/aprovado/recebido = success | pendente/em analise/indisponivel
+ * = warning | recusado/rejeitado/em conflito/substituicao necessaria/cancelado =
+ * danger | resto = neutral.
+ */
+export function statusTone(value: string): "success" | "warning" | "danger" | "neutral" {
+  if (["confirmed", "approved", "received", "paid"].includes(value)) return "success";
+  if (["pending", "pending_confirmation", "needs_review", "unavailable"].includes(value)) return "warning";
+  if (["declined", "rejected", "conflict", "replacement_needed", "cancelled"].includes(value)) return "danger";
+  return "neutral";
+}
+
 /** Data ISO -> "12/09/2026 19:30" ou "--" se invalida. */
 export function formatDate(iso: string, withTime = false): string {
   const date = parseDate(iso);

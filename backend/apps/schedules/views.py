@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.pagination import OptionalPaginationMixin
-from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
+from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsMinistryOrCellLeader, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
 from apps.audit.models import AuditLog, Notification
 from apps.audit.notification_service import create_notification
 from apps.members.models import Member
@@ -567,7 +567,9 @@ class PersonalCommitmentViewSet(OptionalPaginationMixin, viewsets.ModelViewSet):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [HasMemberProfileOrAdmin()]
-        return [HasMemberProfile()]
+        # Criar/editar compromisso e da lideranca (ministerio ou celula); a leitura
+        # continua sendo de quem e dono do compromisso.
+        return [HasMemberProfile(), IsMinistryOrCellLeader()]
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

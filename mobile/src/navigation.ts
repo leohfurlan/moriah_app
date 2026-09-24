@@ -74,6 +74,21 @@ export const CAPACIDADES_DE_DIRETORIO: Capacidade[] = [
   "manage_schedules",
 ];
 
+/**
+ * Quem cria compromisso na agenda. Espelha `IsMinistryOrCellLeader` no backend:
+ * lideranca de ministerio (coordenacao), lideranca de celula, pastor e admin.
+ */
+export const CAPACIDADES_DE_COMPROMISSO: Capacidade[] = [
+  "manage_cells",
+  "manage_schedules",
+  "manage_pastoral",
+];
+
+export function podeCriarCompromisso(capabilities: string[]): boolean {
+  if (capabilities.includes("manage_all")) return true;
+  return CAPACIDADES_DE_COMPROMISSO.some((capacidade) => capabilities.includes(capacidade));
+}
+
 export function podeGerenciarEscalas(capabilities: string[]): boolean {
   return CAPACIDADES_DE_ESCALA.some((capacidade) => capabilities.includes(capacidade));
 }

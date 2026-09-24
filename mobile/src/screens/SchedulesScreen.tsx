@@ -12,14 +12,7 @@ import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
 import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignment } from "@/types/api";
-import { colors, formatDate, spacing, statusLabel } from "@/theme";
-
-function statusTone(status: ScheduleAssignment["status"]): "success" | "warning" | "danger" {
-  if (status === "confirmed") return "success";
-  if (status === "declined") return "danger";
-  return "warning";
-}
-
+import { colors, formatDate, spacing, statusLabel, statusTone } from "@/theme";
 
 type ScheduleView = "calendar" | "list" | "ministry";
 type FilterOption = { value: string; label: string };

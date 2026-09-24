@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
-import { Badge, Button, Card, Field } from "@/components/Form";
+import { Badge, Button, Card } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { useAuth } from "@/hooks/useAuth";
+import { podeCriarCompromisso } from "@/navigation";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ChurchEvent, PersonalCommitment, ScheduleAssignment } from "@/types/api";
-import { colors, formatDate, spacing, statusLabel } from "@/theme";
+import { colors, formatDate, spacing, statusLabel, statusTone } from "@/theme";
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -29,12 +32,6 @@ function calendarDays(cursor: Date) {
     day.setDate(start.getDate() + index);
     return day;
   });
-}
-
-function scheduleStatusTone(status: ScheduleAssignment["status"]): "success" | "warning" | "danger" {
-  if (status === "conflict" || status === "replacement_needed") return "danger";
-  if (status === "pending") return "warning";
-  return "success";
 }
 
 function EventDetails({ event }: { event: ChurchEvent }) {
@@ -108,6 +105,10 @@ function DesktopAgenda({
 
 export function AgendaScreen() {
   const router = useRouter();
+  const { me } = useAuth();
+  // Criar compromisso e da lideranca (ministerio ou celula): o backend recusa
+  // para os demais (IsMinistryOrCellLeader) — aqui so nao oferecemos o atalho.
+  const podeCriarCompromissoAqui = Boolean(me?.member_id) && podeCriarCompromisso(me?.capabilities || []);
   const { event: eventParam } = useLocalSearchParams<{ event?: string }>();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
@@ -116,13 +117,8 @@ export function AgendaScreen() {
   const [churchEvents, setChurchEvents] = useState<ChurchEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
   const [cursor, setCursor] = useState(new Date());
-  const [title, setTitle] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
   const requestedEventId = Array.isArray(eventParam) ? eventParam[0] : eventParam;
@@ -194,42 +190,27 @@ export function AgendaScreen() {
   const selectedEvent = requestedEventId ? churchEvents.find((event) => String(event.id) === requestedEventId) || null : null;
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
-  async function submit() {
-    if (!title.trim() || !startsAt.trim()) {
-      Alert.alert("Dados incompletos", "Informe o título e o início do compromisso.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await api.post<PersonalCommitment>("/me/agenda/", {
-        title: title.trim(),
-        commitment_type: "personal",
-        starts_at: startsAt,
-        ends_at: endsAt || null,
-        notes,
-      });
-      setTitle("");
-      setStartsAt("");
-      setEndsAt("");
-      setNotes("");
-      await load();
-    } catch (err) {
-      const result = describeError(err, "Nao foi possivel salvar");
-      Alert.alert(result.title, result.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
     <Screen title="Agenda" headerSubtitle="Seu calendário pessoal e os eventos da igreja" refreshing={refreshing || loading} onRefresh={() => { setRefreshing(true); load(); }}>
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
 
       <Card>
         <View style={styles.calendarHeader}>
-          <Button size="compact" variant="ghost" onPress={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>‹</Button>
-          <Text style={styles.month}>{monthLabel(cursor)}</Text>
-          <Button size="compact" variant="ghost" onPress={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>›</Button>
+          <View style={styles.calendarNav}>
+            <Button size="compact" variant="ghost" onPress={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>‹</Button>
+            <Text style={styles.month}>{monthLabel(cursor)}</Text>
+            <Button size="compact" variant="ghost" onPress={() => setCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>›</Button>
+          </View>
+          {podeCriarCompromissoAqui ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Novo compromisso"
+              onPress={() => router.push("/agenda-new" as never)}
+              style={({ pressed }) => [styles.newCommitmentButton, pressed && styles.pressed]}
+            >
+              <Plus size={20} strokeWidth={2.4} color={colors.onAccent} />
+            </Pressable>
+          ) : null}
         </View>
         <View style={styles.weekRow}>{WEEKDAYS.map((day, index) => <Text key={String(index)} style={styles.weekday}>{day}</Text>)}</View>
         <View style={styles.calendarGrid}>
@@ -286,19 +267,10 @@ export function AgendaScreen() {
               <Text style={styles.meta}>{formatDate(item.event_start_at, true)}</Text>
               <Text style={styles.meta}>{item.ministry_name} · {item.role_name}</Text>
             </View>
-            <Badge label={statusLabel(item.status)} tone={scheduleStatusTone(item.status)} />
+            <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
           </Pressable>
         )) : <Text style={styles.meta}>Nenhuma escala próxima.</Text>}
         <Button variant="ghost" onPress={() => router.push("/schedules" as never)}>Ver minhas escalas</Button>
-      </Card>
-
-      <Card>
-        <Text style={styles.sectionTitle}>Novo compromisso</Text>
-        <Field value={title} onChangeText={setTitle} placeholder="Ex.: Ensaio do Louvor" />
-        <Field value={startsAt} onChangeText={setStartsAt} placeholder="Início: 2026-09-20T18:00:00-03:00" />
-        <Field value={endsAt} onChangeText={setEndsAt} placeholder="Fim (opcional): 2026-09-20T20:00:00-03:00" />
-        <Field value={notes} onChangeText={setNotes} placeholder="Observações (opcional)" multiline />
-        <Button loading={submitting} disabled={submitting} onPress={submit}>Adicionar à agenda</Button>
       </Card>
 
       {!loading && !items.length ? <Text style={styles.meta}>Sua agenda pessoal ainda não tem compromissos.</Text> : null}
@@ -308,6 +280,9 @@ export function AgendaScreen() {
 
 const styles = StyleSheet.create({
   calendarHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  calendarNav: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
+  newCommitmentButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  pressed: { opacity: 0.85 },
   month: { color: colors.ink, fontSize: 16, fontWeight: "800" },
   weekRow: { flexDirection: "row", justifyContent: "space-around", marginTop: spacing.md },
   weekday: { width: "14.28%", textAlign: "center", color: colors.inkMuted, fontSize: 11, fontWeight: "800" },

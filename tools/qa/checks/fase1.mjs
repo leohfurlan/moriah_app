@@ -232,5 +232,32 @@ export async function executar({ browser, dir }) {
     await sessao.context.close();
   }
 
+  // ---- 10. visao geral: carrossel de avisos entre os cards e os graficos ----
+  {
+    const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
+    const acesso = await login(sessao.page, membro);
+    v.check("preparo: login do membro (carrossel)", acesso.ok, `url=${acesso.url}`);
+    await irPara(sessao.page, "/home");
+    const carrossel = sessao.page.getByLabel("Próximo aviso").first();
+    const temCarrossel = (await carrossel.count()) > 0;
+    const grafico = sessao.page.getByText(/Minhas contribuições/).first();
+    const temGrafico = (await grafico.count()) > 0;
+    let acimaDoGrafico = false;
+    if (temCarrossel && temGrafico) {
+      const caixaCarrossel = await carrossel.boundingBox();
+      const caixaGrafico = await grafico.boundingBox();
+      acimaDoGrafico = Boolean(caixaCarrossel && caixaGrafico && caixaCarrossel.y < caixaGrafico.y);
+    }
+    const conteudo = await texto(sessao.page);
+    const temConteudo = contem(conteudo, "ver detalhes") || contem(conteudo, "nenhum aviso ou evento publicado");
+    v.check(
+      "10. Visão geral mostra o carrossel de avisos abaixo dos cards e antes dos gráficos",
+      temCarrossel && temGrafico && acimaDoGrafico && temConteudo,
+      `carrossel=${temCarrossel} | gráfico=${temGrafico} | carrossel acima do gráfico=${acimaDoGrafico} | conteúdo=${temConteudo}`,
+    );
+    await v.screenshot(sessao.page, "10-carrossel-visao-geral");
+    await sessao.context.close();
+  }
+
   return v;
 }

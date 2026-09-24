@@ -10,16 +10,41 @@ from apps.audit.models import AuditLog
 pytestmark = pytest.mark.django_db
 
 
-def test_membro_cria_compromisso_e_so_enxerga_os_proprios(api_client, make_user, make_member):
+def test_membro_comum_nao_cria_compromisso_e_so_enxerga_os_proprios(api_client, make_user, make_member):
+    """Contrato mudou (24/09): criar compromisso e da lideranca.
+
+    A escrita passou a exigir `IsMinistryOrCellLeader` — decisao de produto: quem
+    organiza agenda e lideranca de ministerio (coordenacao) ou de celula. O
+    isolamento por membro na leitura continua valendo: o compromisso do vizinho
+    nao aparece. A criacao pela lideranca esta em
+    `test_personal_commitment_permissions.py`.
+    """
     user = make_user("membro@igreja.com")
     member = make_member("Maria", user=user)
     other_user = make_user("outro@igreja.com")
-    make_member("Joao", user=other_user)
+    other_member = make_member("Joao", user=other_user)
+    PersonalCommitment.objects.create(
+        church=member.church,
+        member=member,
+        title="Ensaio",
+        starts_at=datetime.datetime(2026, 9, 20, 18, tzinfo=datetime.timezone.utc),
+    )
+    PersonalCommitment.objects.create(
+        church=other_member.church,
+        member=other_member,
+        title="Compromisso do vizinho",
+        starts_at=datetime.datetime(2026, 9, 20, 19, tzinfo=datetime.timezone.utc),
+    )
     api_client.force_authenticate(user=user)
-    response = api_client.post("/api/me/agenda/", {"title": "Ensaio", "starts_at": "2026-09-20T18:00:00-03:00", "ends_at": "2026-09-20T20:00:00-03:00"}, format="json")
-    assert response.status_code == 201
-    assert PersonalCommitment.objects.get().member == member
-    assert api_client.get("/api/me/agenda/").data[0]["title"] == "Ensaio"
+
+    criacao = api_client.post(
+        "/api/me/agenda/",
+        {"title": "Ensaio novo", "starts_at": "2026-09-21T18:00:00-03:00"},
+        format="json",
+    )
+
+    assert criacao.status_code == 403
+    assert [item["title"] for item in api_client.get("/api/me/agenda/").data] == ["Ensaio"]
 
 
 def test_admin_tambem_so_enxerga_seus_compromissos_pessoais(api_client, make_user, make_member):

@@ -55,6 +55,31 @@ class IsCellLeaderOrAdmin(BasePermission):
         )
 
 
+class IsMinistryOrCellLeader(BasePermission):
+    """Cria compromisso na agenda: lideranca de ministerio (coordenacao) ou de celula.
+
+    Decisao de produto: compromisso nao e para qualquer membro — quem organiza
+    agenda e a lideranca. Criar e editar exige tambem vinculo de membro
+    (`HasMemberProfile`), porque o compromisso pertence ao cadastro do membro.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(
+                    User.Role.ADMIN,
+                    User.Role.PASTOR,
+                    User.Role.COORDINATOR,
+                    User.Role.CELL_LEADER,
+                )
+            )
+        )
+
+
 class HasMemberProfile(BasePermission):
     """Exige que o usuario logado tenha um cadastro de membro vinculado.
 
