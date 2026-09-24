@@ -489,7 +489,10 @@ Postgres do próprio Compose — **não** é um ambiente de piloto real.
    `WHITENOISE_MAX_AGE` derivado de `DJANGO_DEBUG` (0 em dev, 1 h em produção)
    para não servir CSS antigo depois de um deploy; se um dia entrar CDN, ajustar
    essa janela e o cache do proxy.
-2. Fase 2 — provisionar a VPS (Docker, usuário de deploy, firewall, domínio).
+2. Fase 2 — provisionar a VPS: **pacote pronto no repositório**
+   (`deploy/cloud-init.yaml`, `deploy/moriah-piloto.service`,
+   `scripts/verificar-vps-piloto.sh` e `docs/runbook-provisionamento-vps.md`);
+   falta criar a instância na Oracle Cloud (depende da conta do usuário).
 3. Fase 3 — criar projeto/branch do Neon, credencial da aplicação, bucket privado
    de comprovantes e o primeiro backup remoto com TLS.
 4. Fase 4 — deploy controlado: `.env.pilot` real, `migrate`, usuário admin do

@@ -1,0 +1,134 @@
+#cloud-config
+# Provisionamento da VPS do piloto (Ubuntu 24.04 LTS na Oracle Cloud, Ampere A1).
+#
+# Como usar: Oracle Console > Compute > Create instance > Advanced options >
+# "Initialization script" > colar este arquivo. Depois de criar, rodar
+# scripts/verificar-vps-piloto.sh para conferir os criterios da Fase 2.
+#
+# Este arquivo NAO contem segredo nenhum: a chave publica do SSH entra aqui
+# (substitua o placeholder) e tudo que e sensivel (Neon, S3, DJANGO_SECRET_KEY)
+# fica em /opt/moriah_app/.env.pilot, com permissao 600, na propria VPS.
+
+package_update: true
+package_upgrade: true
+timezone: America/Sao_Paulo
+
+users:
+  - name: deploy
+    # Grupo docker entra depois do pacote instalar; sudo para operar a stack.
+    groups: [sudo, adm]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      # SUBSTITUA pela sua chave publica: cat ~/.ssh/id_ed25519.pub
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...placeholder-cole-aqui... deploy@moriah"
+
+# Sem senha de usuario e sem root por SSH (criterio da Fase 2).
+ssh_pwauth: false
+disable_root: true
+
+packages:
+  - docker.io
+  - docker-compose-v2
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - curl
+  - jq
+
+write_files:
+  # SSH: so o usuario deploy, sem root, sem senha.
+  - path: /etc/ssh/sshd_config.d/99-moriah-piloto.conf
+    permissions: "0644"
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      AllowUsers deploy
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+
+  # Rotacao de log dos containers (backstop do que o compose ja define).
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {"max-size": "10m", "max-file": "5"},
+        "live-restore": true
+      }
+
+  # Rotacao do journal (logs do sistema).
+  - path: /etc/systemd/journald.conf.d/99-moriah-piloto.conf
+    permissions: "0644"
+    content: |
+      [Journal]
+      SystemMaxUse=200M
+      MaxRetentionSec=2week
+
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    permissions: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+  # A stack de piloto sobe no boot como servico (Fase 2: "ferramentas de
+  # operacao"); a Fase 4 e quem coloca o codigo e o .env.pilot aqui.
+  - path: /etc/systemd/system/moriah-piloto.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Stack de piloto do Moriah App (docker compose)
+      Requires=docker.service
+      After=docker.service network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/moriah_app
+      User=deploy
+      SupplementaryGroups=docker
+      ExecStart=/usr/bin/docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d backend
+      ExecStop=/usr/bin/docker compose -f docker-compose.pilot.yml --env-file .env.pilot down
+      TimeoutStartSec=300
+      TimeoutStopSec=120
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # --- Firewall -------------------------------------------------------------
+  # A imagem Ubuntu da OCI vem com regras de iptables que bloqueiam o tráfego
+  # (e o netfilter-persistent as reaplica no boot). Desligamos isso e deixamos o
+  # ufw como dono do firewall, senao as duas camadas brigam.
+  - [bash, -c, "systemctl disable --now netfilter-persistent 2>/dev/null || true"]
+  - [bash, -c, "iptables -F; iptables -X; iptables -P INPUT ACCEPT; iptables -P FORWARD ACCEPT; iptables -P OUTPUT ACCEPT"]
+  - [ufw, default, deny, incoming]
+  - [ufw, default, allow, outgoing]
+  - [ufw, allow, 80/tcp]
+  - [ufw, allow, 443/tcp]
+  # SUBSTITUA 203.0.113.10 pelo seu IP administrativo (ou remova para 22 aberto).
+  # Cada argumento entre aspas: no runcmd do cloud-init a lista vira argv, e
+  # numero sem aspas chega como inteiro (uma das causas de script falhar na VM).
+  - [ufw, allow, from, "203.0.113.10", to, any, port, "22", proto, tcp]
+  - [ufw, --force, enable]
+
+  # --- Servicos -------------------------------------------------------------
+  - [systemctl, enable, --now, docker]
+  - [systemctl, enable, --now, fail2ban]
+  - [systemctl, restart, ssh]
+  - [usermod, -aG, docker, deploy]
+
+  # --- Swap (2 GB): a shape micro tem 1 GB; a A1 tem 24 GB e nao se incomoda ---
+  - [bash, -c, "test -f /swapfile || fallocate -l 2G /swapfile"]
+  - [bash, -c, "chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile || true"]
+  - [bash, -c, "grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab"]
+
+  # --- Diretorio de deploy --------------------------------------------------
+  - [mkdir, -p, /opt/moriah_app]
+  - [chown, -R, deploy:deploy, /opt/moriah_app]
+  - [systemctl, daemon-reload]
+  # O servico fica habilitado, mas so sobe quando houver .env.pilot (Fase 4).
+  - [systemctl, enable, moriah-piloto]
