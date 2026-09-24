@@ -152,7 +152,10 @@ export async function executar({ browser, dir }) {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     const acesso = await login(sessao.page, membro);
     v.check("preparo: login do membro (erro 500)", acesso.ok, `url=${acesso.url}`);
-    await sessao.page.route("**/api/me/statement/**", (rota) =>
+    // O app fala com a API na mesma origem, e o prefixo varia com a config
+    // (EXPO_PUBLIC_API_URL): /api na LAN, /backend e /local-api atras do proxy.
+    // Interceptar so "**/api/me/statement/**" deixava o 500 forcado sem efeito.
+    await sessao.page.route(/\/me\/statement\//, (rota) =>
       rota.fulfill({ status: 500, contentType: "text/html", body: HTML_DJANGO }),
     );
     await irPara(sessao.page, "/statement");

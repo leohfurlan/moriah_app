@@ -103,7 +103,8 @@ versionados em `docs/qa/fase-*.md`; evidências (ignoradas pelo Git) em
 | `mobile/app/_layout.tsx` | `MEMBER_PATHS` do branch + `/agenda-new`; depois reajustado (§4) |
 | `mobile/src/screens/ContentScreen.tsx` | Versão do branch (tela completa com markdown e editor) |
 | `mobile/app/content.tsx` | Versão do origin/master (só formatação diferia) |
-| `HomeScreen.tsx`, `StatementScreen.tsx`, `AgendaScreen.tsx` | Versões do branch |
+| `HomeScreen.tsx`, `StatementScreen.tsx` | Versão do origin/master — a do branch exibia KPI/gráfico inventado e o aceite (fase 1 check 9, fase 5) reprovava (§6) |
+| `AgendaScreen.tsx` | Versão do branch (deep-link do evento); a variante do origin/master tinha a guarda de admin sem vínculo |
 
 **Permissão de revisão de contribuição:** ficou `IsFinancialManager`
 (ADMIN/PASTOR/TREASURER) e não `IsTreasurerOrAdmin` (ADMIN/TREASURER) do
@@ -117,22 +118,23 @@ segurança, não um detalhe de merge — revisar.**
 
 ## 4. O que o `origin/master` trazia e **não** foi carregado
 
-Registrado aqui para reaplicação deliberada, não por esquecimento:
+Registrado aqui para reaplicação deliberada, não por esquecimento. (`HomeScreen` e
+`StatementScreen` saíram desta lista: o aceite mostrou que as versões do
+`origin/master` eram as que cumprem os critérios das fases 1 e 5 — ver §6.)
 
-1. **`HomeScreen` do origin/master** — editor de "acessos rápidos"
-   (`AsyncStorage`), helpers de honestidade de dados (`futuros`, `rotuloDia`) e
-   `ErrorNotice` com retry. A versão do branch tem o carrossel de avisos
-   (`/event-announcements/` + `/content/`).
-2. **`StatementScreen` do origin/master** — extrato paginado (`api.getPage` +
-   `pageInfo`). A versão do branch tem o fluxo de aceite de contribuição na
-   própria tela.
-3. **`AgendaScreen` do origin/master** — guarda de admin sem vínculo de membro
+1. **`AgendaScreen` do origin/master** — guarda de admin sem vínculo de membro
    e filtro `entry.category === "Minha agenda"`. A versão do branch tem o
-   detalhe do evento por deep-link.
-4. **`Screen.tsx` do branch** — sidebar recolhível e grupos próprios; substituída
-   pela implementação que consome `navigation.ts`.
-5. **`MVP_NOTIFICATIONS`** — lista de notificações de demonstração, removida pelo
+   detalhe do evento por deep-link, e é a que passa nas fases 1 e 5.
+2. **`Screen.tsx` do branch** — sidebar recolhível e grupos próprios; substituída
+   pela implementação que consome `navigation.ts`. As telas reais do branch
+   entraram no menu por `navigation.ts` (Membros, Visitantes, Conteúdo, Cultos e
+   eventos, Gestão financeira).
+3. **`MVP_NOTIFICATIONS`** — lista de notificações de demonstração, removida pelo
    origin/master em favor de `useNotifications` + `/me/notifications`. Não voltou.
+4. **Carrossel de avisos da Home do branch** (`/event-announcements/` +
+   `/content/`): a tela de anúncios continua existindo e acessível pelo menu; só
+   não é mais renderizada dentro da Home.
+
 
 ---
 
@@ -160,7 +162,17 @@ A função inclui `manage_events` mas não `manage_finance` nem `manage_content`
 (`apps/accounts/permissions.py`). Na prática não tranca ninguém (quem tem essas
 capacidades tem outra que está na lista), mas é inconsistente.
 
-### 5.4 Restos de trabalho antigo
+### 5.5 Revisão financeira no mobile (AVISO do aceite)
+
+O critério "tesouraria sem vínculo acessa a revisão pelo mobile" não tem mais
+caminho de menu: o `navigation.ts` do origin/master deixou "Revisão" fora das
+abas do mobile (comentário do próprio arquivo: "Escalas e Revisão ficam dentro
+dos módulos relacionados"). A tela responde em `/finance-review` e a guarda de
+capacidade funciona (`review_contributions`), mas no celular a tesouraria só
+chega por link direto. **Decidir:** devolver o item às abas do mobile, criar um
+atalho a partir do extrato/contribuições, ou manter como está.
+
+### 5.6 Restos de trabalho antigo
 
 - `stash@{0}` ("codex preserve pre-branch work") e `stash@{1}` ("fase-3 parcial
   truncado") — decidir se descartam.
@@ -181,22 +193,48 @@ capacidades tem outra que está na lista), mas é inconsistente.
 | `node --test tools/qa/tests/mobile-regressions.cjs` | **11/11** |
 | `docker start moriah_app-db-1` + `moriah_app-backend-1` | backend no ar, `manage.py migrate` aplicou `finance.0004_merge_20260924_0952` **no Postgres real com dados existentes** |
 
-**O que não foi verificado e por quê:**
+**Verificação executada:** `node tools/qa/run.mjs todas` com
+`QA_BASE=http://localhost:9000` (ver §6.1) — **fase1 18/18, fase2 13/13,
+fase3 13/13 (1 AVISO), fase4 11/11, fase5 12/12**, todas com evidência em
+`docs/qa/evidencias/` (`output/playwright/` na fase 5).
 
-- `node tools/qa/run.mjs` (aceite de navegador): o app está configurado com
-  `EXPO_PUBLIC_API_URL=/backend` (`mobile/.env`), que depende do container
-  `moriah-ngrok-proxy` (parado) para que app e API fiquem na mesma origem. Sem
-  ele, as chamadas do app caem no próprio dev server do Expo, que responde
-  `index.html` (HTTP 200 `text/html`) e a tela mostra "Erro no servidor". O app
-  **compila e renderiza** (login carrega, sem erro de bundle). Para rodar o QA:
-  suba o proxy ngrok, ou troque `mobile/.env` para
-  `EXPO_PUBLIC_API_URL=http://192.168.24.6:8000/api` (linha já comentada no
-  arquivo) e reinicie o Expo.
-- Fases 3 e 5 do QA usam API simulada e poderiam rodar sem backend, mas não
-  foram executadas nesta sessão.
+**O que a rodada revelou e foi corrigido nesta sessão:**
 
-**Ambiente deixado ligado:** `moriah_app-db-1` e `moriah_app-backend-1` estão
-rodando (`moriah-ngrok-proxy` e `moriah_app-mobile-1` continuam parados).
+1. **HomeScreen e StatementScreen voltaram para a versão do `origin/master`.**
+   Mantê-las do branch (decisão inicial, §4) reprovava dois critérios de aceite
+   já cumpridos pelo upstream: o painel exibia KPI inventado (`membros ativos`,
+   `87% confirmado`) e o extrato tinha **gráfico de barras fixo**
+   (`[42, 72, 58, 96, 64, 82]`) sem `testID`. A versão do `origin/master` calcula
+   do dado real, mostra mensagem amigável com "Tentar novamente" e publica
+   `statement-bar-<mês>`.
+2. **A suíte de aceite estava quebrada em três frentes** (por isso ninguém a
+   reexecutava desde 16/09): `esperarPor` estourava `TypeError` com predicado
+   síncrono (abortava a fase 2); os checks procuravam a API em `/api/...` quando
+   o app passou a chamar `/backend/...` (fase 1 check 6, fase 3 mock, fase 4
+   filtro de escrita); e havia seletores/rótulos obsoletos (item de menu
+   "Revisão" virou "Revisão financeira", campo de data virou `dd/mm/aaaa` com
+   `DateTimeField`, chips de função viraram filtro, texto "Conflito de horário"
+   agora aparece também no toast).
+3. **1 AVISO (não FAIL):** o critério "tesouraria sem vínculo acessa a revisão
+   pelo mobile" não tem mais caminho de menu — o `navigation.ts` do
+   `origin/master` tirou "Revisão" das abas do mobile ("fica dentro do módulo
+   relacionado"). A tela continua acessível por URL e a guarda de capacidade
+   funciona; **é decisão de produto** se ela volta às abas (§5.5).
+
+**Ambiente do aceite (§6.1).** O `moriah-ngrok-proxy` é um **nginx** que serve o
+build estático (`mobile/dist`, via `npx expo export --platform web`) na porta
+9000 e faz proxy de `/backend` → `backend:8000` — é o mesmo arranjo de mesma
+origem que o túnel publica. O aceite rodou contra `http://localhost:9000` porque
+o ngrok gratuito intercepta navegação de navegador com a página de aviso
+("You are about to visit…"): por curl (`https://saprogenic-saul-heavies.ngrok-free.dev`)
+app e API respondem corretamente, mas o Playwright cairia no intersticial.
+
+
+**Ambiente deixado ligado:** `moriah_app-db-1`, `moriah_app-backend-1` e
+`moriah-ngrok-proxy` (nginx na porta 9000, servindo o build atual de
+`mobile/dist`) estão rodando; o túnel ngrok está ativo em
+`https://saprogenic-saul-heavies.ngrok-free.dev` → `localhost:9000`.
+`moriah_app-mobile-1` continua parado (o app foi servido pelo build estático).
 
 ---
 

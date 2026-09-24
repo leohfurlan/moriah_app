@@ -26,9 +26,12 @@ const MENU_MEMBRO = [
   ["Meu extrato", "/statement"],
 ];
 
-/** Rotulos decorativos que existiam antes e nao tem tela: nao podem voltar. */
+/**
+ * Rotulos decorativos que existiam antes e nao tem tela: nao podem voltar.
+ * "Visitantes" saiu da lista: deixou de ser decorativo quando /visitors passou a
+ * renderizar PeopleDirectoryScreen (diretorio real, servido por /api/members/).
+ */
 const ROTULOS_DECORATIVOS = [
-  "Visitantes",
   "Setlists",
   "Repertório",
   "Bandas",

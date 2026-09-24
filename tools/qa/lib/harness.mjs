@@ -118,7 +118,9 @@ export async function digitar(locator, valor) {
 export async function esperarPor(fn, { timeout = 8000, intervalo = 250 } = {}) {
   const limite = Date.now() + timeout;
   for (;;) {
-    const valor = await fn().catch(() => false);
+    // O predicado pode ser sincrono (retorna boolean) ou assincrono. Chamar
+    // `fn().catch()` direto estourava TypeError em quem passa `() => condicao`.
+    const valor = await Promise.resolve().then(fn).catch(() => false);
     if (valor) return true;
     if (Date.now() > limite) return false;
     await new Promise((r) => setTimeout(r, intervalo));

@@ -143,7 +143,8 @@ export async function executar({ browser, dir }) {
       await go("/schedule/7");
       await page.getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByText("Compromisso pessoal sobreposto", { exact: true }).first().waitFor();
-      await page.getByText("Conflito de horário", { exact: true }).waitFor();
+      // O texto aparece na tela E no toast de aviso: o criterio e o status na tela.
+      await page.getByText("Conflito de horário", { exact: true }).first().waitFor();
       assert.equal(status, "conflict");
     });
     await v.screenshot(page, "conflito-desktop");
