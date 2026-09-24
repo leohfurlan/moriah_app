@@ -1,143 +1,257 @@
-# Estado do código e caminho para produção — 2026-09-24
+# Estado do código e caminho para produção — App Moriah
 
-Auditoria feita por comando direto sobre o repositório (não a partir de relatórios
-anteriores, que estão defasados). Serve como base para a Etapa 0 da retomada:
-consolidar o repositório antes de qualquer trabalho de infraestrutura.
+**Data da auditoria:** 24/09/2026
+**Branch:** `codex/finance-contribution-ledger`
+**Merge de `origin/master` aplicado:** `15ce4ab` (pais `9dc9d31` + `4219d40`)
+**Como foi feito:** inspeção direta do repositório nesta data — `git`, `pytest`
+(SQLite e PostgreSQL), `tsc`, `docker` e o próprio verificador QA. Os relatórios
+de 16/09 e 17/09 descrevem um estado que **não é mais** o do working tree; este
+substitui a leitura de "onde estamos".
 
-## 1. Estado verificado
+---
 
-Branch no momento da auditoria: `codex/finance-contribution-ledger`
-(HEAD `407dff5`, 2026-09-18 10:09), com 15 arquivos modificados e 20 não
-rastreados na árvore de trabalho.
+## 1. O que foi feito nesta sessão
 
-### Verde
+1. **Preservado o trabalho que só existia na árvore de trabalho** — commit
+   `9dc9d31` (auditoria, plano Oracle/Neon, docs da fase 6, testes de conteúdo e
+   de diretório, 9 rotas novas, ajustes em telas). Evidências de QA
+   (`docs/qa/evidencias/`, 13 MB) ficaram de fora: são regeneráveis e já são
+   ignoradas em `origin/master`.
+2. **Merge de `origin/master` no branch** — 15 conflitos, todos resolvidos
+   (§3), com a decisão registrada no commit `15ce4ab`.
+3. **Migration de merge criada** — `finance/0004_merge_20260924_0952.py`. O
+   branch tinha `0002_contribution_review_notes` e `0003_contribution_financial_link`
+   como duas folhas do grafo (erro `Conflicting migrations detected`).
+4. **Correções de integração que o merge automático não resolveu**
+   (achadas por `tsc`/`pytest`, não por inspeção visual): import faltante de
+   `ensure_contribution_financial_entry`, permissão de revisão de contribuição,
+   chaves `patch`/`delete` duplicadas em `mobile/src/services/api.ts`,
+   `Screen.tsx` apontando para `MVP_NOTIFICATIONS` (símbolo que o `origin/master`
+   removeu) e `MEMBER_PATHS`/`ROTAS_DE_GESTAO` desalinhados com as telas novas.
+5. **Teste do evento corrigido** — `backend/apps/events/tests/test_event_api.py`
+   usava `start_at` fixo em 20/09/2026; a agenda filtra
+   `start_at >= agora - 1 dia` e o teste vencia sozinho. Passou a usar data
+   relativa.
 
-- `pytest` no backend: **80 passed, 1 failed**.
-- `npm run typecheck` no mobile (`tsc --noEmit`): passa.
-- `manage.py makemigrations --check --dry-run`: *No changes detected* — nenhuma
-  migração pendente.
-- `manage.py check --deploy` com `DJANGO_DEBUG=false`: apenas `security.W009`
-  (chave de teste usada na verificação) e avisos de `drf_spectacular`. O
-  endurecimento de produção já está em `backend/config/settings.py`: HSTS de
-  1 ano, cookies secure, redirect SSL, `X-Content-Type-Options: nosniff`,
-  `X-Frame-Options: DENY` e `SECURE_PROXY_SSL_HEADER` atrás de flag.
-- Auditoria: `backend/apps/audit/signals.py` grava `AuditLog` em contribuição,
-  membro e escala; `backend/apps/content/views.py` registra publish/unpublish.
-  O item "auditoria exigida pelo PRD não está implementada" do relatório de
-  2026-07-06 está **resolvido**.
-- Storage S3/R2 com URLs assinadas (`querystring_auth`, 900s) atrás de
-  `USE_S3_STORAGE`; `scripts/backup_postgres.sh` e o de restore; CI no GitHub
-  Actions (pytest + spectacular + check + typecheck); `mobile/app.json` e
-  `eas.json` prontos para build de produção.
-- README atualizado com o que está pronto nesta entrega.
+---
 
-### Vermelho
+## 2. Estado verificado
 
-**Um teste falhando, e não é regressão de código:**
+### 2.1 Git
 
-`backend/apps/events/tests/test_event_api.py:31` cria o evento em 20/09/2026 e a
-view filtra `start_at__gte=timezone.now() - timedelta(days=1)`. Em 24/09 a lista
-volta vazia e o assert falha. A fixture é dependente de data — precisa usar data
-relativa (`timezone.now() + timedelta(...)`).
+| Item | Situação |
+| --- | --- |
+| HEAD | `15ce4ab` (merge), árvore limpa |
+| Branches locais | `master`, `codex/fase-3-gestao-financeira`, `codex/fase-4-correcoes`, `codex/fase-5-escalas`, `codex/moriah-navigation-admin`, `codex/finance-contribution-ledger` (atual) |
+| `origin/master` | contido em HEAD (merge feito) |
+| Stashes | 2 — `stash@{0}` "codex preserve pre-branch work"; `stash@{1}` "fase-3 parcial truncado" |
+| Diferença do branch para `origin/master` | 66 arquivos (app `content`, anúncios de evento, livro financeiro `FinancialEntry`, docs, PRD, telas novas) |
 
-## 2. Bloqueador principal: não existe revisão implantável
+### 2.2 Backend
 
-O trabalho está em quatro linhas divergentes. Nenhuma contém o produto inteiro.
+- Apps: `accounts`, `audit`, `cells`, `content`, `events`, `finance`, `members`,
+  `ministries`, `schedules`.
+- Migrations: sem folhas duplicadas após o merge de migration.
+- CI (`.github/workflows/ci.yml`) tem 3 jobs: `Backend (pytest)` +
+  validação do schema (`spectacular`) + `manage.py check`; `Mobile (typecheck e
+  regressões)`; e `finance-postgres` (serviço `postgres:16`, roda
+  `apps/finance/tests apps/schedules/tests apps/audit/tests` com
+  `--ds=config.settings_test_postgres`).
+- Segurança de produção já parametrizada por env (`config/settings.py`):
+  `DEBUG`, `ALLOWED_HOSTS`, HSTS/cookies secure/SSL redirect quando
+  `DEBUG=false`, JWT 60 min / 7 dias, storage S3/R2 opcional para comprovantes
+  (`USE_S3_STORAGE`), `scripts/backup_postgres.sh` com retenção.
+- **Lacuna de runtime:** `backend/requirements.txt` não tem `gunicorn`/`uvicorn`
+  e o `Dockerfile` sobe `python manage.py runserver`. Não há `whitenoise` —
+  estáticos dependem de proxy (Caddy/Nginx) em produção.
 
-| Linha | Commit / data | Tem | Não tem |
-|---|---|---|---|
-| `origin/master` | `4219d40` — 17/09 18:46 | 16 commits das Fases 0–5: `Feedback.tsx`, `navigation.ts`, `+not-found.tsx`, notificações persistentes, paginação, ministérios, date pickers, `docs/qa` fase 1–5 e o harness `tools/qa` | `backend/apps/content`, `FinancialEntry`/conciliação, avisos de evento, `finance-management` |
-| `codex/finance-contribution-ledger` (branch atual) | `407dff5` — 18/09 10:09 | base `40ebc25` (16/09 11:18) + 1 commit de 42 arquivos (+1792/−87): Fase 6 conteúdo, financeiro e avisos | tudo do bloco acima: `tools/qa`, `Feedback.tsx`, `navigation.ts`, `+not-found.tsx`, `docs/qa` fase 1–5 |
-| `codex/moriah-navigation-admin` | `bf2af12` — 17/09 21:16 | implementação **paralela** do mesmo `backend/apps/content`, com `tests/test_content.py` (138 linhas) | a implementação da linha atual tem `test_content_api.py` no lugar |
-| árvore de trabalho | não commitado | 15 modificados + 20 não rastreados: 9 rotas placeholder, `PeopleDirectoryScreen`, `Markdown.tsx`, `CONTEXT.md`, `docs/features/F-PS-01`, `docs/qa` (evidências) e o próprio plano do piloto | qualquer commit — não é reproduzível nem auditável |
+### 2.3 App (Expo/React Native web)
 
-Consequência prática: um deploy hoje publica ou um app sem as correções de
-confiabilidade/navegação das Fases 1–2 (sem `+not-found`, sem `Feedback`, sem
-`navigation.ts`), ou uma versão sem financeiro/conteúdo.
+- Telas reais: `content`, `events`, `members`, `visitors`, `finance`,
+  `finance-management`, `finance-review`, `schedule-admin`, `schedule-create`,
+  `agenda-new`, `statement`, `contribution`, `schedules`, `profile`, `home`.
+- **Placeholders** (`ModulePlaceholderScreen`, sem conteúdo de produto):
+  `ministries`, `setlists`, `repertoire`, `bands`, `bible-school`, `classes`.
+  Ficaram **fora do menu lateral** de propósito (§5.2).
+- Navegação: `mobile/src/navigation.ts` é a fonte única (item declara rota,
+  capacidade exigida e rotas que o mantêm ativo); o menu filtra por capacidade.
+- Rótulos e tokens em `mobile/src/theme.ts` (accent `#4F46E5`, canvas `#F6F7FB`,
+  ink `#101828`), espelhando `design/moriah_next.pen`.
 
-## 3. Fase 1 do plano do piloto: 0 de 10 entregáveis
+### 2.4 Aceite (QA)
 
-Plano: `docs/architecture/plano-arquitetura-oracle-neon-piloto.md`
-(§11 lista os entregáveis, §8 os critérios de aceite).
+`node tools/qa/run.mjs fase1|fase2|fase3|fase4|fase5|todas` — precisa do app em
+`http://localhost:8081` e, nas fases 1/2/4, do backend em `:8000`. Relatórios
+versionados em `docs/qa/fase-*.md`; evidências (ignoradas pelo Git) em
+`docs/qa/evidencias/`.
 
-| Entregável (§11) | Situação |
-|---|---|
-| `docker-compose.pilot.yml` | não existe (só o de desenvolvimento) |
-| Runtime de produção | `backend/Dockerfile` usa `CMD runserver`; `gunicorn`/`uvicorn` ausentes do `requirements.txt`; o compose roda `migrate && seed_mvp && runserver` em todo boot |
-| Configuração do Neon documentada | ausente |
-| Configuração do storage S3/R2 documentada | parcial (variáveis no `.env.example`, sem runbook) |
-| Runbook de deploy e rollback | ausente |
-| Runbook de backup e restauração | ausente (existem apenas os scripts) |
-| Health check e checagens de deploy | não existe endpoint `/health/` |
-| Atualização do `.env.example` | sem bloco Neon/`SSLMODE`; `POSTGRES_SSLMODE` e `CONN_MAX_AGE` ausentes também em `settings.py` |
-| Testes de regressão | existem (19 arquivos), mas com 1 falha |
-| Evidências do primeiro deploy e restauração | nenhuma |
+---
 
-Critérios de aceite §8 já atendidos no código: `check --deploy` limpo,
-`DJANGO_DEBUG=false`, hosts/CORS/CSRF restringíveis por env, migrações
-versionadas, comprovante em S3 privado com link temporário.
-Pendentes: seed não rodar a cada reinício, health check, HTTPS/DNS/SSH da VPS,
-restauração testada, rollback executado.
+## 3. Resolução dos 15 conflitos
 
-## 4. PRD §13 (Segurança e LGPD) — o que ainda não tem lastro
+| Arquivo | Decisão |
+| --- | --- |
+| `accounts/permissions.py` | União: `manage_finance`, `manage_content`, `manage_events` (branch) **+** `manage_schedules` com a regra `IsScheduleCoordinatorOrAdmin` (origin/master) |
+| `events/views.py` | União: `OptionalPaginationMixin` e filtros (`event_type`, `q`, `date_from/date_to`) do origin/master **+** `EventAnnouncementViewSet` do branch |
+| `finance/views.py` | Revisão de contribuição = versão do origin/master (409 ao mudar decisão final, `review_notes`, histórico, notificação ao membro) **com** a chamada a `ensure_contribution_financial_entry` no aceite, preservando o livro financeiro do branch (`FinancialEntryViewSet` mantido) |
+| `finance/serializers.py` | Mantido o `FinancialEntrySerializer` do branch |
+| `finance/tests/test_contribution_review.py` | União: testes do branch (idempotência do lançamento) + testes do origin/master (histórico, auditoria, filtros) — 15 testes, sem nome repetido |
+| `members/views.py` | União: `IsMemberDirectoryUser` do branch + `MemberLinkRequest`/`MyMemberLinkRequestView` do origin/master |
+| `config/urls.py` | União: rotas do branch (`finance/entries`, `content`, `members`) + aliases `local-api`/`backend` e `ministries`/`notifications` do origin/master |
+| `mobile/src/theme.ts` | União dos rótulos, com os acentos do origin/master (`Contribuição`) |
+| `mobile/src/components/Screen.tsx` | Versão do origin/master (item de menu com capacidade, busca, notificações reais) |
+| `mobile/app/_layout.tsx` | `MEMBER_PATHS` do branch + `/agenda-new`; depois reajustado (§4) |
+| `mobile/src/screens/ContentScreen.tsx` | Versão do branch (tela completa com markdown e editor) |
+| `mobile/app/content.tsx` | Versão do origin/master (só formatação diferia) |
+| `HomeScreen.tsx`, `StatementScreen.tsx`, `AgendaScreen.tsx` | Versões do branch |
 
-Atende: HTTPS (pronto no Django, depende da infra), senhas pelo Django,
-permissões por perfil, auditoria financeira e de membros, restrição a dado
-financeiro individual (URLs assinadas), backup (script).
+**Permissão de revisão de contribuição:** ficou `IsFinancialManager`
+(ADMIN/PASTOR/TREASURER) e não `IsTreasurerOrAdmin` (ADMIN/TREASURER) do
+origin/master. Motivo: o teste do próprio branch
+(`apps/finance/tests/test_financial_entries.py::test_gestor_visualiza_contribuicoes_da_igreja_para_aceite`)
+exige que pastor liste contribuições para aceite, e o modelo de capacidades do
+branch dá `manage_finance` a ADMIN/PASTOR/TREASURER. **É uma decisão de
+segurança, não um detalhe de merge — revisar.**
 
-Falta implementar ou decidir:
+---
 
-- política de retenção de comprovantes;
-- consentimento do membro para armazenamento de dados;
-- agendamento do backup e alerta de falha;
-- verificação de que os logs não expõem dados sensíveis.
+## 4. O que o `origin/master` trazia e **não** foi carregado
 
-## 5. Escopo
+Registrado aqui para reaplicação deliberada, não por esquecimento:
 
-As 9 telas placeholder (`mobile/src/screens/ModulePlaceholderScreen.tsx`, texto
-"Esta área está preparada para receber os próximos fluxos administrativos") para
-`bands`, `setlists`, `repertoire`, `bible-school`, `classes`, `members`,
-`ministries`, `visitors` e `finance-management` contrariam o plano §7/§11
-("não criar apenas shells de navegação"). F10 Projetos Sociais está fora do MVP
-(PRD §7.6); `docs/features/F-PS-01` é spec em rascunho, não trabalho de release.
+1. **`HomeScreen` do origin/master** — editor de "acessos rápidos"
+   (`AsyncStorage`), helpers de honestidade de dados (`futuros`, `rotuloDia`) e
+   `ErrorNotice` com retry. A versão do branch tem o carrossel de avisos
+   (`/event-announcements/` + `/content/`).
+2. **`StatementScreen` do origin/master** — extrato paginado (`api.getPage` +
+   `pageInfo`). A versão do branch tem o fluxo de aceite de contribuição na
+   própria tela.
+3. **`AgendaScreen` do origin/master** — guarda de admin sem vínculo de membro
+   e filtro `entry.category === "Minha agenda"`. A versão do branch tem o
+   detalhe do evento por deep-link.
+4. **`Screen.tsx` do branch** — sidebar recolhível e grupos próprios; substituída
+   pela implementação que consome `navigation.ts`.
+5. **`MVP_NOTIFICATIONS`** — lista de notificações de demonstração, removida pelo
+   origin/master em favor de `useNotifications` + `/me/notifications`. Não voltou.
 
-Higiene: `.codex-remote-attachments/` e `tmp/` (este já ignorado) não devem ir
-para o repositório.
+---
 
-## 6. Ordem de execução
+## 5. Divergências que precisam de decisão (não são bug)
 
-### Etapa 0 — consolidar (bloqueia todo o resto)
+### 5.1 Duas implementações da fase 6 (conteúdo)
 
-1. merge de `origin/master` no branch de trabalho e resolução dos conflitos;
-2. decidir qual implementação de `content` permanece e trazer os testes da que
-   perder;
-3. corrigir o teste de evento (data relativa) até 81/81 verde;
-4. commitar a árvore de trabalho (docs, features, `CONTEXT.md`, plano do piloto)
-   e decidir o destino dos placeholders;
-5. push e PR com CI verde.
+`bf2af12 feat: implement phase 6 content publishing` vive em
+`codex/moriah-navigation-admin` e **não** está na história deste branch. Ela traz
+uma app `content` mais simples, `tools/qa/checks/fase6.mjs` e
+`docs/qa/fase-6-conteudo-mobile-2026-09-17.md`. O branch tem a sua própria app
+`content` (com `test_content_api.py` e `EventAnnouncement`). **Escolher uma ou
+combinar — hoje existem duas linhas de trabalho para o mesmo módulo.**
 
-### Etapa 1 — adaptação local (Fase 1 do plano)
+### 5.2 Telas placeholder
 
-6. Gunicorn e Dockerfile de produção;
-7. `docker-compose.pilot.yml` (5432 não exposta, sem serviço mobile, sem seed no
-   boot);
-8. `/health/` e `check --deploy` no CI;
-9. `POSTGRES_SSLMODE=require`, `CONN_MAX_AGE` e `.env.example` atualizado;
-10. separar migrate de seed (seed apenas por comando manual);
-11. runbooks de deploy/rollback e de backup/restore, com backup agendado e alerta.
+Seis rotas (`ministries`, `setlists`, `repertoire`, `bands`, `bible-school`,
+`classes`) existem como tela vazia. O `navigation.ts` do origin/master diz
+explicitamente que item sem tela não entra no menu — por isso ficaram fora.
+Ou viram módulo de verdade, ou saem do app.
 
-### Etapa 2 — provisionar e pilotar
+### 5.3 `can_access_management` desalinhado
 
-12. VPS Oracle + Neon + R2/S3 + DNS/HTTPS;
-13. primeiro deploy controlado, migração na branch correta do Neon;
-14. testar restore e rollback em recurso descartável;
-15. publicar o mobile (EAS) apontando `EXPO_PUBLIC_API_URL` para a API pública;
-16. relatório do piloto com evidências (§8 do plano).
+A função inclui `manage_events` mas não `manage_finance` nem `manage_content`
+(`apps/accounts/permissions.py`). Na prática não tranca ninguém (quem tem essas
+capacidades tem outra que está na lista), mas é inconsistente.
 
-## Resumo
+### 5.4 Restos de trabalho antigo
 
-O código está bem mais avançado que o relatório de 2026-07-06 sugere —
-auditoria automática, storage S3/R2, endurecimento de produção, CI e 80 testes
-passando. Mas não há hoje **uma** revisão que contenha as Fases 0–6 juntas, e
-nada da árvore de trabalho está commitado. O caminho para "online" começa pela
-consolidação do repositório, não pela infraestrutura.
+- `stash@{0}` ("codex preserve pre-branch work") e `stash@{1}` ("fase-3 parcial
+  truncado") — decidir se descartam.
+- Branches `codex/fase-3-gestao-financeira` e `codex/fase-4-correcoes` já
+  consolidadas em `origin/master`.
+- `.codex-remote-attachments/` (anexos de sessão de agente) agora está no
+  `.gitignore`.
+
+---
+
+## 6. Verificação executada (evidência)
+
+| Comando | Resultado |
+| --- | --- |
+| `cd backend && python -m pytest -q` (SQLite de `config.settings_test`) | **149 passed** |
+| `POSTGRES_HOST=localhost python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres` (mesmo recorte do job `finance-postgres` do CI) | **97 passed** |
+| `cd mobile && npx tsc --noEmit` | limpo (0 erros) |
+| `node --test tools/qa/tests/mobile-regressions.cjs` | **11/11** |
+| `docker start moriah_app-db-1` + `moriah_app-backend-1` | backend no ar, `manage.py migrate` aplicou `finance.0004_merge_20260924_0952` **no Postgres real com dados existentes** |
+
+**O que não foi verificado e por quê:**
+
+- `node tools/qa/run.mjs` (aceite de navegador): o app está configurado com
+  `EXPO_PUBLIC_API_URL=/backend` (`mobile/.env`), que depende do container
+  `moriah-ngrok-proxy` (parado) para que app e API fiquem na mesma origem. Sem
+  ele, as chamadas do app caem no próprio dev server do Expo, que responde
+  `index.html` (HTTP 200 `text/html`) e a tela mostra "Erro no servidor". O app
+  **compila e renderiza** (login carrega, sem erro de bundle). Para rodar o QA:
+  suba o proxy ngrok, ou troque `mobile/.env` para
+  `EXPO_PUBLIC_API_URL=http://192.168.24.6:8000/api` (linha já comentada no
+  arquivo) e reinicie o Expo.
+- Fases 3 e 5 do QA usam API simulada e poderiam rodar sem backend, mas não
+  foram executadas nesta sessão.
+
+**Ambiente deixado ligado:** `moriah_app-db-1` e `moriah_app-backend-1` estão
+rodando (`moriah-ngrok-proxy` e `moriah_app-mobile-1` continuam parados).
+
+---
+
+## 7. Caminho para produção
+
+Os dois planos do repositório continuam válidos como roteiro:
+`docs/plano-mvp-moriah-execucao-2026-09-16.md` (fases 0–6 do MVP + trilha de
+segurança e operação) e `docs/architecture/plano-arquitetura-oracle-neon-piloto.md`
+(VPS Oracle + Postgres gerenciado no Neon; status: **proposto, não autoriza
+provisionamento**).
+
+### 7.1 Bloqueadores técnicos (não dependem de decisão de produto)
+
+1. **Servidor de aplicação:** adicionar `gunicorn` (ou `uvicorn`) e trocar o
+   `CMD` do `Dockerfile`; `runserver` não vai para produção.
+2. **Estáticos e mídia:** servir `/static/` e `/media/` pelo proxy (Caddy/Nginx)
+   ou adicionar `whitenoise`; comprovantes já têm seam S3/R2 (`USE_S3_STORAGE`).
+3. **Backup/restauração:** `scripts/backup_postgres.sh` existe, mas nunca foi
+   exercitado em restauração — a Fase 5 do plano Oracle exige o ensaio.
+4. **Segredos:** `DJANGO_SECRET_KEY`, senha do Postgres, chaves S3 e domínios em
+   `ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` precisam ser
+   valores de produção, não os do `.env` de dev.
+5. **Aceite antes de publicar:** rodar `node tools/qa/run.mjs todas` com o app e
+   a API no ar e anexar o relatório; hoje o último aceite registrado é de 16/09
+   (fases 1 e 2) e 17/09 (fase 5), anterior a este merge.
+
+### 7.2 Ordem sugerida
+
+1. Fechar §5 (decisões): conteúdo da fase 6, placeholders, permissão de revisão.
+2. `node tools/qa/run.mjs todas` com ngrok ou LAN + CI verde no GitHub.
+3. Ensaio de backup/restauração do Postgres.
+4. Fase 1 do plano Oracle (adaptação local do runtime: WSGI, estáticos, env de
+   produção) e depois provisionamento — em ambiente separado, com dados de
+   demonstração, antes de qualquer dado real de membro.
+5. Piloto interno (Fase 6 do plano Oracle) com rollback definido.
+
+### 7.3 Riscos que valem atenção
+
+- **Dados pessoais e financeiros** já existem no modelo (membros, contribuições,
+  comprovantes anexos). Antes de produção: política de retenção, acesso a mídia
+  por URL assinada (já implementado via `S3_URL_EXPIRE_SECONDS`) e trilha de
+  auditoria (existe em `apps/audit`).
+- **Sem vínculo de membro** é um estado normal para quem opera o painel; as
+  guardas de rota foram ajustadas nesta sessão para não trancar essas contas
+  fora das telas de gestão.
+- **Divergência de UI** entre o que o branch mantém e o que o `origin/master`
+  havia evoluído (§4) — quanto mais tempo passa, mais caro reconciliar.
+
+---
+
+## 8. Próximo módulo: emissão fiscal (NFe/NFCe)
+
+Fora do escopo do MVP atual e sem código no repositório. Quando começar, o
+material de estudo está em `~/nfse_estudo` e o roteiro em
+`brazilian-fiscal-documents`. Ponto de atenção: emissão fiscal exige CNPJ,
+certificado digital e integração com prefeitura/SEFAZ — não é uma app Django
+como as demais, e o desenho precisa nascer com idempotência e conciliação
+(o livro `FinancialEntry` já é o lugar natural para o vínculo).
