@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.pagination import OptionalPaginationMixin
 from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsScheduleCoordinatorOrAdmin, get_member_profile, is_admin_user
-from apps.audit.models import AuditLog
+from apps.audit.models import AuditLog, Notification
 from apps.audit.notification_service import create_notification
 from apps.members.models import Member
 from apps.ministries.models import Ministry
@@ -50,6 +50,16 @@ def record_audit(user, action, instance, payload=None):
     )
 
 
+def _chave_do_aviso(schedule_pk, assignment_pk) -> str:
+    """Chave unica do aviso: uma por escala e por integrante escalado."""
+    return f"schedule-published-{schedule_pk}-assignment-{assignment_pk}"
+
+
+def _prefixo_dos_avisos(schedule) -> str:
+    """Prefixo que cobre todos os avisos de uma escala."""
+    return f"schedule-published-{schedule.pk}-assignment-"
+
+
 def notify_schedule_assignment(schedule, assignment):
     create_notification(
         user=getattr(assignment.member, "user", None),
@@ -60,8 +70,31 @@ def notify_schedule_assignment(schedule, assignment):
         detail=f"Voce foi escalado para {schedule.name}. Confira os detalhes e confirme sua presenca.",
         action_label="Abrir minhas escalas",
         action_route="/schedules",
-        dedupe_key=f"schedule-published-{schedule.pk}-assignment-{assignment.pk}",
+        dedupe_key=_chave_do_aviso(schedule.pk, assignment.pk),
     )
+
+
+def drop_schedule_notifications(schedule) -> int:
+    """Tira os avisos de escala que perderam o motivo.
+
+    Cancelar a escala torna "Nova escala para voce" uma informacao falsa: nao ha
+    mais nada para o membro confirmar. O aviso sai da lista em vez de acumular —
+    foi assim que a demonstracao juntou varios avisos de escalas canceladas, sem
+    nada para a pessoa fazer com eles. A trilha administrativa continua no
+    AuditLog; o que sai e a notificacao do membro.
+    """
+    removidos, _ = Notification.objects.filter(dedupe_key__startswith=_prefixo_dos_avisos(schedule)).delete()
+    return removidos
+
+
+def drop_assignment_notification(schedule_pk, assignment_pk) -> int:
+    """Remove o aviso de uma escalacao desfeita (integrante removido).
+
+    Recebe os pks, nao as instancias: o Django zera `instance.pk` ao apagar, e
+    ler o pk depois do `delete()` montaria a chave errada.
+    """
+    removidos, _ = Notification.objects.filter(dedupe_key=_chave_do_aviso(schedule_pk, assignment_pk)).delete()
+    return removidos
 
 
 def conflicting_assignments(assignment):
@@ -325,6 +358,9 @@ class ScheduleCancelView(APIView):
             schedule.status = Schedule.Status.CANCELLED
             schedule.save(update_fields=["status", "updated_at"])
             record_audit(request.user, "schedule_cancelled", schedule, {"previous_status": previous_status})
+            # Escala cancelada nao tem o que confirmar: o aviso perde o motivo e
+            # sai da lista do membro em vez de acumular.
+            drop_schedule_notifications(schedule)
         detail = ScheduleAdminDetailSerializer(schedule, context={"request": request})
         return Response(detail.data, status=status.HTTP_200_OK)
 
@@ -459,6 +495,8 @@ class ScheduleAssignmentDeleteView(APIView):
         }
         original = assignment.substitution_for
         with transaction.atomic():
+            # O aviso sai antes do delete: depois dele o Django zera `assignment.pk`.
+            drop_assignment_notification(schedule.pk, assignment.pk)
             assignment.delete()
             if original is not None:
                 original.status = ScheduleAssignment.Status.PENDING

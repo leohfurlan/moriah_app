@@ -193,3 +193,53 @@ def test_revisao_de_contribuicao_notifica_o_membro(api_client, make_user, make_m
     notification = Notification.objects.get(recipient=member_user)
     assert notification.category == "Contribuições"
     assert "aprovado" in notification.body
+
+
+def test_cancelar_escala_remove_o_aviso_que_perdeu_motivo(api_client, make_user, make_member):
+    """Escala cancelada nao tem o que confirmar: o aviso sai da lista do membro.
+
+    Regressao real: cada publicacao avisava os escalados, mas cancelar a escala
+    deixava os avisos para tras — a conta do membro acumulou avisos de escalas
+    que nao existiam mais, sem nada para fazer com eles.
+    """
+    admin, schedule, members, role = setup_schedule(make_user, make_member)
+    for member in members:
+        ScheduleAssignment.objects.create(
+            church=admin.church, schedule=schedule, member=member, ministry_role=role
+        )
+    api_client.force_authenticate(user=admin)
+
+    assert api_client.post(f"/api/schedules/{schedule.id}/publish/").status_code == 200
+    destinatarios = [member.user for member in members]
+    assert Notification.objects.filter(recipient__in=destinatarios).count() == 2
+
+    assert api_client.post(f"/api/schedules/{schedule.id}/cancel/").status_code == 200
+
+    assert Notification.objects.filter(recipient__in=destinatarios).count() == 0
+    api_client.force_authenticate(user=destinatarios[0])
+    assert api_client.get("/api/me/notifications/unread-count/").data["count"] == 0
+    # A trilha administrativa do cancelamento continua registrada.
+    assert AuditLog.objects.filter(
+        action="schedule_cancelled", model_name="Schedule", object_id=str(schedule.id)
+    ).exists()
+
+
+def test_remover_integrante_de_escala_publicada_remove_o_aviso_dele(api_client, make_user, make_member):
+    """Quem sai da escala deixa de ter aviso; o resto da equipe mantem o seu."""
+    admin, schedule, members, role = setup_schedule(make_user, make_member)
+    assignments = [
+        ScheduleAssignment.objects.create(
+            church=admin.church, schedule=schedule, member=member, ministry_role=role
+        )
+        for member in members
+    ]
+    api_client.force_authenticate(user=admin)
+    assert api_client.post(f"/api/schedules/{schedule.id}/publish/").status_code == 200
+    assert Notification.objects.filter(recipient__in=[m.user for m in members]).count() == 2
+
+    response = api_client.delete(f"/api/schedules/{schedule.id}/assignments/{assignments[0].pk}/")
+
+    assert response.status_code == 204
+    assert Notification.objects.filter(recipient=members[0].user).count() == 0
+    assert Notification.objects.filter(recipient=members[1].user).count() == 1
+

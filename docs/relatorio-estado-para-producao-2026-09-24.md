@@ -187,8 +187,8 @@ atalho a partir do extrato/contribuições, ou manter como está.
 
 | Comando | Resultado |
 | --- | --- |
-| `cd backend && python -m pytest -q` (SQLite de `config.settings_test`) | **149 passed** |
-| `POSTGRES_HOST=localhost python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres` (mesmo recorte do job `finance-postgres` do CI) | **97 passed** |
+| `cd backend && python -m pytest -q` (SQLite de `config.settings_test`) | **151 passed** (149 do merge + 2 testes novos de notificação) |
+| `POSTGRES_HOST=localhost python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests -q --ds=config.settings_test_postgres` (mesmo recorte do job `finance-postgres` do CI) | **99 passed** |
 | `cd mobile && npx tsc --noEmit` | limpo (0 erros) |
 | `node --test tools/qa/tests/mobile-regressions.cjs` | **11/11** |
 | `docker start moriah_app-db-1` + `moriah_app-backend-1` | backend no ar, `manage.py migrate` aplicou `finance.0004_merge_20260924_0952` **no Postgres real com dados existentes** |
@@ -220,6 +220,19 @@ fase3 13/13 (1 AVISO), fase4 11/11, fase5 12/12**, todas com evidência em
    `origin/master` tirou "Revisão" das abas do mobile ("fica dentro do módulo
    relacionado"). A tela continua acessível por URL e a guarda de capacidade
    funciona; **é decisão de produto** se ela volta às abas (§5.5).
+4. **Aviso de escala que perdeu o motivo** (reportado pelo usuário: "estou
+   marcado pra uma atividade apenas, mas vieram 4 notificações"). O produto
+   estava certo: é **uma notificação por escalação**, com `dedupe_key` por
+   (escala, integrante) e idempotente no republicar — não tem relação com a
+   quantidade de membros escalados. As 4 vinham das rodadas do próprio aceite:
+   a fase 4 cria, publica (o que notifica de verdade) e cancela a escala, mas o
+   aviso sobrevivia à escala cancelada. Correção de produto: cancelar a escala
+   remove os avisos dela (`drop_schedule_notifications`) e remover um integrante
+   remove o aviso dele (`drop_assignment_notification`), com a trilha
+   administrativa preservada no `AuditLog`. Dois testes novos em
+   `apps/audit/tests/test_notifications.py`; o resíduo das rodadas anteriores
+   (9 escalas e 16 eventos de QA + 4 avisos) foi removido do banco de
+   demonstração e o passo de purga ficou documentado em `tools/qa/README.md`.
 
 **Ambiente do aceite (§6.1).** O `moriah-ngrok-proxy` é um **nginx** que serve o
 build estático (`mobile/dist`, via `npx expo export --platform web`) na porta
