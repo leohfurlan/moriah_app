@@ -85,6 +85,48 @@ class Command(BaseCommand):
         leader_user.set_password("lider123")
         leader_user.save()
 
+        # Fase 4: contas de gestao de escala. A tela administrativa de escalas
+        # so tem o que mostrar se existir coordenacao de ministerio de verdade.
+        secretary_user, _ = user_model.objects.get_or_create(
+            email="secretaria@moriah.app",
+            defaults={
+                "username": "secretaria",
+                "first_name": "Sara",
+                "last_name": "Andrade",
+                "church": church,
+                "role": user_model.Role.SECRETARY,
+                "is_staff": True,
+            },
+        )
+        secretary_user.set_password("secretaria123")
+        secretary_user.save()
+
+        coordinator_user, _ = user_model.objects.get_or_create(
+            email="coordenacao.louvor@moriah.app",
+            defaults={
+                "username": "coordenacaolouvor",
+                "first_name": "Caio",
+                "last_name": "Ferraz",
+                "church": church,
+                "role": user_model.Role.COORDINATOR,
+            },
+        )
+        coordinator_user.set_password("coordenacao123")
+        coordinator_user.save()
+
+        pastor_user, _ = user_model.objects.get_or_create(
+            email="pastor@moriah.app",
+            defaults={
+                "username": "pastor",
+                "first_name": "Paulo",
+                "last_name": "Moraes",
+                "church": church,
+                "role": user_model.Role.PASTOR,
+            },
+        )
+        pastor_user.set_password("pastor123")
+        pastor_user.save()
+
         family, _ = Family.objects.get_or_create(church=church, name="Familia Silva")
         cell, _ = Cell.objects.get_or_create(church=church, name="Celula Centro", defaults={"leader": leader_user, "meeting_day": "Quarta", "location": "Casa da Ana"})
 
@@ -124,9 +166,16 @@ class Command(BaseCommand):
 
         ministry, _ = Ministry.objects.get_or_create(church=church, name="Louvor")
         ministry.members.add(member)
+        ministry.coordinators.add(coordinator_user)
         worship_team, _ = WorshipTeam.objects.get_or_create(church=church, name="Equipe Principal")
         WorshipTeamMember.objects.get_or_create(church=church, team=worship_team, member=member, role="Vocal")
         role, _ = MinistryRole.objects.get_or_create(church=church, ministry=ministry, name="Vocal")
+
+        recepcao, _ = Ministry.objects.get_or_create(church=church, name="Recepção")
+        MinistryRole.objects.get_or_create(church=church, ministry=recepcao, name="Porta")
+        MinistryRole.objects.get_or_create(church=church, ministry=recepcao, name="Acolhimento")
+        MinistryRole.objects.get_or_create(church=church, ministry=ministry, name="Bateria")
+        MinistryRole.objects.get_or_create(church=church, ministry=ministry, name="Teclado")
 
         event, _ = Event.objects.get_or_create(
             church=church,
@@ -158,6 +207,9 @@ class Command(BaseCommand):
             )
 
         schedule, _ = Schedule.objects.get_or_create(church=church, event=event, name="Escala Principal", defaults={"created_by": admin_user})
+        if schedule.ministry_id != ministry.id:
+            schedule.ministry = ministry
+            schedule.save(update_fields=["ministry", "updated_at"])
         ScheduleAssignment.objects.get_or_create(church=church, schedule=schedule, member=member, ministry_role=role)
         if schedule.worship_team_id != worship_team.id:
             schedule.worship_team = worship_team
@@ -236,6 +288,92 @@ class Command(BaseCommand):
         if not schedule.notes:
             schedule.notes = "Chegar as 18h para passagem de som. Traga seu proprio cabo."
             schedule.save(update_fields=["notes", "updated_at"])
+
+        # Fase 4: candidatos ativos que ainda nao estao nesta escala, para a tela
+        # de formacao de equipe ter de onde escolher (parte deles do ministerio).
+        candidatos = [
+            ("Marcos Alves", "marcos.alves@moriah.app", "Baixo", True),
+            ("Renata Lopes", "renata.lopes@moriah.app", "Vocal", True),
+            ("Tiago Moreira", "tiago.moreira@moriah.app", "Bateria", True),
+            ("Paula Ribeiro", "paula.ribeiro@moriah.app", "Teclado", False),
+        ]
+        for nome, email, funcao, do_ministerio in candidatos:
+            usuario, _ = user_model.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email.split("@")[0],
+                    "first_name": nome.split()[0],
+                    "last_name": nome.split()[-1],
+                    "church": church,
+                    "role": user_model.Role.MEMBER,
+                },
+            )
+            usuario.set_password("membro123")
+            usuario.save()
+            candidato, _ = Member.objects.get_or_create(
+                church=church,
+                user=usuario,
+                defaults={"full_name": nome, "email": email, "status": Member.Status.ACTIVE},
+            )
+            if do_ministerio:
+                ministry.members.add(candidato)
+            MinistryRole.objects.get_or_create(church=church, ministry=ministry, name=funcao)
+
+        # Escala em rascunho: exercita o ciclo de publicacao da tela de gestao.
+        ensaio, _ = Event.objects.get_or_create(
+            church=church,
+            name="Ensaio Geral",
+            defaults={
+                "event_type": "ensaio",
+                "start_at": timezone.now() + timedelta(days=5),
+                "location": "Templo Sede",
+            },
+        )
+        rascunho, _ = Schedule.objects.get_or_create(
+            church=church,
+            event=ensaio,
+            name="Escala do Ensaio",
+            defaults={
+                "created_by": coordinator_user,
+                "ministry": ministry,
+                "status": Schedule.Status.DRAFT,
+            },
+        )
+        for nome, funcao in (("Marcos Alves", "Baixo"), ("Paula Ribeiro", "Teclado")):
+            integrante = Member.objects.filter(church=church, full_name=nome).first()
+            papel = MinistryRole.objects.filter(church=church, ministry=ministry, name=funcao).first()
+            if integrante is not None and papel is not None:
+                ScheduleAssignment.objects.get_or_create(
+                    church=church,
+                    schedule=rascunho,
+                    member=integrante,
+                    ministry_role=papel,
+                )
+
+        # Substituicao registrada: o detalhe da escala mostra o historico da Fase 4.
+        # O alvo e explicito (Lucas Dias recusou) para o seed nao depender da
+        # ordem das linhas nem de quem a QA mexeu antes.
+        recusado = ScheduleAssignment.objects.filter(
+            church=church,
+            schedule=schedule,
+            member__full_name="Lucas Dias",
+            ministry_role__name="Bateria",
+        ).first()
+        substituto = Member.objects.filter(church=church, full_name="Renata Lopes").first()
+        if recusado is not None and substituto is not None and not recusado.substitutions.exists():
+            ScheduleAssignment.objects.get_or_create(
+                church=church,
+                schedule=schedule,
+                member=substituto,
+                ministry_role=recusado.ministry_role,
+                defaults={
+                    "substitution_for": recusado,
+                    "justification": "Lucas avisou que estara viajando.",
+                },
+            )
+            recusado.status = ScheduleAssignment.Status.REPLACEMENT_NEEDED
+            recusado.justification = "Lucas avisou que estara viajando."
+            recusado.save(update_fields=["status", "justification", "updated_at"])
 
         # Sem isso tesouraria e secretaria entram no admin e nao veem nada:
         # ``is_staff`` sozinho nao concede permissao sobre nenhum modelo.

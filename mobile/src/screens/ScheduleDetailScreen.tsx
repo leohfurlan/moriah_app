@@ -1,29 +1,59 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
-import { describeError, UserFacingError } from "@/services/errors";
+import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignmentDetail } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
+function ministryAllowsRepertoire(name: string): boolean {
+  const normalized = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+  return ["louvor", "danca", "som", "projecao", "tecnica"].some((term) => normalized.includes(term));
+}
+
 function statusTone(status: string): "success" | "warning" | "danger" | "neutral" {
   if (status === "confirmed") return "success";
-  if (status === "declined") return "danger";
-  if (status === "pending") return "warning";
+  if (status === "declined" || status === "conflict") return "danger";
+  if (status === "pending" || status === "unavailable") return "warning";
   return "neutral";
 }
+function responseNote(status: string): string {
+  switch (status) {
+    case "confirmed":
+      return "Voce confirmou presenca.";
+    case "declined":
+      return "Voce recusou esta escala.";
+    case "unavailable":
+      return "Voce marcou indisponibilidade para esta escala.";
+    case "conflict":
+      return "Sua confirmação encontrou um conflito de horário. Você ainda pode recusar ou marcar indisponibilidade.";
+    case "replacement_needed":
+      return "Esta escala aguarda uma substituicao.";
+    default:
+      return "Aguardando sua resposta.";
+  }
+}
+
+const ACTION_FEEDBACK: Record<"confirm" | "decline" | "unavailable", { title: string; message: string }> = {
+  confirm: { title: "Presenca confirmada", message: "Sua presenca foi confirmada nesta escala." },
+  decline: { title: "Resposta registrada", message: "Sua recusa foi registrada." },
+  unavailable: { title: "Resposta registrada", message: "Sua indisponibilidade foi registrada." },
+};
 
 export function ScheduleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
   const [detail, setDetail] = useState<ScheduleAssignmentDetail | null>(null);
   const [justification, setJustification] = useState("");
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
 
   const load = useCallback(async () => {
@@ -31,7 +61,7 @@ export function ScheduleDetailScreen() {
     try {
       setDetail(await api.get<ScheduleAssignmentDetail>(`/me/schedules/${id}/`));
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar a escala"));
+      setError(describeError(err, "Não foi possível carregar a escala"));
     } finally {
       setLoading(false);
     }
@@ -43,18 +73,29 @@ export function ScheduleDetailScreen() {
   }, [load]);
 
   async function act(action: "confirm" | "decline" | "unavailable") {
+    // Trava de reentrancia: clique duplo nao pode enviar a resposta duas vezes.
+    // Ref cobre o mesmo tick, estado cobre o resto da operacao em andamento.
+    if (acting || actingRef.current) return;
+    actingRef.current = true;
     setActing(true);
     try {
       await api.post(`/me/schedules/${id}/action/`, { action, justification });
       setJustification("");
       await load();
+      toast(ACTION_FEEDBACK[action].message, { tone: "success", title: ACTION_FEEDBACK[action].title });
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) await load();
       const { title, message } = describeError(
         err,
-        action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar",
+        action === "confirm"
+          ? "Não foi possível confirmar"
+          : action === "decline"
+            ? "Não foi possível recusar"
+            : "Não foi possível registrar a indisponibilidade",
       );
-      Alert.alert(title, message);
+      toast(message, { tone: "error", title });
     } finally {
+      actingRef.current = false;
       setActing(false);
     }
   }
@@ -87,43 +128,45 @@ export function ScheduleDetailScreen() {
             </Card>
           ) : null}
 
-          <Card>
-            <Text style={styles.sectionTitle}>Repertorio ({detail.repertoire.length})</Text>
-            {detail.repertoire.length ? (
-              detail.repertoire.map((item) => (
-                <View key={item.id} style={styles.row}>
-                  <View style={styles.orderCircle}>
-                    <Text style={styles.orderText}>{item.order}</Text>
-                  </View>
-                  <View style={styles.rowBody}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.meta}>
-                      {item.item_type_display}
-                      {item.song_key ? ` · Tom ${item.song_key}` : ""}
-                    </Text>
-                    {item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}
-                    <Button
-                      variant="ghost"
-                      onPress={() => router.push({ pathname: "/song/[id]", params: { id: item.id, scheduleId: detail.schedule } })}
-                    >
-                      Ver detalhes da musica
-                    </Button>
-                    {item.reference_url ? (
-                      <Text
-                        accessibilityRole="link"
-                        onPress={() => Linking.openURL(item.reference_url)}
-                        style={styles.link}
-                      >
-                        Abrir cifra/referencia ↗
+          {ministryAllowsRepertoire(detail.ministry_name) ? (
+            <Card>
+              <Text style={styles.sectionTitle}>Repertorio ({detail.repertoire.length})</Text>
+              {detail.repertoire.length ? (
+                detail.repertoire.map((item) => (
+                  <View key={item.id} style={styles.row}>
+                    <View style={styles.orderCircle}>
+                      <Text style={styles.orderText}>{item.order}</Text>
+                    </View>
+                    <View style={styles.rowBody}>
+                      <Text style={styles.itemTitle}>{item.title}</Text>
+                      <Text style={styles.meta}>
+                        {item.item_type_display}
+                        {item.song_key ? ` · Tom ${item.song_key}` : ""}
                       </Text>
-                    ) : null}
+                      {item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}
+                      <Button
+                        variant="ghost"
+                        onPress={() => router.push({ pathname: "/song/[id]", params: { id: item.id, scheduleId: detail.schedule } })}
+                      >
+                        Ver detalhes da musica
+                      </Button>
+                      {item.reference_url ? (
+                        <Text
+                          accessibilityRole="link"
+                          onPress={() => Linking.openURL(item.reference_url)}
+                          style={styles.link}
+                        >
+                          Abrir cifra/referencia ↗
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.meta}>Repertorio ainda nao publicado.</Text>
-            )}
-          </Card>
+                ))
+              ) : (
+                <Text style={styles.meta}>Repertório ainda não publicado.</Text>
+              )}
+            </Card>
+          ) : null}
 
           <Card>
             <Text style={styles.sectionTitle}>Equipe escalada ({detail.team.length})</Text>
@@ -132,7 +175,7 @@ export function ScheduleDetailScreen() {
                 <View style={styles.rowBody}>
                   <Text style={[styles.itemTitle, member.is_me && styles.me]}>
                     {member.member_name}
-                    {member.is_me ? " (voce)" : ""}
+                    {member.is_me ? " (você)" : ""}
                   </Text>
                   <Text style={styles.meta}>
                     {member.ministry_name} / {member.role_name}
@@ -143,9 +186,18 @@ export function ScheduleDetailScreen() {
             ))}
           </Card>
 
-          {detail.status === "pending" ? (
+          {detail.schedule_status === "cancelled" ? (
+            <View style={styles.respondedNote}>
+              <Text style={styles.meta}>Esta escala foi cancelada. O periodo de respostas foi encerrado.</Text>
+            </View>
+          ) : detail.status !== "replacement_needed" ? (
             <Card>
-              <Text style={styles.sectionTitle}>Sua resposta</Text>
+              <Text style={styles.sectionTitle}>{detail.status === "pending" ? "Sua resposta" : "Alterar resposta"}</Text>
+              {detail.status === "conflict" ? (
+                <Text style={styles.conflictNotice}>
+                  {detail.conflict_reason || "Há um conflito de horário nesta escala."}
+                </Text>
+              ) : null}
               <Field
                 value={justification}
                 onChangeText={setJustification}
@@ -154,7 +206,7 @@ export function ScheduleDetailScreen() {
               <View style={styles.buttonRow}>
                 <View style={styles.buttonFlex}>
                   <Button disabled={acting} loading={acting} onPress={() => act("confirm")}>
-                    {acting ? "Enviando..." : "Confirmar"}
+                    {acting ? "Enviando..." : detail.status === "conflict" ? "Tentar confirmar" : "Confirmar"}
                   </Button>
                 </View>
                 <View style={styles.buttonFlex}>
@@ -170,12 +222,11 @@ export function ScheduleDetailScreen() {
           ) : (
             <View style={styles.respondedNote}>
               <Text style={styles.meta}>
-                {detail.status === "confirmed" ? "Voce confirmou presenca." : "Voce recusou esta escala."}
-                {detail.responded_at ? ` (${formatDate(detail.responded_at, true)})` : ""}
+                {responseNote(detail.status)}
+                {detail.responded_at ? " (" + formatDate(detail.responded_at, true) + ")" : ""}
               </Text>
             </View>
-          )}
-        </>
+          )}        </>
       ) : null}
     </Screen>
   );
@@ -266,6 +317,7 @@ const styles = StyleSheet.create({
   buttonFlex: {
     flex: 1,
   },
+  conflictNotice: { fontSize: 13, color: colors.warning, fontWeight: "700", marginBottom: spacing.sm },
   respondedNote: {
     alignItems: "center",
     paddingVertical: spacing.sm,

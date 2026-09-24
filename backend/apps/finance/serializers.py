@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+
+from apps.audit.models import AuditLog
 
 from .models import Contribution, ContributionAttachment, FinancialEntry
 from .validators import validate_contribution_attachment
@@ -12,9 +15,19 @@ class ContributionAttachmentSerializer(serializers.ModelSerializer):
         fields = ("id", "original_name", "file_url", "created_at")
 
 
+class ContributionReviewHistorySerializer(serializers.Serializer):
+    status_before = serializers.CharField(allow_null=True)
+    status_after = serializers.CharField()
+    reviewed_by_name = serializers.CharField(allow_null=True)
+    created_at = serializers.DateTimeField()
+
+
 class ContributionSerializer(serializers.ModelSerializer):
     member_name = serializers.CharField(source="member.full_name", read_only=True)
     attachments = ContributionAttachmentSerializer(many=True, read_only=True)
+    member_name = serializers.CharField(source="member.full_name", read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+    review_history = serializers.SerializerMethodField()
     files = serializers.ListField(
         child=serializers.FileField(),
         write_only=True,
@@ -32,11 +45,34 @@ class ContributionSerializer(serializers.ModelSerializer):
             "amount",
             "contribution_date",
             "notes",
+            "review_notes",
+            "reviewed_by_name",
+            "review_history",
             "attachments",
             "files",
             "created_at",
         )
-        read_only_fields = ("status",)
+        read_only_fields = ("status", "review_notes", "reviewed_by_name", "review_history")
+
+    def get_reviewed_by_name(self, obj) -> str | None:
+        return obj.reviewed_by.get_full_name() or obj.reviewed_by.email if obj.reviewed_by else None
+
+    @extend_schema_field(ContributionReviewHistorySerializer(many=True))
+    def get_review_history(self, obj):
+        return [
+            {
+                "status_before": log.payload.get("before", {}).get("status"),
+                "status_after": log.payload.get("after", {}).get("status"),
+                "reviewed_by_name": (log.user.get_full_name() or log.user.email) if log.user else None,
+                "created_at": log.created_at,
+            }
+            for log in AuditLog.objects.filter(
+                church_id=obj.church_id,
+                model_name="Contribution",
+                object_id=str(obj.pk),
+                action="contribution_status_changed",
+            ).select_related("user")
+        ]
 
     def create(self, validated_data):
         parsed_files = validated_data.pop("files", [])
@@ -58,7 +94,6 @@ class ContributionReviewSerializer(serializers.Serializer):
         choices=(
             (Contribution.Status.APPROVED, "Aprovada"),
             (Contribution.Status.REJECTED, "Rejeitada"),
-            (Contribution.Status.NEEDS_REVIEW, "Precisa revisao"),
         )
     )
     review_notes = serializers.CharField(required=False, allow_blank=True)

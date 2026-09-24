@@ -120,13 +120,14 @@ def test_membro_nao_abre_detalhe_de_escala_alheia(api_client, culto, make_user, 
     assert response.status_code == 404
 
 
-def test_usuario_sem_cadastro_de_membro_nao_abre_detalhe(api_client, culto, make_user):
+def test_admin_sem_cadastro_de_membro_abre_detalhe_administrativo(api_client, culto, make_user):
     admin = make_user("admin.detalhe@igreja.com", role=User.Role.ADMIN)
     api_client.force_authenticate(user=admin)
 
     response = api_client.get(f"/api/me/schedules/{culto['equipe']['Vocal'].id}/")
 
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.data["member_name"] == "Maria Silva"
 
 
 def test_escala_sem_repertorio_devolve_lista_vazia(api_client, culto):
@@ -135,6 +136,28 @@ def test_escala_sem_repertorio_devolve_lista_vazia(api_client, culto):
     api_client.force_authenticate(user=minha.member.user)
 
     response = api_client.get(f"/api/me/schedules/{minha.id}/")
+
+    assert response.status_code == 200
+    assert response.data["repertoire"] == []
+
+
+def test_detalhe_de_ministerio_sem_relacao_com_louvor_nao_exibe_repertorio(
+    api_client, culto, make_user, make_member, church
+):
+    user = make_user("recepcao@igreja.com")
+    membro = make_member("Paula Recepção", user=user)
+    ministerio = Ministry.objects.create(church=church, name="Recepção")
+    role = MinistryRole.objects.create(church=church, ministry=ministerio, name="Acolhimento")
+    assignment = ScheduleAssignment.objects.create(
+        church=church,
+        schedule=culto["escala"],
+        member=membro,
+        ministry_role=role,
+        status=ScheduleAssignment.Status.PENDING,
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.get(f"/api/me/schedules/{assignment.id}/")
 
     assert response.status_code == 200
     assert response.data["repertoire"] == []

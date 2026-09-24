@@ -6,20 +6,31 @@
 
 ---
 
+> **Errata de 16/09/2026 (Fase 0).** Quatro métricas deste relatório foram conferidas contra o
+> código e corrigidas:
+> (1) "24 endpoints" → **24 operações em 19 caminhos** do schema OpenAPI;
+> (2) "sidebar promete 19 destinos" → **16 itens em 8 grupos, mais `Configurações` sem rota**;
+> (3) "8 dos 16 itens apontam para a tela errada" → **13 dos 16** (3 levam à tela certa:
+> `Dashboard > Visão geral`, `Escalas`, `Agenda`);
+> (4) o mapa da sidebar está em `Screen.tsx:49-96`, não `:56-70`.
+> Detalhamento e tabela item a item em `docs/architecture/navegacao-mvp.md` §1-2.
+> As demais métricas (49 frames, 12 telas, 13 arquivos de rota, 67 testes, 41,5 %) foram
+> reconferidas em 16/09/2026 e estão corretas — ver `docs/qa/baseline-2026-09-16.md`.
+
 ## 1. Sumário executivo
 
 | Métrica | Mockup | Implementado no app | Cobertura |
 |---|---:|---:|---:|
 | Telas (frames) | **49** (23 desktop 1440×1024 + 26 mobile 390×844) | **12 telas** em `mobile/src/screens` + shell desktop | 8 telas do mockup têm tela equivalente |
 | Rotas (Expo Router) | — | **13 arquivos em `mobile/app`** (12 rotas + `_layout.tsx`) | 5 rotas internas + 6 telas de membro + 1 dinâmica |
-| Endpoints de API do mockup-equivalentes | — | **24 endpoints** (67 testes passando) | 13 consumidos pelo app; **6 escrevem estado**; 4 recursos sem UI |
+| Endpoints de API do mockup-equivalentes | — | **24 operações em 19 caminhos** (67 testes passando) | 13 consumidos pelo app; **6 escrevem estado**; 4 recursos sem UI |
 | Aderência de conteúdo (mobile, proxy textual) | 241 strings nas 9 telas com rota | 100 strings presentes | **41,5 %** |
 | Aderência de conteúdo (desktop, proxy textual) | 8 telas com rota | ver §3.1 | **38–70 %** por tela |
 
 **As cinco conclusões que importam**
 
 1. **O app é a versão "5 telas + login" do mockup.** Existem hoje 12 telas; o mockup pede 49. **15 telas desktop e 16 mobile** simplesmente não têm rota — incluindo blocos inteiros do produto (Gestão financeira/aprovação, Escola Bíblica/turmas, Repertório, Bandas/equipes, Setlists, Palavras, Diretório, Família, Privacidade, Ajuda).
-2. **A sidebar desktop promete 19 destinos e entrega 5.** 8 dos 16 itens de navegação apontam para a tela *errada* (ex.: `Membros`→Meu Perfil, `Setlists`→Minhas escalas, `Escola Bíblica`→Agenda, `Palavras`→Dashboard) e `Configurações` não faz nada. O campo "Buscar no Moriah" não é um input (a home tem **zero** elementos `input`). Isso é fachada: induz o gestor ao erro.
+2. **A sidebar desktop promete 16 itens e entrega 5 destinos.** Dos 16 itens com rota, só 3 levam à tela que o rótulo promete (`Dashboard > Visão geral`, `Escalas`, `Agenda`); **13 apontam para a tela *errada*** (ex.: `Membros`→Meu Perfil, `Setlists`→Minhas escalas, `Escola Bíblica`→Agenda, `Palavras`→Dashboard, `Financeiro > Contribuições`→extrato pessoal) e `Configurações` não faz nada. O campo "Buscar no Moriah" não é um input (a home tem **zero** elementos `input`). Isso é fachada: induz o gestor ao erro.
 3. **Nenhum feedback de erro/sucesso aparece na build web/desktop.** `Alert.alert` é *no-op* no React Native Web (implementação vazia em `react-native-web/dist/exports/Alert/index.js`) e o app tem **14 chamadas de `Alert.alert` em 8 telas**. Consequência verificada ao vivo: o membro que tenta criar escala recebe **403 e não vê nada**; o admin que cria escala recebe **201 e não é levado à agenda** (o `router.replace` está no callback do Alert, que nunca roda); login com senha errada não mostra erro nenhum. Praticamente todo o tratamento de erro do produto é invisível no desktop.
 4. **O dashboard desktop exibe dados fictícios fixos.** `Membros ativos 248`, `+8 este mês`, `Próximos cultos 6`, gráfico de barras fixo `[52,78,64,92,70,86]`, listas "Próximos cultos e eventos", "Próximas escalas" e "Atividades recentes" hardcoded — e `Contribuições no mês` cai em `R$ 12.450` fixo quando a pessoa não tem contribuição (é exatamente o caso da tesouraria). Um número falso de arrecadação na tela do financeiro é risco operacional, não detalhe estético.
 5. **O backend é mais capaz que o app.** Já existem endpoints de **revisão de contribuição** (`/api/contributions/{id}/review/` — aprovar/rejeitar, o coração da tela "Gestão financeira"), **publicação de escala** (`/api/schedules/{id}/publish/`), **substituição** (`.../assignments/{id}/substitute/`) e **células** (`/api/cell-meetings/`, `/api/leader/cell-members/`) — todos sem nenhuma UI. O gargalo do MVP hoje é front + rotas, não domínio.
@@ -175,8 +186,8 @@ Fluxos exercitados ao vivo, com o resultado real da API:
 
 ### 🟠 Alto
 
-**5.4 — Sidebar desktop: 19 itens, 5 destinos, 8 apontando para o lugar errado.**
-Mapa real extraído de `mobile/src/components/Screen.tsx:56-70`:
+**5.4 — Sidebar desktop: 16 itens em 8 grupos (+ `Configurações` sem rota), 5 destinos, 13 apontando para a tela errada.**
+Mapa real extraído de `mobile/src/components/Screen.tsx:49-96` (tabela item a item, com status e decisão de MVP, em `docs/architecture/navegacao-mvp.md` §2):
 
 | Item da sidebar | Rota real | Deveria ir para |
 |---|---|---|
@@ -283,9 +294,9 @@ app/leader/celula.tsx  app/leader/celulas/[id].tsx
 
 ### 7.2 Regras de rota a implementar
 
-1. **Fonte única de verdade da sidebar** — hoje há dois arrays divergentes em `Screen.tsx` (`:56-70` desktop, `:102` mobile). Extrair `navigation.ts` com `{label, route, icon, capability}`, renderizar sidebar/tab a partir dele e **esconder (não só desabilitar)** itens sem capability — mata o "clique que não faz nada".
+1. **Fonte única de verdade da sidebar** — hoje há dois arrays divergentes em `Screen.tsx` (`:49-96` desktop, `:98-104` mobile). Extrair um módulo novo `navigation.ts` com `{label, route, icon, capability}`, renderizar sidebar/tab a partir dele e **esconder (não só desabilitar)** itens sem capability — mata o "clique que não faz nada".
 2. **Guarda de rota por papel** (ex.: `<RequireCapability can="management">` no `app/_layout.tsx`): `/escalas/nova`, `/financeiro/gestao`, `/ensino/*` de gestão não podem montar para membro. Hoje o formulário monta e o erro só aparece no 403.
-3. **`app/+not-found.tsx`** em PT-BR com caminho de volta — nenhuma URL deve cair em tela do Expo em inglês.
+3. Criar **`app/+not-found.tsx`** (novo) em PT-BR com caminho de volta — nenhuma URL deve cair em tela do Expo em inglês.
 4. **`/musicas/[id]` exige contexto de escala** — se `scheduleId` faltar, redirecionar para `/escalas` (nunca chamar `/me/schedules/undefined/`) e tratar 404/erro do `api.ts` como dado, não como HTML.
 5. **Busca global real** ou remoção do campo; `Configurações` precisa de rota (ou sai da sidebar).
 6. **Prefixo de API versionado** (`/api/v1/`) e `+not-found` também para as rotas sem tela no mockup que hoje existem como casca (`bandas`, `escola`, `membros`, `relatorios`).
@@ -339,7 +350,7 @@ Prioridade **P2** (produto que ainda não existe):
 |---|---|
 | `output/design-review/mockup-inventario.md` | Inventário das 49 telas do mockup: mapa de navegação, estrutura de cada tela, textos literais, CTAs, notas de fidelidade |
 | `output/design-review/mockup-tokens.md` | Design system do mockup: 16 tokens, cores, tipografia, raios, espaçamentos |
-| `output/design-review/backend-inventario.md` | 24 endpoints, permissões por papel, 9 processos de negócio (BP-1..BP-9), lacunas, riscos, 67 testes |
+| `output/design-review/backend-inventario.md` | 24 operações em 19 caminhos, permissões por papel, 9 processos de negócio (BP-1..BP-9), lacunas, riscos, 67 testes |
 | `output/design-review/qa-sweep.json` | Varredura de rotas × papéis × viewports com textos renderizados, erros de console e HTTP |
 | `output/design-review/qa-flows2.json` | Fluxos de escrita com payload/status de cada requisição e diálogos capturados |
 | `output/design-review/qa-mobile-flow.json` | Fluxo mobile completo do membro (home → escalas → detalhe → música) com o texto renderizado em cada passo |

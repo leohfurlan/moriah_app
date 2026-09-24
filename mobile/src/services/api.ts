@@ -6,7 +6,32 @@ import {
   saveAccessToken,
 } from "./storage";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/backend";
+
+export type ApiPage<T> = {
+  items: T[];
+  count: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
+export function normalizePage<T>(payload: unknown, page = 1, pageSize = 25): ApiPage<T> {
+  if (Array.isArray(payload)) {
+    return { items: payload as T[], count: payload.length, page, pageSize, hasNext: false, hasPrevious: page > 1 };
+  }
+  const data = payload as { results?: unknown; count?: number; next?: unknown; previous?: unknown } | null;
+  const items = Array.isArray(data?.results) ? data.results as T[] : [];
+  return {
+    items,
+    count: Number(data?.count || 0),
+    page,
+    pageSize,
+    hasNext: Boolean(data?.next),
+    hasPrevious: Boolean(data?.previous),
+  };
+}
 
 // Handler chamado quando a sessao expira de vez (refresh invalido/expirado).
 // A camada de UI (useAuth) registra aqui a rotina de logout.
@@ -40,6 +65,29 @@ async function parseBody(response: Response): Promise<unknown> {
   } catch {
     return text;
   }
+}
+
+/**
+ * Filtra resposta nao-JSON antes de virar erro exibivel.
+ *
+ * Quando a requisicao nao chega na view (500 do WSGI, 502/504 do proxy) o corpo
+ * vem em HTML. Esse conteudo nao pode ser exibido ao membro — e o `ApiError`
+ * fica com `payload: null`, o que faz `describeError` cair na mensagem padrao
+ * do status. O aviso fica no console do desenvolvedor.
+ */
+function payloadDeErro(status: number, contentType: string, corpo: unknown): unknown {
+  if (typeof corpo !== "string") {
+    return corpo;
+  }
+  const pareceHtml =
+    /text\/html/i.test(contentType) || /<\s*(!doctype|html|body|h1|pre)\b/i.test(corpo);
+  if (!pareceHtml) {
+    return corpo;
+  }
+  console.warn(
+    `[api] resposta ${status} nao-JSON (${contentType || "sem content-type"}) descartada antes de chegar na UI`,
+  );
+  return null;
 }
 
 async function performRefresh(): Promise<string | null> {
@@ -112,19 +160,47 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, await parseBody(response));
+    const corpo = await parseBody(response);
+    throw new ApiError(
+      response.status,
+      payloadDeErro(response.status, response.headers.get("content-type") || "", corpo),
+    );
   }
 
-  return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  // 2xx que nao e JSON (proxy/HTML de portal cativo): nunca entregar o corpo
+  // cru para a tela — vira erro de servidor com mensagem padrao.
+  const corpo = await parseBody(response);
+  if (typeof corpo === "string") {
+    console.warn("[api] resposta 2xx nao-JSON descartada antes de chegar na UI");
+    throw new ApiError(502, null);
+  }
+  return corpo as T;
 }
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  getPage: async <T>(path: string, page = 1, pageSize = 25) => {
+    const separator = path.includes("?") ? "&" : "?";
+    const payload = await request<unknown>(`${path}${separator}page=${page}&page_size=${pageSize}`);
+    return normalizePage<T>(payload, page, pageSize);
+  },
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
     }),
+  /** Edicao parcial (PATCH): usado pela gestao de escalas (Fase 4). */
+  patch: <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  /** Remocao (DELETE). Resposta 204 vira `undefined`. */
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   postForm: <T>(path: string, body: FormData) =>
     request<T>(
       path,
@@ -143,10 +219,4 @@ export const api = {
       },
       true,
     ),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "PATCH",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

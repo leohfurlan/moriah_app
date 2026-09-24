@@ -1,4 +1,5 @@
 import { TextStyle } from "react-native";
+import { parseDate } from "./services/dates";
 
 /**
  * Design tokens do Moriah app.
@@ -62,17 +63,18 @@ export const typography = {
 /** Rota de tela -> rotulo humano. Uma unica fonte de verdade. */
 export const routeLabels: Record<string, string> = {
   index: "Entrar",
-  home: "Inicio",
+  home: "Início",
   profile: "Meu Perfil",
   members: "Membros",
   visitors: "Visitantes",
   statement: "Extrato",
-  contribution: "Contribuicao",
+  contribution: "Contribuição",
   finance: "Visão geral",
   "finance-management": "Gestão financeira",
   content: "Conteúdo",
   schedules: "Minha Escala",
   schedule: "Minha Escala",
+  song: "Minha Escala",
   agenda: "Minha Agenda",
   events: "Cultos e eventos",
   ministries: "Ministérios",
@@ -81,9 +83,12 @@ export const routeLabels: Record<string, string> = {
   bands: "Bandas",
   "bible-school": "Escola Bíblica",
   classes: "Turmas",
+  "agenda-new": "Novo compromisso",
   notifications: "Notificações",
   notification: "Notificação",
   "schedule-create": "Adicionar escala",
+  "schedule-admin": "Gestão de escalas",
+  "finance-review": "Revisão financeira",
 };
 
 /** Converte status do backend em rotulo humano, se existir. */
@@ -91,9 +96,9 @@ const statusLabels: Record<string, string> = {
   pending: "Pendente",
   confirmed: "Confirmado",
   declined: "Recusado",
-  unavailable: "Indisponivel",
-  conflict: "Conflito de horario",
-  replacement_needed: "Substituicao necessaria",
+  unavailable: "Indisponível",
+  conflict: "Conflito de horário",
+  replacement_needed: "Substituição necessária",
   draft: "Rascunho",
   published: "Publicada",
   cancelled: "Cancelada",
@@ -101,9 +106,8 @@ const statusLabels: Record<string, string> = {
   active: "Ativo",
   approved: "Aprovado",
   received: "Recebido",
-  pending_confirmation: "Aguardando confirmacao",
   rejected: "Recusado",
-  needs_review: "Precisa revisao",
+  needs_review: "Precisa revisão",
   tithe: "Dízimo",
   offering: "Oferta",
   campaign: "Campanha",
@@ -118,7 +122,7 @@ export function statusLabel(value: string): string {
 
 /** Data ISO -> "12/09/2026 19:30" ou "--" se invalida. */
 export function formatDate(iso: string, withTime = false): string {
-  const date = new Date(iso);
+  const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "--";
   return withTime ? date.toLocaleString("pt-BR") : date.toLocaleDateString("pt-BR");
 }

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ECFDF3"/>
+      <stop offset="1" stop-color="#A7F3D0"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="320" rx="28" fill="url(#bg)"/>
+  <circle cx="636" cy="154" r="112" fill="#34D399" opacity=".24"/>
+  <path d="M538 232l70-112 70 112z" fill="#fff" opacity=".92"/>
+  <path d="M608 120v112M560 204h96" stroke="#047857" stroke-width="8" stroke-linecap="round"/>
+  <text x="46" y="70" fill="#047857" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="3">PRÓXIMA PROGRAMAÇÃO</text>
+  <text x="46" y="134" fill="#064E3B" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="800">Retiro de casais</text>
+  <text x="46" y="178" fill="#065F46" font-family="Inter,Arial,sans-serif" font-size="24">Inscrições abertas até 30 de setembro.</text>
+  <rect x="46" y="218" width="170" height="48" rx="24" fill="#047857"/>
+  <text x="78" y="249" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="800">Saiba mais</text>
+</svg>

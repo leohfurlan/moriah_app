@@ -55878,14 +55878,14 @@
       "children": [
         {
           "type": "frame",
-          "id": "Q9v7i",
+          "id": "home-canonical-11",
           "x": 0,
           "y": 0,
           "name": "Header mobile",
           "width": 390,
-          "height": 76,
+          "height": 68,
           "padding": [
-            20,
+            16,
             18
           ],
           "justifyContent": "space_between",
@@ -55893,27 +55893,27 @@
           "children": [
             {
               "type": "frame",
-              "id": "u3US5v",
+              "id": "home-canonical-3",
               "name": "Texto header",
               "layout": "vertical",
-              "gap": 4,
+              "gap": 3,
               "children": [
                 {
                   "type": "text",
-                  "id": "WJl51",
+                  "id": "home-canonical-1",
                   "name": "Título Olá, Mariana 👋",
                   "fill": "#101828",
                   "content": "Olá, Mariana 👋",
                   "fontFamily": "Inter",
-                  "fontSize": 22,
+                  "fontSize": 21,
                   "fontWeight": "750"
                 },
                 {
                   "type": "text",
-                  "id": "G9lv3V",
-                  "name": "Subtítulo Olá, Mariana 👋",
+                  "id": "home-canonical-2",
+                  "name": "Subtítulo data",
                   "fill": "#667085",
-                  "content": "Domingo, 14 de setembro",
+                  "content": "Quinta-feira, 17 de setembro",
                   "fontFamily": "Inter",
                   "fontSize": 11,
                   "fontWeight": "normal"
@@ -55922,184 +55922,82 @@
             },
             {
               "type": "frame",
-              "id": "T3TrL",
-              "name": "Avatar Mariana",
-              "width": 36,
-              "height": 36,
-              "fill": "#E0E7FF",
-              "cornerRadius": 18,
-              "justifyContent": "center",
+              "id": "home-canonical-10",
+              "name": "Ações header",
+              "gap": 8,
               "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "qXIo1",
-                  "name": "Iniciais",
-                  "fill": "#4F46E5",
-                  "content": "MC",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "700"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "D9R5s",
-          "x": 16,
-          "y": 88,
-          "name": "Minha próxima escala",
-          "clip": true,
-          "width": 358,
-          "height": 170,
-          "fill": "#FFFFFF",
-          "cornerRadius": 16,
-          "stroke": "#E4E7EC",
-          "strokeWidth": 1,
-          "layout": "none",
-          "children": [
-            {
-              "type": "text",
-              "id": "hzVQ6",
-              "x": 16,
-              "y": 15,
-              "name": "Rótulo",
-              "fill": "#667085",
-              "content": "MINHA PRÓXIMA ESCALA",
-              "fontFamily": "Inter",
-              "fontSize": 10,
-              "fontWeight": "700",
-              "letterSpacing": 1
-            },
-            {
-              "type": "text",
-              "id": "z7gDuP",
-              "x": 16,
-              "y": 36,
-              "name": "Culto",
-              "fill": "#101828",
-              "content": "Culto de celebração",
-              "fontFamily": "Inter",
-              "fontSize": 17,
-              "fontWeight": "750"
-            },
-            {
-              "type": "text",
-              "id": "EmFbC",
-              "x": 16,
-              "y": 60,
-              "name": "Data",
-              "fill": "#667085",
-              "content": "Domingo • 19h",
-              "fontFamily": "Inter",
-              "fontSize": 12,
-              "fontWeight": "normal"
-            },
-            {
-              "type": "frame",
-              "id": "RyEym",
-              "layoutPosition": "absolute",
-              "x": 16,
-              "y": 83,
-              "name": "Badge Convite pendente",
-              "fill": "#FFFAEB",
-              "cornerRadius": 99,
-              "padding": [
-                4,
-                8
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "yD29G",
-                  "name": "Texto badge Convite pendente",
-                  "fill": "#B54708",
-                  "content": "Convite pendente",
-                  "fontFamily": "Inter",
-                  "fontSize": 10,
-                  "fontWeight": "700"
-                }
-              ]
-            },
-            {
-              "type": "text",
-              "id": "tDHqU",
-              "x": 16,
-              "y": 112,
-              "name": "Função",
-              "fill": "#344054",
-              "content": "Louvor • Vocal apoio",
-              "fontFamily": "Inter",
-              "fontSize": 12,
-              "fontWeight": "600"
-            },
-            {
-              "type": "frame",
-              "id": "m9t4d0",
-              "x": 16,
-              "y": 132,
-              "name": "Ações escala",
-              "width": 326,
-              "height": 30,
-              "gap": 10,
               "children": [
                 {
                   "type": "frame",
-                  "id": "gx7TK",
-                  "name": "Botão Confirmar",
-                  "width": 132,
-                  "height": 30,
-                  "fill": "#4F46E5",
-                  "cornerRadius": 12,
-                  "padding": [
-                    0,
-                    14
-                  ],
+                  "id": "home-canonical-5",
+                  "name": "Avatar Mariana",
+                  "width": 36,
+                  "height": 36,
+                  "fill": "#E0E7FF",
+                  "cornerRadius": 18,
                   "justifyContent": "center",
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "ee0VG",
-                      "name": "Texto Confirmar",
-                      "fill": "#FFFFFF",
-                      "content": "Confirmar",
+                      "id": "home-canonical-4",
+                      "name": "Iniciais",
+                      "fill": "#4F46E5",
+                      "content": "AM",
                       "fontFamily": "Inter",
-                      "fontSize": 13,
+                      "fontSize": 12,
                       "fontWeight": "700"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "hzS7r",
-                  "name": "Botão Não posso",
-                  "width": 105,
-                  "height": 30,
+                  "id": "home-canonical-9",
+                  "name": "Notificações botão",
+                  "width": 36,
+                  "height": 36,
                   "fill": "#FFFFFF",
                   "cornerRadius": 12,
                   "stroke": "#E4E7EC",
                   "strokeWidth": 1,
-                  "padding": [
-                    0,
-                    14
-                  ],
                   "justifyContent": "center",
                   "alignItems": "center",
                   "children": [
                     {
-                      "type": "text",
-                      "id": "I2RJZk",
-                      "name": "Texto Não posso",
-                      "fill": "#344054",
-                      "content": "Não posso",
-                      "fontFamily": "Inter",
-                      "fontSize": 13,
-                      "fontWeight": "700"
+                      "type": "icon",
+                      "id": "home-canonical-6",
+                      "name": "Ícone sino",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "bell",
+                      "library": "lucide",
+                      "fill": "#4F46E5"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "home-canonical-8",
+                      "layoutPosition": "absolute",
+                      "x": 21,
+                      "y": 1,
+                      "name": "Badge notificações",
+                      "width": 15,
+                      "height": 15,
+                      "fill": "#F04438",
+                      "cornerRadius": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "home-canonical-7",
+                          "name": "Quantidade notificações",
+                          "fill": "#FFFFFF",
+                          "content": "3",
+                          "fontFamily": "Inter",
+                          "fontSize": 8,
+                          "fontWeight": "700"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -56109,13 +56007,64 @@
         },
         {
           "type": "frame",
-          "id": "DMLOC",
+          "id": "home-canonical-15",
           "x": 16,
-          "y": 272,
-          "name": "Contribuições atalho",
+          "y": 78,
+          "name": "Busca na home",
+          "width": 358,
+          "height": 46,
+          "fill": "#FFFFFF",
+          "cornerRadius": 14,
+          "stroke": "#E4E7EC",
+          "strokeWidth": 1,
+          "gap": 10,
+          "padding": [
+            0,
+            14
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "home-canonical-12",
+              "name": "Ícone busca home",
+              "width": 18,
+              "height": 18,
+              "icon": "search",
+              "library": "lucide",
+              "fill": "#667085"
+            },
+            {
+              "type": "text",
+              "id": "home-canonical-13",
+              "name": "Placeholder busca home",
+              "fill": "#98A2B3",
+              "content": "Buscar na igreja",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "icon",
+              "id": "home-canonical-14",
+              "name": "Ícone escanear",
+              "width": 17,
+              "height": 17,
+              "icon": "scan-line",
+              "library": "lucide",
+              "fill": "#667085"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "home-canonical-31",
+          "x": 16,
+          "y": 138,
+          "name": "Acessos rápidos configuráveis",
           "clip": true,
           "width": 358,
-          "height": 112,
+          "height": 88,
           "fill": "#FFFFFF",
           "cornerRadius": 16,
           "stroke": "#E4E7EC",
@@ -56124,86 +56073,174 @@
           "children": [
             {
               "type": "text",
-              "id": "T5vti",
-              "x": 16,
-              "y": 14,
-              "name": "Título contribuições",
+              "id": "home-canonical-16",
+              "x": 14,
+              "y": 10,
+              "name": "Título acessos rápidos",
               "fill": "#101828",
-              "content": "Contribuições",
+              "content": "Acessos rápidos",
               "fontFamily": "Inter",
-              "fontSize": 15,
+              "fontSize": 14,
               "fontWeight": "750"
             },
             {
               "type": "text",
-              "id": "Eofiz",
-              "x": 16,
-              "y": 39,
-              "name": "Última contribuição",
-              "fill": "#101828",
-              "content": "Última contribuição  •  R$ 450",
-              "fontFamily": "Inter",
-              "fontSize": 12,
-              "fontWeight": "650"
-            },
-            {
-              "type": "text",
-              "id": "IpZQP",
-              "x": 16,
-              "y": 58,
-              "name": "Meta contribuição",
-              "fill": "#067647",
-              "content": "12/09 • Dízimo • Confirmada",
+              "id": "home-canonical-17",
+              "x": 302,
+              "y": 11,
+              "name": "Editar atalhos",
+              "fill": "#4F46E5",
+              "content": "Editar",
               "fontFamily": "Inter",
               "fontSize": 11,
-              "fontWeight": "normal"
+              "fontWeight": "700"
             },
             {
               "type": "frame",
-              "id": "O6oa5",
-              "x": 16,
-              "y": 76,
-              "name": "Ações contribuição",
-              "width": 326,
-              "height": 30,
-              "gap": 14,
+              "id": "home-canonical-30",
+              "x": 12,
+              "y": 36,
+              "name": "Lista acessos rápidos",
+              "width": 334,
+              "height": 42,
+              "gap": 7,
+              "alignItems": "center",
               "children": [
                 {
                   "type": "frame",
-                  "id": "L8eRX0",
-                  "name": "Botão Enviar comprovante",
-                  "width": 158,
-                  "height": 30,
-                  "fill": "#4F46E5",
-                  "cornerRadius": 12,
-                  "padding": [
-                    0,
-                    14
-                  ],
+                  "id": "home-canonical-20",
+                  "name": "Atalho contribuir",
+                  "width": 78,
+                  "height": 40,
+                  "fill": "#EEF2FF",
+                  "cornerRadius": 10,
+                  "gap": 2,
                   "justifyContent": "center",
                   "alignItems": "center",
                   "children": [
                     {
+                      "type": "icon",
+                      "id": "home-canonical-18",
+                      "name": "Ícone contribuir",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "hand-coins",
+                      "library": "lucide",
+                      "fill": "#4F46E5"
+                    },
+                    {
                       "type": "text",
-                      "id": "cZhNQ",
-                      "name": "Texto Enviar comprovante",
-                      "fill": "#FFFFFF",
-                      "content": "Enviar comprovante",
+                      "id": "home-canonical-19",
+                      "name": "Label contribuir",
+                      "fill": "#4F46E5",
+                      "content": "Contribuir",
                       "fontFamily": "Inter",
-                      "fontSize": 13,
+                      "fontSize": 9,
                       "fontWeight": "700"
                     }
                   ]
                 },
                 {
-                  "type": "text",
-                  "id": "x4Ahcd",
-                  "name": "Histórico",
-                  "fill": "#4F46E5",
-                  "content": "Ver histórico",
-                  "fontFamily": "Inter",
-                  "fontSize": 12,
-                  "fontWeight": "700"
+                  "type": "frame",
+                  "id": "home-canonical-23",
+                  "name": "Atalho agenda",
+                  "width": 78,
+                  "height": 40,
+                  "fill": "#F9FAFB",
+                  "cornerRadius": 10,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "home-canonical-21",
+                      "name": "Ícone agenda",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "calendar-days",
+                      "library": "lucide",
+                      "fill": "#667085"
+                    },
+                    {
+                      "type": "text",
+                      "id": "home-canonical-22",
+                      "name": "Label agenda",
+                      "fill": "#344054",
+                      "content": "Agenda",
+                      "fontFamily": "Inter",
+                      "fontSize": 9,
+                      "fontWeight": "650"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "home-canonical-26",
+                  "name": "Atalho escalas",
+                  "width": 78,
+                  "height": 40,
+                  "fill": "#F9FAFB",
+                  "cornerRadius": 10,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "home-canonical-24",
+                      "name": "Ícone escalas",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "calendar-check",
+                      "library": "lucide",
+                      "fill": "#667085"
+                    },
+                    {
+                      "type": "text",
+                      "id": "home-canonical-25",
+                      "name": "Label escalas",
+                      "fill": "#344054",
+                      "content": "Escalas",
+                      "fontFamily": "Inter",
+                      "fontSize": 9,
+                      "fontWeight": "650"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "home-canonical-29",
+                  "name": "Atalho mais",
+                  "width": 78,
+                  "height": 40,
+                  "fill": "#F9FAFB",
+                  "cornerRadius": 10,
+                  "gap": 2,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "home-canonical-27",
+                      "name": "Ícone mais",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "ellipsis",
+                      "library": "lucide",
+                      "fill": "#667085"
+                    },
+                    {
+                      "type": "text",
+                      "id": "home-canonical-28",
+                      "name": "Label mais",
+                      "fill": "#344054",
+                      "content": "Mais",
+                      "fontFamily": "Inter",
+                      "fontSize": 9,
+                      "fontWeight": "650"
+                    }
+                  ]
                 }
               ]
             }
@@ -56211,10 +56248,10 @@
         },
         {
           "type": "frame",
-          "id": "kttDx",
+          "id": "home-canonical-39",
           "x": 16,
-          "y": 398,
-          "name": "Próximos compromissos",
+          "y": 240,
+          "name": "Próximo compromisso prioritário",
           "clip": true,
           "width": 358,
           "height": 126,
@@ -56225,234 +56262,379 @@
           "layout": "none",
           "children": [
             {
+              "type": "rectangle",
+              "id": "home-canonical-32",
+              "x": 0,
+              "y": 0,
+              "name": "Faixa prioridade",
+              "fill": "#4F46E5",
+              "width": 5,
+              "height": 126
+            },
+            {
               "type": "text",
-              "id": "p3nGCl",
-              "x": 16,
+              "id": "home-canonical-33",
+              "x": 18,
               "y": 14,
-              "name": "Título próximos",
-              "fill": "#101828",
-              "content": "Próximos",
-              "fontFamily": "Inter",
-              "fontSize": 15,
-              "fontWeight": "750"
-            },
-            {
-              "type": "text",
-              "id": "gTy53",
-              "x": 16,
-              "y": 43,
-              "name": "Dia 0",
-              "fill": "#4F46E5",
-              "content": "Hoje",
-              "fontFamily": "Inter",
-              "fontSize": 10,
-              "fontWeight": "700"
-            },
-            {
-              "type": "text",
-              "id": "E4v8W",
-              "x": 88,
-              "y": 42,
-              "name": "Evento 0",
-              "fill": "#344054",
-              "content": "19h30 • Célula",
-              "fontFamily": "Inter",
-              "fontSize": 11,
-              "fontWeight": "normal"
-            },
-            {
-              "type": "text",
-              "id": "D7NRC",
-              "x": 16,
-              "y": 65,
-              "name": "Dia 1",
-              "fill": "#4F46E5",
-              "content": "Domingo",
-              "fontFamily": "Inter",
-              "fontSize": 10,
-              "fontWeight": "700"
-            },
-            {
-              "type": "text",
-              "id": "u5xZh6",
-              "x": 88,
-              "y": 64,
-              "name": "Evento 1",
-              "fill": "#344054",
-              "content": "09h • Escola Bíblica",
-              "fontFamily": "Inter",
-              "fontSize": 11,
-              "fontWeight": "normal"
-            },
-            {
-              "type": "text",
-              "id": "f99FO9",
-              "x": 16,
-              "y": 87,
-              "name": "Dia 2",
-              "fill": "#4F46E5",
-              "content": "Domingo",
-              "fontFamily": "Inter",
-              "fontSize": 10,
-              "fontWeight": "700"
-            },
-            {
-              "type": "text",
-              "id": "y2fbPp",
-              "x": 88,
-              "y": 86,
-              "name": "Evento 2",
-              "fill": "#344054",
-              "content": "19h • Culto de celebração",
-              "fontFamily": "Inter",
-              "fontSize": 11,
-              "fontWeight": "normal"
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "FRNXO",
-          "x": 16,
-          "y": 538,
-          "name": "Escola Bíblica home",
-          "clip": true,
-          "width": 358,
-          "height": 100,
-          "fill": "#FFFFFF",
-          "cornerRadius": 16,
-          "stroke": "#E4E7EC",
-          "strokeWidth": 1,
-          "layout": "none",
-          "children": [
-            {
-              "type": "text",
-              "id": "afgo7",
-              "x": 16,
-              "y": 14,
-              "name": "Título escola",
-              "fill": "#101828",
-              "content": "Continuar na Escola Bíblica",
-              "fontFamily": "Inter",
-              "fontSize": 15,
-              "fontWeight": "750"
-            },
-            {
-              "type": "text",
-              "id": "p62hJ",
-              "x": 16,
-              "y": 38,
-              "name": "Curso",
+              "name": "Rótulo próximo compromisso",
               "fill": "#667085",
-              "content": "Fundamentos da Fé  •  7 de 12 aulas",
-              "fontFamily": "Inter",
-              "fontSize": 11,
-              "fontWeight": "normal"
-            },
-            {
-              "type": "frame",
-              "id": "EEYAv",
-              "x": 16,
-              "y": 62,
-              "name": "Trilha progresso",
-              "width": 326,
-              "height": 8,
-              "fill": "#EAECF0",
-              "cornerRadius": 99
-            },
-            {
-              "type": "frame",
-              "id": "roBlC",
-              "x": 16,
-              "y": 62,
-              "name": "Progresso curso",
-              "width": 190,
-              "height": 8,
-              "fill": "#4F46E5",
-              "cornerRadius": 99
-            },
-            {
-              "type": "text",
-              "id": "A5uq60",
-              "x": 16,
-              "y": 76,
-              "name": "Próxima aula",
-              "fill": "#667085",
-              "content": "Próxima aula: Domingo • 09h",
+              "content": "PRÓXIMO COMPROMISSO",
               "fontFamily": "Inter",
               "fontSize": 10,
-              "fontWeight": "normal"
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "y21L0",
-          "x": 16,
-          "y": 652,
-          "name": "Palavra recente",
-          "clip": true,
-          "width": 358,
-          "height": 94,
-          "fill": "#FFFFFF",
-          "cornerRadius": 16,
-          "stroke": "#E4E7EC",
-          "strokeWidth": 1,
-          "layout": "none",
-          "children": [
-            {
-              "type": "text",
-              "id": "pwNnj",
-              "x": 16,
-              "y": 13,
-              "name": "Título palavra",
-              "fill": "#101828",
-              "content": "Última palavra",
-              "fontFamily": "Inter",
-              "fontSize": 15,
-              "fontWeight": "750"
+              "fontWeight": "700",
+              "letterSpacing": 1
             },
             {
               "type": "text",
-              "id": "etgFC",
-              "x": 16,
+              "id": "home-canonical-34",
+              "x": 18,
               "y": 37,
-              "name": "Palavra",
+              "name": "Próximo compromisso título",
               "fill": "#101828",
-              "content": "O Deus que vê",
+              "content": "Culto de celebração",
               "fontFamily": "Inter",
-              "fontSize": 13,
-              "fontWeight": "700"
+              "fontSize": 16,
+              "fontWeight": "750"
             },
             {
               "type": "text",
-              "id": "lTHxr",
-              "x": 16,
-              "y": 56,
-              "name": "Autor",
+              "id": "home-canonical-35",
+              "x": 18,
+              "y": 62,
+              "name": "Próximo compromisso data",
               "fill": "#667085",
-              "content": "Pr. André  •  “Ele conhece cada detalhe.”",
+              "content": "Domingo • 19h · Templo principal",
               "fontFamily": "Inter",
-              "fontSize": 10,
+              "fontSize": 11,
               "fontWeight": "normal"
             },
             {
-              "type": "text",
-              "id": "iJJtY",
-              "x": 276,
-              "y": 68,
-              "name": "Ler palavra",
-              "fill": "#4F46E5",
-              "content": "Ler palavra",
-              "fontFamily": "Inter",
-              "fontSize": 11,
-              "fontWeight": "700"
+              "type": "frame",
+              "id": "home-canonical-37",
+              "x": 18,
+              "y": 84,
+              "name": "Badge próximo compromisso",
+              "width": 112,
+              "height": 24,
+              "fill": "#EEF2FF",
+              "cornerRadius": 99,
+              "padding": [
+                0,
+                8
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "home-canonical-36",
+                  "name": "Texto badge próximo",
+                  "fill": "#4F46E5",
+                  "content": "Escala • Vocal",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "home-canonical-38",
+              "x": 318,
+              "y": 50,
+              "name": "Abrir próximo compromisso",
+              "width": 20,
+              "height": 20,
+              "icon": "chevron-right",
+              "library": "lucide",
+              "fill": "#4F46E5"
             }
           ]
         },
         {
           "type": "frame",
-          "id": "S5PhMV",
+          "id": "home-canonical-45",
+          "x": 16,
+          "y": 380,
+          "name": "Carrossel avisos e divulgações",
+          "clip": true,
+          "width": 358,
+          "height": 192,
+          "fill": "#FFFFFF",
+          "cornerRadius": 16,
+          "stroke": "#E4E7EC",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "home-canonical-carousel-slides",
+              "x": 0,
+              "y": 0,
+              "name": "Slides carrossel",
+              "clip": true,
+              "width": 358,
+              "height": 160,
+              "gap": 10,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "home-canonical-slide-culto",
+                  "name": "Imagem aviso culto",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "assets/home-avisos-culto.svg",
+                    "mode": "fill"
+                  },
+                  "width": 358,
+                  "height": 160
+                },
+                {
+                  "type": "rectangle",
+                  "id": "home-canonical-slide-palavra",
+                  "name": "Imagem aviso palavra",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "assets/home-avisos-palavra.svg",
+                    "mode": "fill"
+                  },
+                  "width": 358,
+                  "height": 160
+                },
+                {
+                  "type": "rectangle",
+                  "id": "home-canonical-slide-retiro",
+                  "name": "Imagem aviso retiro",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "assets/home-avisos-retiro.svg",
+                    "mode": "fill"
+                  },
+                  "width": 358,
+                  "height": 160
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "home-canonical-44",
+              "x": 0,
+              "y": 166,
+              "name": "Indicadores carrossel",
+              "width": 358,
+              "height": 18,
+              "gap": 5,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 99,
+                  "id": "home-canonical-41",
+                  "name": "Indicador ativo",
+                  "fill": "#4F46E5",
+                  "width": 18,
+                  "height": 5
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 99,
+                  "id": "home-canonical-42",
+                  "name": "Indicador 2",
+                  "fill": "#D0D5DD",
+                  "width": 5,
+                  "height": 5
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 99,
+                  "id": "home-canonical-43",
+                  "name": "Indicador 3",
+                  "fill": "#D0D5DD",
+                  "width": 5,
+                  "height": 5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "home-canonical-60",
+          "x": 16,
+          "y": 586,
+          "name": "Hoje na igreja",
+          "clip": true,
+          "width": 358,
+          "height": 156,
+          "fill": "#FFFFFF",
+          "cornerRadius": 16,
+          "stroke": "#E4E7EC",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "home-canonical-46",
+              "x": 14,
+              "y": 13,
+              "name": "Título hoje na igreja",
+              "fill": "#101828",
+              "content": "Hoje na igreja",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "750"
+            },
+            {
+              "type": "text",
+              "id": "home-canonical-47",
+              "x": 286,
+              "y": 14,
+              "name": "Link ver agenda",
+              "fill": "#4F46E5",
+              "content": "Ver agenda",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "home-canonical-53",
+              "x": 14,
+              "y": 46,
+              "name": "Linha compromisso 1",
+              "width": 330,
+              "height": 36,
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "home-canonical-49",
+                  "name": "Horário 1",
+                  "width": 48,
+                  "height": 30,
+                  "fill": "#EEF2FF",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "home-canonical-48",
+                      "name": "Hora 1",
+                      "fill": "#4F46E5",
+                      "content": "19h",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "home-canonical-52",
+                  "name": "Info compromisso 1",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "home-canonical-50",
+                      "name": "Título compromisso 1",
+                      "fill": "#101828",
+                      "content": "Culto de celebração",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "home-canonical-51",
+                      "name": "Meta compromisso 1",
+                      "fill": "#667085",
+                      "content": "Templo principal",
+                      "fontFamily": "Inter",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "home-canonical-59",
+              "x": 14,
+              "y": 92,
+              "name": "Linha compromisso 2",
+              "width": 330,
+              "height": 36,
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "home-canonical-55",
+                  "name": "Horário 2",
+                  "width": 48,
+                  "height": 30,
+                  "fill": "#F9FAFB",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "home-canonical-54",
+                      "name": "Hora 2",
+                      "fill": "#667085",
+                      "content": "20h",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "home-canonical-58",
+                  "name": "Info compromisso 2",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "home-canonical-56",
+                      "name": "Título compromisso 2",
+                      "fill": "#101828",
+                      "content": "Ensaio do louvor",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "home-canonical-57",
+                      "name": "Meta compromisso 2",
+                      "fill": "#667085",
+                      "content": "Sala de música",
+                      "fontFamily": "Inter",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "home-canonical-76",
           "x": 0,
           "y": 768,
           "name": "Navegação inferior",
@@ -56463,21 +56645,18 @@
           "strokeWidth": {
             "top": 1
           },
-          "padding": [
-            8,
-            10
-          ],
-          "justifyContent": "space_around",
-          "alignItems": "center",
+          "layout": "none",
           "children": [
             {
               "type": "frame",
-              "id": "EVmxl",
+              "id": "home-canonical-63",
+              "x": 18,
+              "y": 12,
               "name": "Nav Início",
-              "width": 56,
-              "height": 54,
+              "width": 58,
+              "height": 52,
               "fill": "#EEF2FF",
-              "cornerRadius": 10,
+              "cornerRadius": 11,
               "layout": "vertical",
               "gap": 3,
               "justifyContent": "center",
@@ -56485,34 +56664,36 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "t0e2Z",
+                  "id": "home-canonical-61",
                   "name": "Ícone Início",
-                  "width": 19,
-                  "height": 19,
+                  "width": 18,
+                  "height": 18,
                   "icon": "house",
                   "library": "lucide",
                   "fill": "#4F46E5"
                 },
                 {
                   "type": "text",
-                  "id": "t9axIl",
+                  "id": "home-canonical-62",
                   "name": "Label Início",
                   "fill": "#4F46E5",
                   "content": "Início",
                   "fontFamily": "Inter",
-                  "fontSize": 10,
+                  "fontSize": 9,
                   "fontWeight": "700"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "nzIak",
+              "id": "home-canonical-66",
+              "x": 86,
+              "y": 12,
               "name": "Nav Agenda",
-              "width": 56,
-              "height": 54,
+              "width": 58,
+              "height": 52,
               "fill": "#FFFFFF",
-              "cornerRadius": 10,
+              "cornerRadius": 11,
               "layout": "vertical",
               "gap": 3,
               "justifyContent": "center",
@@ -56520,69 +56701,36 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "wP0NK",
+                  "id": "home-canonical-64",
                   "name": "Ícone Agenda",
-                  "width": 19,
-                  "height": 19,
+                  "width": 18,
+                  "height": 18,
                   "icon": "calendar-days",
                   "library": "lucide",
                   "fill": "#667085"
                 },
                 {
                   "type": "text",
-                  "id": "IDK1n",
+                  "id": "home-canonical-65",
                   "name": "Label Agenda",
                   "fill": "#667085",
                   "content": "Agenda",
                   "fontFamily": "Inter",
-                  "fontSize": 10,
+                  "fontSize": 9,
                   "fontWeight": "500"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "Ix2GK",
-              "name": "Nav Escalas",
-              "width": 56,
-              "height": 54,
-              "fill": "#FFFFFF",
-              "cornerRadius": 10,
-              "layout": "vertical",
-              "gap": 3,
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "mP1ZE",
-                  "name": "Ícone Escalas",
-                  "width": 19,
-                  "height": 19,
-                  "icon": "calendar-check",
-                  "library": "lucide",
-                  "fill": "#667085"
-                },
-                {
-                  "type": "text",
-                  "id": "u5BtA",
-                  "name": "Label Escalas",
-                  "fill": "#667085",
-                  "content": "Escalas",
-                  "fontFamily": "Inter",
-                  "fontSize": 10,
-                  "fontWeight": "500"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "exK8T",
+              "id": "home-canonical-69",
+              "x": 244,
+              "y": 12,
               "name": "Nav Conteúdo",
-              "width": 56,
-              "height": 54,
+              "width": 58,
+              "height": 52,
               "fill": "#FFFFFF",
-              "cornerRadius": 10,
+              "cornerRadius": 11,
               "layout": "vertical",
               "gap": 3,
               "justifyContent": "center",
@@ -56590,34 +56738,36 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "Bn19I",
+                  "id": "home-canonical-67",
                   "name": "Ícone Conteúdo",
-                  "width": 19,
-                  "height": 19,
+                  "width": 18,
+                  "height": 18,
                   "icon": "book-open",
                   "library": "lucide",
                   "fill": "#667085"
                 },
                 {
                   "type": "text",
-                  "id": "sUUC5",
+                  "id": "home-canonical-68",
                   "name": "Label Conteúdo",
                   "fill": "#667085",
                   "content": "Conteúdo",
                   "fontFamily": "Inter",
-                  "fontSize": 10,
+                  "fontSize": 9,
                   "fontWeight": "500"
                 }
               ]
             },
             {
               "type": "frame",
-              "id": "yXPej",
+              "id": "home-canonical-72",
+              "x": 312,
+              "y": 12,
               "name": "Nav Perfil",
-              "width": 56,
-              "height": 54,
+              "width": 58,
+              "height": 52,
               "fill": "#FFFFFF",
-              "cornerRadius": 10,
+              "cornerRadius": 11,
               "layout": "vertical",
               "gap": 3,
               "justifyContent": "center",
@@ -56625,76 +56775,52 @@
               "children": [
                 {
                   "type": "icon",
-                  "id": "sXSS7",
+                  "id": "home-canonical-70",
                   "name": "Ícone Perfil",
-                  "width": 19,
-                  "height": 19,
+                  "width": 18,
+                  "height": 18,
                   "icon": "user-round",
                   "library": "lucide",
                   "fill": "#667085"
                 },
                 {
                   "type": "text",
-                  "id": "Kp36g",
+                  "id": "home-canonical-71",
                   "name": "Label Perfil",
                   "fill": "#667085",
                   "content": "Perfil",
                   "fontFamily": "Inter",
-                  "fontSize": 10,
+                  "fontSize": 9,
                   "fontWeight": "500"
                 }
               ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "rNDGA",
-          "x": 326,
-          "y": 14,
-          "name": "Notificações botão",
-          "width": 44,
-          "height": 44,
-          "fill": "#FFFFFF",
-          "cornerRadius": 12,
-          "stroke": "#E4E7EC",
-          "strokeWidth": 1,
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "icon",
-              "id": "h8gcl2",
-              "name": "Ícone sino",
-              "width": 20,
-              "height": 20,
-              "icon": "bell",
-              "library": "lucide",
-              "fill": "#4F46E5"
             },
             {
               "type": "frame",
-              "id": "m733Bn",
+              "id": "home-canonical-75",
               "layoutPosition": "absolute",
-              "x": 26,
-              "y": 2,
-              "name": "Badge notificações",
-              "width": 17,
-              "height": 17,
-              "fill": "#F04438",
-              "cornerRadius": 9,
+              "x": 157,
+              "y": -16,
+              "name": "Nav Nova contribuição central",
+              "width": 76,
+              "height": 76,
+              "fill": "#4F46E5",
+              "cornerRadius": 38,
+              "stroke": "#FFFFFF",
+              "strokeWidth": 5,
+              "gap": 1,
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
-                  "type": "text",
-                  "id": "LDDdL",
-                  "name": "Quantidade notificações",
-                  "fill": "#FFFFFF",
-                  "content": "3",
-                  "fontFamily": "Inter",
-                  "fontSize": 9,
-                  "fontWeight": "700"
+                  "type": "icon",
+                  "id": "home-canonical-73",
+                  "name": "Ícone nova contribuição",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "hand-coins",
+                  "library": "lucide",
+                  "fill": "#FFFFFF"
                 }
               ]
             }

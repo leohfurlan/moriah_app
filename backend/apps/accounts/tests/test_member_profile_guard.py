@@ -17,18 +17,26 @@ ENDPOINTS_DO_APP = [
 ]
 
 
-@pytest.mark.parametrize("url", ENDPOINTS_DO_APP)
-@pytest.mark.parametrize("role", [User.Role.ADMIN, User.Role.TREASURER, User.Role.SECRETARY])
-def test_usuario_sem_cadastro_de_membro_recebe_403_e_nao_500(api_client, make_user, url, role):
+@pytest.mark.parametrize("url", ["/api/me/member/", "/api/me/statement/", "/api/me/schedules/"])
+@pytest.mark.parametrize("role", [User.Role.TREASURER, User.Role.SECRETARY])
+def test_operador_sem_cadastro_de_membro_continua_bloqueado(api_client, make_user, url, role):
     operador = make_user(f"operador.{role}@igreja.com", role=role)
     api_client.force_authenticate(user=operador)
 
     response = api_client.get(url)
 
     assert response.status_code == 403
-    # A mensagem precisa explicar o que fazer, nao so negar o acesso.
     assert "cadastro de membro" in str(response.data["detail"])
 
+
+def test_admin_sem_cadastro_de_membro_le_dados_da_igreja(api_client, make_user):
+    admin = make_user("admin.leitura@igreja.com", role=User.Role.ADMIN, is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=admin)
+
+    assert api_client.get("/api/me/member/").status_code == 403
+    assert api_client.get("/api/me/statement/").status_code == 200
+    assert api_client.get("/api/me/schedules/").status_code == 200
+    assert api_client.get("/api/me/agenda/").status_code == 200
 
 def test_usuario_sem_membro_nao_cria_contribuicao(api_client, make_user):
     tesoureiro = make_user("tesoureiro.sem.membro@igreja.com", role=User.Role.TREASURER)

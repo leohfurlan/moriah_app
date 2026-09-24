@@ -12,6 +12,14 @@ def get_member_profile(user):
     return getattr(user, "member_profile", None)
 
 
+def is_admin_user(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and (user.is_superuser or user.has_role(User.Role.ADMIN))
+    )
+
+
 class IsTreasurerOrAdmin(BasePermission):
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -65,8 +73,20 @@ class HasMemberProfile(BasePermission):
         user = request.user
         return bool(user and user.is_authenticated and get_member_profile(user) is not None)
 
+
+class HasMemberProfileOrAdmin(HasMemberProfile):
+    """Permite leitura administrativa sem transformar admin em membro."""
+
+    def has_permission(self, request, view) -> bool:
+        return super().has_permission(request, view) or is_admin_user(request.user)
+
 class IsScheduleCoordinatorOrAdmin(BasePermission):
     """Permite operar escalas a lideranca e coordenadores autenticados."""
+
+    message = (
+        "Apenas coordenadores de escala e a lideranca podem criar ou publicar escalas. "
+        "Fale com a secretaria se precisar de acesso."
+    )
 
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -132,7 +152,11 @@ def user_capabilities(user) -> list[str]:
         capabilities.add("manage_content")
     if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR):
         capabilities.add("manage_events")
-    if user.has_role(User.Role.COORDINATOR):
+    # Mesma regra de `IsScheduleCoordinatorOrAdmin`: quem o backend autoriza a
+    # operar escalas recebe a capacidade, para o cliente nao adivinhar.
+    if user.is_superuser or user.has_role(
+        User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR
+    ):
         capabilities.add("manage_schedules")
     if user.has_role(User.Role.CELL_LEADER):
         capabilities.add("manage_cells")

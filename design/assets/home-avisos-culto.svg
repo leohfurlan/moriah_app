@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="320" rx="28" fill="url(#bg)"/>
+  <circle cx="614" cy="72" r="78" fill="#818CF8" opacity=".35"/>
+  <circle cx="674" cy="238" r="120" fill="#A5B4FC" opacity=".18"/>
+  <path d="M520 252V138l66-52 66 52v114" fill="none" stroke="#fff" stroke-width="12" stroke-linejoin="round" opacity=".9"/>
+  <path d="M552 252v-54h68v54M586 86v-34M570 69h32" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".9"/>
+  <text x="46" y="70" fill="#C7D2FE" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="3">AVISO DA IGREJA</text>
+  <text x="46" y="134" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="42" font-weight="800">Culto de celebração</text>
+  <text x="46" y="178" fill="#E0E7FF" font-family="Inter,Arial,sans-serif" font-size="24">Domingo, 19h · Templo principal</text>
+  <rect x="46" y="218" width="144" height="48" rx="24" fill="#fff"/>
+  <text x="78" y="249" fill="#3730A3" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="800">Ver agenda</text>
+</svg>

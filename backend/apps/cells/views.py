@@ -4,13 +4,14 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
 from apps.accounts.permissions import IsCellLeaderOrAdmin
+from apps.accounts.pagination import OptionalPaginationMixin
 from apps.members.models import Member
 
 from .models import Cell
 from .serializers import CellMeetingSerializer, LeaderCellMemberSerializer
 
 
-class LeaderCellMembersView(ListAPIView):
+class LeaderCellMembersView(OptionalPaginationMixin, ListAPIView):
     """Membros da celula liderada pelo usuario autenticado."""
 
     serializer_class = LeaderCellMemberSerializer
@@ -21,7 +22,11 @@ class LeaderCellMembersView(ListAPIView):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Member.objects.none()
-        return Member.objects.filter(cell__leader=self.request.user).select_related("cell")
+        return Member.objects.filter(
+            church=self.request.user.church,
+            cell__leader=self.request.user,
+            cell__church=self.request.user.church,
+        ).select_related("cell")
 
 
 class CellMeetingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -29,7 +34,10 @@ class CellMeetingViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     permission_classes = [IsCellLeaderOrAdmin]
 
     def create(self, request, *args, **kwargs):
-        cell = Cell.objects.filter(leader=request.user).first()
+        cell = Cell.objects.filter(
+            church=request.user.church,
+            leader=request.user,
+        ).first()
         if not cell:
             raise ValidationError("O usuario logado nao lidera nenhuma celula.")
         serializer = self.get_serializer(

@@ -2,8 +2,10 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { DateTimeField, dateInputToIso, formatDateInput } from "@/components/DateTimeField";
+import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { api } from "@/services/api";
@@ -60,15 +62,18 @@ type ContributionCategory = (typeof contributionCategories)[number]["value"];
 
 export function NewContributionScreen() {
   const router = useRouter();
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const submittingRef = useRef(false);
   const [amount, setAmount] = useState("100.00");
   const [category, setCategory] = useState<ContributionCategory>("tithe");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => formatDateInput(new Date(), "date"));
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<UploadableFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Aviso de validacao fica colado no formulario, acima do botao de envio.
+  const [aviso, setAviso] = useState<{ tone: FeedbackTone; title: string; message: string } | null>(null);
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -112,18 +117,25 @@ export function NewContributionScreen() {
     // Sem esta trava a contribuicao e criada sem comprovante nenhum, e o
     // membro so descobre depois — foi exatamente assim que anexos "sumiram".
     if (!files.length) {
-      Alert.alert(
-        "Comprovante obrigatorio",
-        "Anexe ao menos uma imagem ou PDF do comprovante antes de enviar.",
-      );
+      setAviso({
+        tone: "warning",
+        title: "Comprovante obrigatorio",
+        message: "Anexe ao menos uma imagem ou PDF do comprovante antes de enviar.",
+      });
+      return;
+    }
+    const contributionDate = dateInputToIso(date, "date");
+    if (!contributionDate) {
+      setAviso({ tone: "warning", title: "Data inválida", message: "Use o formato dd/mm/aaaa." });
       return;
     }
     submittingRef.current = true;
     setSubmitting(true);
+    setAviso(null);
     const form = new FormData();
     form.append("amount", amount);
     form.append("category", category);
-    form.append("contribution_date", date);
+    form.append("contribution_date", contributionDate);
     form.append("notes", notes);
     try {
       for (const file of files) {
@@ -132,10 +144,14 @@ export function NewContributionScreen() {
       await api.postForm("/contributions/", form);
       setFiles([]);
       setNotes("");
+      toast("Sua contribuição foi registrada e já aparece no seu extrato.", {
+        tone: "success",
+        title: "Contribuição enviada",
+      });
       router.replace("/statement");
     } catch (error) {
       const { title, message } = describeError(error, "Erro ao enviar");
-      Alert.alert(title, message);
+      toast(message, { tone: "error", title });
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -168,7 +184,7 @@ export function NewContributionScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Data da contribuição</Text>
-      <Field value={date} onChangeText={setDate} placeholder="AAAA-MM-DD" />
+      <DateTimeField accessibilityLabel="Data da contribuição" mode="date" value={date} onChangeText={setDate} placeholder="dd/mm/aaaa" />
 
       <Text style={styles.sectionTitle}>Observações (opcional)</Text>
       <Field value={notes} onChangeText={setNotes} multiline numberOfLines={3} placeholder="Ex.: campanha de missões" />
@@ -208,8 +224,11 @@ export function NewContributionScreen() {
         </View>
       </Card>
 
+      {aviso ? (
+        <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
+      ) : null}
       <Button disabled={submitting} loading={submitting} onPress={submit}>
-        {submitting ? "Enviando..." : "Enviar contribuicao"}
+        {submitting ? "Enviando…" : "Enviar contribuição"}
       </Button>
       </View>
     </Screen>

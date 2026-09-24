@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { PaginationControls } from "@/components/PaginationControls";
+import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { useAuth } from "@/hooks/useAuth";
+import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
-import { describeError, UserFacingError } from "@/services/errors";
+import { ApiError, describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAssignment } from "@/types/api";
 import { colors, formatDate, spacing, statusLabel } from "@/theme";
 
@@ -18,28 +21,213 @@ function statusTone(status: ScheduleAssignment["status"]): "success" | "warning"
 }
 
 
+type ScheduleView = "calendar" | "list" | "ministry";
+type FilterOption = { value: string; label: string };
+type ScheduleListRow = {
+  scheduleId: number;
+  scheduleName: string;
+  eventName: string;
+  eventStartAt: string;
+  ministryName: string;
+  statuses: ScheduleAssignment["status"][];
+  participationCount: number;
+  detailAssignmentId: number;
+};
+
+function FilterMenu({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value)?.label || label;
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.scheduleFilter, pressed && styles.pressed]}
+      >
+        <Text style={styles.scheduleFilterText}>{selected}</Text>
+        <Text style={styles.filterChevron}>⌄</Text>
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.filterOverlay} onPress={() => setOpen(false)}>
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterMenuTitle}>{label}</Text>
+            <ScrollView>
+              {options.map((option) => (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: option.value === value }}
+                  onPress={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  style={({ pressed }) => [styles.filterOption, option.value === value && styles.filterOptionActive, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.filterOptionText, option.value === value && styles.filterOptionTextActive]}>{option.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+function ministryAllowsRepertoire(name: string): boolean {
+  const normalized = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+  return ["louvor", "danca", "som", "projecao", "tecnica"].some((term) => normalized.includes(term));
+}
+
 function DesktopSchedules({
   items,
   canCreate,
+  canManage,
   error,
   onRetry,
   router,
 }: {
   items: ScheduleAssignment[];
   canCreate: boolean;
+  canManage: boolean;
   error: UserFacingError | null;
   onRetry: () => void;
   router: ReturnType<typeof useRouter>;
 }) {
-  const groups = Array.from(new Set(items.map((item) => item.ministry_name || "Sem ministério")));
+  const [view, setView] = useState<ScheduleView>("ministry");
+  const [eventFilter, setEventFilter] = useState("all");
+  const [ministryFilter, setMinistryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const eventOptions = [
+    { value: "all", label: "Evento: todos" },
+    ...Array.from(new Set(items.map((item) => item.event_name))).sort().map((name) => ({ value: name, label: `Evento: ${name}` })),
+  ];
+  const ministryOptions = [
+    { value: "all", label: "Todos os ministérios" },
+    ...Array.from(new Set(items.map((item) => item.ministry_name || "Sem ministério"))).sort().map((name) => ({ value: name, label: name })),
+  ];
+  const statusOptions = [
+    { value: "all", label: "Status: todos" },
+    ...Array.from(new Set(items.map((item) => item.status))).sort().map((status) => ({ value: status, label: `Status: ${statusLabel(status as ScheduleAssignment["status"])}` })),
+  ];
+  const scopedItems = items.filter((item) =>
+    (eventFilter === "all" || item.event_name === eventFilter)
+      && (ministryFilter === "all" || (item.ministry_name || "Sem ministério") === ministryFilter),
+  );
+  const filteredItems = scopedItems.filter((item) => statusFilter === "all" || item.status === statusFilter);
+  const scheduleRows = Array.from(scopedItems.reduce((rows, item) => {
+    const ministryName = item.ministry_name || "Sem ministério";
+    const current = rows.get(item.schedule);
+    if (current) {
+      current.statuses = Array.from(new Set([...current.statuses, item.status]));
+      current.participationCount += 1;
+      return rows;
+    }
+    rows.set(item.schedule, {
+      scheduleId: item.schedule,
+      scheduleName: item.schedule_name,
+      eventName: item.event_name,
+      eventStartAt: item.event_start_at,
+      ministryName,
+      statuses: [item.status],
+      participationCount: 1,
+      detailAssignmentId: item.id,
+    });
+    return rows;
+  }, new Map<number, ScheduleListRow>()).values()).filter((row) =>
+    statusFilter === "all" || row.statuses.includes(statusFilter as ScheduleAssignment["status"]),
+  );
+  const groups = Array.from(new Set(filteredItems.map((item) =>
+    view === "calendar" ? new Date(item.event_start_at).toLocaleDateString("pt-BR") : item.ministry_name || "Sem ministério",
+  )));
+  const renderRow = (item: ScheduleAssignment) => (
+    <View key={item.id} style={styles.scheduleBoardRow}>
+      <View style={styles.scheduleBoardCopy}>
+        <Text style={styles.scheduleBoardTitle}>{item.event_name}</Text>
+        <Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.schedule_name} · {item.role_name}</Text>
+      </View>
+      <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+      <Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button>
+    </View>
+  );
+  const renderScheduleRow = (row: ScheduleListRow) => {
+    const status = row.statuses.includes("conflict")
+      ? "conflict"
+      : row.statuses.includes("pending")
+        ? "pending"
+        : row.statuses[0];
+    return (
+      <View key={row.scheduleId} style={styles.scheduleBoardRow}>
+        <View style={styles.scheduleBoardCopy}>
+          <Text style={styles.scheduleBoardTitle}>{row.scheduleName}</Text>
+          <Text style={styles.meta}>{row.eventName} · {formatDate(row.eventStartAt, true)} · {row.ministryName}</Text>
+          <Text style={styles.meta}>{row.participationCount} {row.participationCount === 1 ? "participação" : "participações"}</Text>
+        </View>
+        <Badge label={statusLabel(status)} tone={statusTone(status)} />
+        <Button
+          size="compact"
+          variant="ghost"
+          onPress={() => router.push(canManage
+            ? { pathname: "/schedule-admin/[id]", params: { id: row.scheduleId } }
+            : { pathname: "/schedule/[id]", params: { id: row.detailAssignmentId } })}
+        >Detalhes</Button>
+      </View>
+    );
+  };
   return (
     <View style={styles.desktopSchedules}>
-      <View style={styles.scheduleViews}><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Calendário</Text></View><View style={styles.scheduleViewButton}><Text style={styles.scheduleViewText}>Lista</Text></View><View style={styles.scheduleViewActive}><Text style={styles.scheduleViewActiveText}>Por ministério</Text></View></View>
-      <View style={styles.scheduleFilters}><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Evento: todos</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Todos os ministérios</Text><Text style={styles.filterChevron}>⌄</Text></View><View style={styles.scheduleFilter}><Text style={styles.scheduleFilterText}>Status: todos</Text><Text style={styles.filterChevron}>⌄</Text></View></View>
+      <View style={styles.scheduleViews}>
+        {(["calendar", "list", "ministry"] as ScheduleView[]).map((item) => {
+          const active = view === item;
+          const label = item === "calendar" ? "Calendário" : item === "list" ? "Lista" : "Por ministério";
+          return (
+            <Pressable
+              key={item}
+              accessibilityRole="button"
+              accessibilityLabel={`Visualização ${label}`}
+              accessibilityState={{ selected: active }}
+              onPress={() => setView(item)}
+              style={({ pressed }) => [active ? styles.scheduleViewActive : styles.scheduleViewButton, pressed && styles.pressed]}
+            >
+              <Text style={active ? styles.scheduleViewActiveText : styles.scheduleViewText}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.scheduleFilters}>
+        <FilterMenu label="Evento" options={eventOptions} value={eventFilter} onChange={setEventFilter} />
+        <FilterMenu label="Ministério" options={ministryOptions} value={ministryFilter} onChange={setMinistryFilter} />
+        <FilterMenu label="Status" options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+      </View>
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={onRetry} /> : null}
-      {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento e distribua as funções pelo fluxo do MVP.</Text><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
+      {canCreate ? <View style={styles.managementBanner}><Text style={styles.managementBannerTitle}>Gestão de escalas</Text><Text style={styles.managementBannerText}>Crie o evento, monte a equipe e acompanhe as respostas.</Text><Button size="compact" onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button><Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Criar escala</Button></View> : null}
       <View style={styles.scheduleBoard}>
-        {groups.length ? groups.map((group) => <View key={group} style={styles.scheduleGroup}><View style={styles.scheduleGroupHeader}><Text style={styles.scheduleGroupTitle}>{group}</Text><Text style={styles.scheduleGroupCount}>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).length} participações</Text></View>{items.filter((item) => (item.ministry_name || "Sem ministério") === group).map((item) => <View key={item.id} style={styles.scheduleBoardRow}><View style={styles.scheduleBoardCopy}><Text style={styles.scheduleBoardTitle}>{item.event_name}</Text><Text style={styles.meta}>{formatDate(item.event_start_at, true)} · {item.role_name}</Text></View><Badge label={statusLabel(item.status)} tone={statusTone(item.status)} /><Button size="compact" variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>Detalhes</Button></View>)}</View>) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala cadastrada</Text><Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá por ministério aqui.</Text></View>}
+        {(view === "list" ? scheduleRows.length > 0 : groups.length) ? view === "list" ? scheduleRows.map(renderScheduleRow) : groups.map((group) => {
+          const groupItems = view === "calendar"
+            ? filteredItems.filter((item) => new Date(item.event_start_at).toLocaleDateString("pt-BR") === group)
+            : filteredItems.filter((item) => (item.ministry_name || "Sem ministério") === group);
+          return (
+            <View key={group} style={styles.scheduleGroup}>
+              <View style={styles.scheduleGroupHeader}>
+                <Text style={styles.scheduleGroupTitle}>{view === "calendar" ? group : group}</Text>
+                <Text style={styles.scheduleGroupCount}>{groupItems.length} participações</Text>
+              </View>
+              {groupItems.map(renderRow)}
+            </View>
+          );
+        }) : <View style={styles.scheduleEmpty}><Text style={styles.emptyTitle}>Nenhuma escala encontrada</Text><Text style={styles.emptyText}>Ajuste os filtros ou aguarde uma escala publicada.</Text></View>}
       </View>
     </View>
   );
@@ -55,37 +243,54 @@ export function SchedulesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
+  const actingRef = useRef(false);
   const [error, setError] = useState<UserFacingError | null>(null);
-  const canCreate = Boolean(me?.can_access_management);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 25, count: 0, hasNext: false, hasPrevious: false });
+  const isAdmin = Boolean(me?.capabilities.includes("manage_all"));
+  // Atalho para a gestao existe so para quem realmente opera escalas
+  // (coordenacao/lideranca). `can_access_management` e mais amplo que isso.
+  const podeGerenciar = podeGerenciarEscalas(me?.capabilities || []);
+  const canCreate = podeGerenciar;
+  const toast = useToast();
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (targetPage = 1) => {
     setError(null);
-    if (!me?.member_id) {
+    if (!me?.member_id && !isAdmin) {
       setLoading(false);
       return;
     }
     try {
-      setItems(await api.get<ScheduleAssignment[]>("/me/schedules/"));
+      const result = await api.getPage<ScheduleAssignment>("/me/schedules/", targetPage);
+      setItems(result.items);
+      setPageInfo(result);
     } catch (err) {
-      setError(describeError(err, "Nao foi possivel carregar suas escalas"));
+      setError(describeError(err, "Não foi possível carregar suas escalas"));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [me?.member_id]);
+  }, [me?.member_id, isAdmin]);
 
   async function act(id: number, action: "confirm" | "decline" | "unavailable") {
+    if (actingId !== null || actingRef.current) return;
+    actingRef.current = true;
     setActingId(id);
     try {
       await api.post("/me/schedules/" + id + "/action/", {
         action,
         justification: justifications[id] || "",
       });
-      await load();
+      await load(pageInfo.page);
+      toast(action === "confirm" ? "Presença confirmada na escala." : "A coordenação foi avisada da sua resposta.", {
+        tone: "success",
+        title: action === "confirm" ? "Escala confirmada" : "Resposta registrada",
+      });
     } catch (err) {
-      const result = describeError(err, action === "confirm" ? "Nao foi possivel confirmar" : "Nao foi possivel recusar");
-      Alert.alert(result.title, result.message);
+      if (err instanceof ApiError && err.status === 409) await load();
+      const result = describeError(err, action === "confirm" ? "Não foi possível confirmar" : "Não foi possível recusar");
+      toast(result.message, { tone: "error", title: result.title });
     } finally {
+      actingRef.current = false;
       setActingId(null);
     }
   }
@@ -102,18 +307,23 @@ export function SchedulesScreen() {
 
   return (
     <Screen
-      title="Minhas escalas"
-      headerSubtitle="Responda e acompanhe suas participações"
+      title={isAdmin ? "Escalas da igreja" : "Minhas escalas"}
+      headerSubtitle={isAdmin ? "Visualize as escalas e equipes da igreja" : "Responda e acompanhe suas participações"}
       refreshing={refreshing}
       onRefresh={onRefresh}
       headerAccessory={canCreate ? <Button size="compact" onPress={() => router.push("/schedule-create" as never)}>+ Adicionar escala</Button> : null}
     >
-      {desktop ? <DesktopSchedules items={items} canCreate={canCreate} error={error} onRetry={load} router={router} /> : <>
+      {desktop ? <DesktopSchedules items={items} canCreate={canCreate} canManage={podeGerenciar} error={error} onRetry={load} router={router} /> : <>
       {canCreate ? (
         <Card>
           <Text style={styles.managementTitle}>Gestão de escalas</Text>
-          <Text style={styles.meta}>Crie um evento da igreja e publique a programação diretamente no MVP.</Text>
-          <Button variant="ghost" onPress={() => router.push("/schedule-create" as never)}>Adicionar escala</Button>
+          <Text style={styles.meta}>Monte a equipe, publique e acompanhe as respostas.</Text>
+          <View style={styles.buttonRow}>
+            {podeGerenciar ? (
+              <View style={styles.buttonFlex}><Button onPress={() => router.push("/schedule-admin" as never)}>Gerenciar escalas</Button></View>
+            ) : null}
+            <View style={styles.buttonFlex}><Button variant="ghost" onPress={() => router.push("/schedule-create" as never)}>Adicionar escala</Button></View>
+          </View>
         </Card>
       ) : null}
 
@@ -124,17 +334,17 @@ export function SchedulesScreen() {
           <View style={styles.cardHeader}>
             <View style={styles.cardHeaderCol}>
               <Text style={styles.eventName}>{item.event_name}</Text>
-              <Text style={styles.meta}>{item.ministry_name} / {item.role_name}</Text>
+              <Text style={styles.meta}>{item.schedule_name} · {item.ministry_name} / {item.role_name}</Text>
               <Text style={styles.meta}>{formatDate(item.event_start_at, true)}</Text>
             </View>
             <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
           </View>
 
           <Button variant="ghost" onPress={() => router.push({ pathname: "/schedule/[id]", params: { id: item.id } })}>
-            Ver equipe e repertório
+            {ministryAllowsRepertoire(item.ministry_name) ? "Ver equipe e repertório" : "Ver equipe"}
           </Button>
 
-          {item.status === "pending" ? (
+          {item.status !== "replacement_needed" && !isAdmin ? (
             <View style={styles.respondBox}>
               <Field
                 value={justifications[item.id] || ""}
@@ -142,7 +352,7 @@ export function SchedulesScreen() {
                 placeholder="Justificativa (recusa ou indisponibilidade)"
               />
               <View style={styles.buttonRow}>
-                <View style={styles.buttonFlex}><Button disabled={actingId !== null} loading={actingId === item.id} onPress={() => act(item.id, "confirm")}>Confirmar</Button></View>
+                <View style={styles.buttonFlex}><Button disabled={actingId !== null} loading={actingId === item.id} onPress={() => act(item.id, "confirm")}>{item.status === "confirmed" ? "Manter confirmação" : "Confirmar"}</Button></View>
                 <View style={styles.buttonFlex}><Button disabled={actingId !== null} variant="secondary" onPress={() => act(item.id, "decline")}>Recusar</Button></View>
               </View>
               <Button disabled={actingId !== null} variant="ghost" onPress={() => act(item.id, "unavailable")}>Marcar indisponível</Button>
@@ -151,13 +361,14 @@ export function SchedulesScreen() {
         </Card>
       ))}
 
-      {!loading && !error && me?.member_id && !items.length ? (
+      {!loading && !error && (me?.member_id || isAdmin) && !items.length ? (
         <View style={styles.empty}>
           <Text style={styles.emptyGlyph}>♪</Text>
           <Text style={styles.emptyTitle}>Nenhuma escala no momento</Text>
-          <Text style={styles.emptyText}>Quando a equipe for escalada para um culto, você verá aqui.</Text>
+          <Text style={styles.emptyText}>Quando uma escala for publicada, ela aparecerá aqui.</Text>
         </View>
       ) : null}
+      <PaginationControls {...pageInfo} disabled={loading || actingId !== null} onPageChange={(nextPage) => { void load(nextPage); }} />
       </>}
     </Screen>
   );
@@ -187,6 +398,14 @@ const styles = StyleSheet.create({
   scheduleFilter: { height: 40, minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8 },
   filterChevron: { color: colors.inkMuted, fontSize: 16 },
   scheduleFilterText: { color: colors.inkBody, fontSize: 11 },
+  pressed: { opacity: 0.82 },
+  filterOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg, backgroundColor: "rgba(15, 23, 42, 0.42)" },
+  filterMenu: { width: "100%", maxWidth: 420, maxHeight: "75%", padding: spacing.md, gap: spacing.sm, borderRadius: 12, backgroundColor: colors.surface },
+  filterMenuTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", paddingHorizontal: spacing.sm },
+  filterOption: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.sm, borderRadius: 8 },
+  filterOptionActive: { backgroundColor: colors.surfaceSelected },
+  filterOptionText: { color: colors.inkBody, fontSize: 13 },
+  filterOptionTextActive: { color: colors.accent, fontWeight: "800" },
   managementBanner: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 12, padding: 16, backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#C7D2FE", borderRadius: 10 },
   managementBannerTitle: { color: colors.ink, fontSize: 13, fontWeight: "800" },
   managementBannerText: { flex: 1, color: colors.inkMuted, fontSize: 11 },
