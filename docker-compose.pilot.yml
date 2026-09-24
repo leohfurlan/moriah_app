@@ -13,7 +13,7 @@
 #   docker compose -f docker-compose.pilot.yml --env-file .env.pilot run --rm migrate
 #   docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d backend
 #
-# Rollback: subir a tag anterior da imagem (ver docs/runbook-deploy.md).
+# Rollback: subir a tag anterior da imagem (ver docs/runbook-deploy-piloto.md).
 
 x-backend-common: &backend-common
   build:
