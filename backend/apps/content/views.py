@@ -12,7 +12,14 @@ from .permissions import CanAccessContent, can_manage_content
 from .serializers import ContentSerializer
 
 
-class ContentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class ContentViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = ContentSerializer
     permission_classes = [IsAuthenticated, CanAccessContent]
     queryset = Content.objects.none()
@@ -36,6 +43,20 @@ class ContentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Somente a liderança pode editar conteúdo.")
         serializer.save()
+
+    def perform_destroy(self, instance):
+        if not can_manage_content(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Somente a liderança pode excluir conteúdo.")
+        AuditLog.objects.create(
+            church=instance.church,
+            user=self.request.user,
+            action="content_deleted",
+            model_name="Content",
+            object_id=str(instance.id),
+            payload={"title": instance.title, "status": instance.status},
+        )
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     @transaction.atomic

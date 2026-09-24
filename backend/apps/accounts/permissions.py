@@ -92,6 +92,27 @@ class IsEventManager(BasePermission):
         )
 
 
+class IsMemberDirectoryUser(BasePermission):
+    """Permite consultar a membresia administrativa da propria igreja."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(
+                    User.Role.ADMIN,
+                    User.Role.PASTOR,
+                    User.Role.SECRETARY,
+                    User.Role.TREASURER,
+                    User.Role.COORDINATOR,
+                )
+            )
+        )
+
+
 def user_capabilities(user) -> list[str]:
     """Expõe capacidades de produto sem transformar superuser em membro."""
     capabilities: set[str] = set()

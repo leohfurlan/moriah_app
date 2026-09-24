@@ -380,7 +380,7 @@ export function HomeScreen({
         <Text style={styles.cardTitle}>Última palavra</Text>
         <Text style={styles.wordTitle}>O Deus que vê</Text>
         <Text style={styles.mutedSmall}>Pr. André · “Ele conhece cada detalhe.”</Text>
-        <Pressable accessibilityRole="button" onPress={() => onNavigate("statement")} style={styles.readButton}><Text style={styles.linkText}>Ler palavra</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => onNavigate("content")} style={styles.readButton}><Text style={styles.linkText}>Ler palavra</Text></Pressable>
       </Card>
 
       <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text><Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}><Text style={styles.logoutText}>Sair</Text></Pressable></View>

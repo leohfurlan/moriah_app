@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "expo-router";
 
 import { useAuth } from "@/hooks/useAuth";
 
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/events", "/notifications", "/finance", "/content"];
+const MEMBER_PATHS = ["/profile", "/members", "/visitors", "/statement", "/contribution", "/schedules", "/ministries", "/setlists", "/repertoire", "/bands", "/bible-school", "/classes", "/agenda", "/events", "/notifications", "/finance", "/finance-management", "/content"];
 
 function isMemberPath(pathname: string): boolean {
   return MEMBER_PATHS.includes(pathname) || pathname.startsWith("/schedule/") || pathname.startsWith("/song/") || pathname.startsWith("/notification/") || pathname === "/schedule-create";

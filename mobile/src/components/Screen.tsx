@@ -53,8 +53,8 @@ const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
     label: "Home",
     items: [
       { label: "Início", route: "home", Icon: LayoutDashboard },
-      { label: "Membros", route: "profile", Icon: Users },
-      { label: "Visitantes", route: "profile", Icon: UserRound },
+      { label: "Membros", route: "members", Icon: Users },
+      { label: "Visitantes", route: "visitors", Icon: UserRound },
     ],
   },
   {
@@ -69,30 +69,30 @@ const sidebarGroups: Array<{ label: string; items: SidebarItem[] }> = [
     items: [
       { label: "Visão geral", route: "finance", Icon: WalletCards },
       { label: "Contribuições", route: "statement", Icon: HandCoins },
-      { label: "Gestão financeira", route: "finance", Icon: ClipboardList },
+      { label: "Gestão financeira", route: "finance-management", Icon: ClipboardList },
     ],
   },
   {
     label: "Ministérios",
     items: [
-      { label: "Ministérios", route: "schedules", Icon: Users },
+      { label: "Ministérios", route: "ministries", Icon: Users },
       { label: "Escalas", route: "schedules", Icon: CalendarDays },
     ],
   },
   {
     label: "Louvor",
     items: [
-      { label: "Setlists", route: "schedules", Icon: ClipboardList },
-      { label: "Repertório", route: "schedules", Icon: BookOpen },
-      { label: "Bandas", route: "schedules", Icon: HandCoins },
+      { label: "Setlists", route: "setlists", Icon: ClipboardList },
+      { label: "Repertório", route: "repertoire", Icon: BookOpen },
+      { label: "Bandas", route: "bands", Icon: HandCoins },
     ],
   },
   { label: "Conteúdo", items: [{ label: "Palavras", route: "content", Icon: BookOpen }] },
   {
     label: "Ensino",
     items: [
-      { label: "Escola Bíblica", route: "agenda", Icon: BookOpen },
-      { label: "Turmas", route: "agenda", Icon: Users },
+      { label: "Escola Bíblica", route: "bible-school", Icon: BookOpen },
+      { label: "Turmas", route: "classes", Icon: Users },
     ],
   },
 ];
@@ -110,9 +110,11 @@ function isActiveRoute(route: string, activeRoute: string) {
   if (route === "agenda") return activeRoute === "agenda";
   if (route === "events") return activeRoute === "events";
   if (route === "finance") return activeRoute === "finance";
+  if (route === "finance-management") return activeRoute === "finance-management";
   if (route === "schedules") return ["schedules", "schedule", "song", "schedule-create"].includes(activeRoute);
   if (route === "statement") return ["statement", "contribution"].includes(activeRoute);
   if (route === "profile") return activeRoute === "profile";
+  if (["members", "visitors", "ministries", "setlists", "repertoire", "bands", "bible-school", "classes"].includes(route)) return activeRoute === route;
   return false;
 }
 
@@ -123,7 +125,7 @@ function Sidebar({ pathname, onNavigate }: { pathname: string; onNavigate: (rout
   const visibleGroups = sidebarGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => item.route !== "finance" || Boolean(me?.capabilities.includes("manage_finance"))),
+      items: group.items.filter((item) => !["finance", "finance-management"].includes(item.route) || Boolean(me?.capabilities.includes("manage_finance"))),
     }))
     .filter((group) => group.items.length);
   return (

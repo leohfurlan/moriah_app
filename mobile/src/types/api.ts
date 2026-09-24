@@ -58,7 +58,7 @@ export interface ScheduleAssignmentDetail extends ScheduleAssignment {
   team: TeamMember[]; repertoire: ScheduleItem[];
 }
 export interface ChurchEvent { id: number; name: string; event_type: string; event_type_display: string; start_at: string; end_at?: string | null; location: string; description: string; }
-export interface ChurchContent { id: number; title: string; summary: string; body: string; status: string; published_at: string | null; }
+export interface ChurchContent { id: number; title: string; summary: string; body: string; status: string; author_name?: string; can_manage?: boolean; published_at: string | null; created_at?: string; }
 export interface EventAnnouncement {
   id: number; event: number; event_name: string; event_start_at: string; event_location: string;
   title: string; image_url: string; position: number; active: boolean; created_at: string; updated_at: string;

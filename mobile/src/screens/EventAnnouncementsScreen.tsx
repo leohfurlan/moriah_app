@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { Button, Card, Field } from "@/components/Form";
 import { ErrorNotice } from "@/components/ErrorNotice";
@@ -152,10 +152,10 @@ export function EventAnnouncementsScreen() {
           <Text style={styles.sectionTitle}>{editingId ? "Editar aviso" : "Novo aviso"}</Text>
           <Text style={styles.help}>Use um folder em JPG ou PNG. Dimensão recomendada: 1200 × 675 px (proporção 16:9). Tamanho máximo: 8 MB.</Text>
           <Text style={styles.fieldLabel}>Evento de destino</Text>
-          <View style={styles.optionGroup}>
+          <ScrollView style={styles.optionGroup} contentContainerStyle={styles.optionGroupContent} nestedScrollEnabled showsVerticalScrollIndicator>
             {events.slice(0, 20).map((event) => <Pressable key={event.id} accessibilityRole="button" accessibilityState={{ selected: eventId === event.id }} onPress={() => setEventId(event.id)} style={[styles.option, eventId === event.id && styles.optionSelected]}><Text style={[styles.optionText, eventId === event.id && styles.optionTextSelected]}>{event.name}</Text><Text style={[styles.optionMeta, eventId === event.id && styles.optionTextSelected]}>{formatDate(event.start_at, true)}</Text></Pressable>)}
             {!events.length ? <Text style={styles.meta}>Nenhum evento futuro disponível para vincular.</Text> : null}
-          </View>
+          </ScrollView>
           <Text style={styles.fieldLabel}>Título curto (opcional)</Text>
           <Field value={title} onChangeText={setTitle} placeholder="Ex.: Conferência Moriah 2026" maxLength={255} editable={!saving} />
           <Text style={styles.fieldLabel}>Posição no carrossel</Text>
@@ -186,7 +186,8 @@ const styles = StyleSheet.create({
   position: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
   itemTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
   itemActions: { flexDirection: "row", gap: 8, marginTop: 6 },
-  optionGroup: { gap: 6, maxHeight: 190 },
+  optionGroup: { height: 220, flexGrow: 0, flexShrink: 1 },
+  optionGroupContent: { gap: 6, paddingRight: 2 },
   option: { padding: 10, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, backgroundColor: colors.surface },
   optionSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceSelected },
   optionText: { color: colors.inkBody, fontSize: 12, fontWeight: "700" },

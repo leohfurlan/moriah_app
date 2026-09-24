@@ -11,7 +11,7 @@ from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.finance.views import ContributionViewSet, FinancialEntryViewSet, MyStatementView
 from apps.content.views import ContentViewSet
-from apps.members.views import MyMemberUpdateRequestViewSet, MyMemberView
+from apps.members.views import MemberDirectoryViewSet, MyMemberUpdateRequestViewSet, MyMemberView
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
     MyScheduleAssignmentsView,
@@ -27,6 +27,7 @@ router = DefaultRouter()
 router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
 router.register("content", ContentViewSet, basename="content")
+router.register("members", MemberDirectoryViewSet, basename="member-directory")
 router.register("event-announcements", EventAnnouncementViewSet, basename="event-announcement")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")

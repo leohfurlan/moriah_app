@@ -28,7 +28,7 @@ function monthKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function FinanceManagementScreen() {
+export function FinanceManagementScreen({ overview = false }: { overview?: boolean }) {
   const [items, setItems] = useState<FinancialEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -122,7 +122,7 @@ export function FinanceManagementScreen() {
   }
 
   return (
-    <Screen title="Visão geral" headerSubtitle="Dashboard consolidado de entradas e saídas" headerAccessory={<Button size="compact" onPress={() => setShowForm((value) => !value)}>+ Nova saída</Button>}>
+    <Screen title={overview ? "Visão geral" : "Gestão financeira"} headerSubtitle={overview ? "Dashboard consolidado de entradas e saídas" : "Lançamentos, saídas e próximos vencimentos"} headerAccessory={!overview ? <Button size="compact" onPress={() => setShowForm((value) => !value)}>+ Nova saída</Button> : undefined}>
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
       {actionError ? <ErrorNotice title={actionError.title} message={actionError.message} /> : null}
 
@@ -140,7 +140,7 @@ export function FinanceManagementScreen() {
         </View>
       </Card>
 
-      {showForm ? <Card>
+      {!overview && showForm ? <Card>
         <Text style={styles.sectionTitle}>Agendar nova saída</Text>
         <Text style={styles.meta}>Entradas são criadas automaticamente quando uma contribuição é aceita.</Text>
         <View style={styles.categoryRow}>{expenseCategories.map((option) => <Button key={option.value} size="compact" variant={category === option.value ? "primary" : "secondary"} onPress={() => setCategory(option.value)}>{option.label}</Button>)}</View>
@@ -150,7 +150,7 @@ export function FinanceManagementScreen() {
         <Button loading={saving} disabled={!description.trim() || !amount.trim() || !dueDate.trim()} onPress={() => void createExpense()}>Salvar saída</Button>
       </Card> : null}
 
-      <View style={styles.columns}>
+      {!overview ? <View style={styles.columns}>
         <Card style={styles.columnCard}>
           <Text style={styles.sectionTitle}>Entradas por categoria</Text>
           <Text style={styles.meta}>Aceites de contribuições lançados no saldo</Text>
@@ -161,7 +161,7 @@ export function FinanceManagementScreen() {
           <Text style={styles.meta}>Detalhamento e histórico das despesas</Text>
           {loading ? <View style={styles.loading}><ActivityIndicator color={colors.accent} /><Text style={styles.meta}>Carregando saídas…</Text></View> : expenses.length ? expenses.map((item) => <View key={item.id} style={styles.expenseRow}><View style={styles.copy}><Text style={styles.title}>{item.description}</Text><Text style={styles.meta}>{item.category_display} · vence {formatDate(item.due_date)}</Text>{item.notes ? <Text style={styles.meta}>{item.notes}</Text> : null}</View><View style={styles.amount}><Text style={styles.amountText}>{formatBRL(item.amount)}</Text><Badge label={item.status_display || statusLabel(item.status)} tone={tone(item.status)} />{item.status === "scheduled" ? <Button size="compact" variant="secondary" onPress={() => void markPaid(item)}>Marcar como pago</Button> : null}</View></View>) : <Text style={styles.emptyText}>Nenhuma saída cadastrada ainda.</Text>}
         </Card>
-      </View>
+      </View> : null}
     </Screen>
   );
 }
