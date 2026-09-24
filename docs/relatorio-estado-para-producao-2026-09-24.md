@@ -61,9 +61,11 @@ substitui a leitura de "onde estamos".
   `DEBUG`, `ALLOWED_HOSTS`, HSTS/cookies secure/SSL redirect quando
   `DEBUG=false`, JWT 60 min / 7 dias, storage S3/R2 opcional para comprovantes
   (`USE_S3_STORAGE`), `scripts/backup_postgres.sh` com retenção.
-- **Lacuna de runtime:** `backend/requirements.txt` não tem `gunicorn`/`uvicorn`
-  e o `Dockerfile` sobe `python manage.py runserver`. Não há `whitenoise` —
-  estáticos dependem de proxy (Caddy/Nginx) em produção.
+- **Runtime de produção resolvido nesta data** (§11): `requirements.txt` com
+  `gunicorn` 23 e `whitenoise` 6.8, `backend/Dockerfile.prod` (collectstatic na
+  build, usuário sem privilégio, `CMD` gunicorn), `/health/` e `/health/ready/`,
+  `config/checks.py` para `check --deploy`, `docker-compose.pilot.yml` sem
+  Postgres local e sem Expo.
 
 ### 2.3 App (Expo/React Native web)
 
@@ -261,15 +263,23 @@ provisionamento**).
 
 ### 7.1 Bloqueadores técnicos (não dependem de decisão de produto)
 
-1. **Servidor de aplicação:** adicionar `gunicorn` (ou `uvicorn`) e trocar o
-   `CMD` do `Dockerfile`; `runserver` não vai para produção.
-2. **Estáticos e mídia:** servir `/static/` e `/media/` pelo proxy (Caddy/Nginx)
-   ou adicionar `whitenoise`; comprovantes já têm seam S3/R2 (`USE_S3_STORAGE`).
-3. **Backup/restauração:** `scripts/backup_postgres.sh` existe, mas nunca foi
-   exercitado em restauração — a Fase 5 do plano Oracle exige o ensaio.
-4. **Segredos:** `DJANGO_SECRET_KEY`, senha do Postgres, chaves S3 e domínios em
-   `ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` precisam ser
-   valores de produção, não os do `.env` de dev.
+1. ~~**Servidor de aplicação:** adicionar `gunicorn` (ou `uvicorn`) e trocar o
+   `CMD` do `Dockerfile`~~ — **feito** (§11.1): `backend/Dockerfile.prod` com
+   `CMD` gunicorn; o `Dockerfile` de desenvolvimento continua com `runserver`
+   para não mexer no ciclo local.
+2. ~~**Estáticos e mídia**~~ — **feito** (§11.2): whitenoise serve `/static/`
+   (verificado: `admin/css/base.css` responde 200; 22 KB) e comprovantes seguem
+   no seam S3/R2 (`USE_S3_STORAGE`).
+3. ~~**Backup/restauração**~~ — **feito** (§11.4): `scripts/backup_postgres.sh` e
+   `scripts/restore_postgres.sh` exercitados de ponta a ponta no Postgres de dev
+   (dump de 176 KB, restauração em `moriah_restore_test`, contagens conferidas
+   origem × destino) e agora com TLS obrigatório em host remoto + alerta de falha.
+4. **Segredos:** o `.env.example` continua sem segredo real e agora lista
+   `POSTGRES_SSLMODE`/`POSTGRES_CONN_MAX_AGE`/`BACKUP_ALERT_WEBHOOK`; o
+   `check --deploy` passa a **reprovar** (`config.E001`/`E002`/`E003`) quando o
+   ambiente ainda tem segredo de exemplo, host curinga ou banco remoto sem TLS —
+   o que falta é preencher o `.env.pilot` com os valores reais do piloto
+   (Fase 3 do plano Oracle, fora desta etapa).
 5. **Aceite antes de publicar:** rodar `node tools/qa/run.mjs todas` com o app e
    a API no ar e anexar o relatório; hoje o último aceite registrado é de 16/09
    (fases 1 e 2) e 17/09 (fase 5), anterior a este merge.
@@ -352,3 +362,135 @@ material de estudo está em `~/nfse_estudo` e o roteiro em
 certificado digital e integração com prefeitura/SEFAZ — não é uma app Django
 como as demais, e o desenho precisa nascer com idempotência e conciliação
 (o livro `FinancialEntry` já é o lugar natural para o vínculo).
+
+---
+
+## 11. Adaptação do runtime para o piloto (etapa 01 do plano Oracle)
+
+Escrita **depois** da auditoria inicial, na mesma data, para registrar o que
+mudou no repositório. Corresponde à Fase 1 do
+`docs/architecture/plano-arquitetura-oracle-neon-piloto.md` ("adaptação local do
+runtime") — validada localmente, **sem** provisionar nada e **sem** tocar no
+banco de dev além de um dump/restauração em banco descartável.
+
+### 11.1 Servidor de aplicação
+
+- `gunicorn==23.0.0` e `whitenoise==6.8.2` em `backend/requirements.txt`.
+- `backend/Dockerfile.prod` (novo): imagem enxuta (só `curl`, para o healthcheck),
+  `collectstatic` na build, usuário `uid 10001`, `CMD` com `exec gunicorn`
+  (gunicorn como PID 1, SIGTERM = parada graciosa) e
+  `GUNICORN_WORKERS`/`THREADS`/`TIMEOUT`/`PORT` por variável de ambiente.
+- O `backend/Dockerfile` de **desenvolvimento continua igual** (`runserver`), para
+  não mexer no ciclo local.
+- `MIDDLEWARE` ganhou `whitenoise.middleware.WhiteNoiseMiddleware` e
+  `STORAGES["staticfiles"]` virou `CompressedStaticFilesStorage` (sem manifest,
+  cache curto, para deploy não servir CSS antigo).
+
+### 11.2 Configuração e guardas
+
+- `backend/config/env.py` (novo): `env_flag`, `env_list`, `env_int`,
+  `database_config`, `is_insecure_secret_key` — as três primeiras validam no boot
+  (ambiente mal formado falha na subida, não na primeira requisição).
+- `DATABASES` montado por `database_config()`: `POSTGRES_SSLMODE`,
+  `POSTGRES_CONN_MAX_AGE`, `POSTGRES_CONN_HEALTH_CHECKS`.
+- `LOGGING` explícito com nível por env (`DJANGO_LOG_LEVEL`,
+  `DJANGO_DB_LOG_LEVEL`) e `APP_REVISION` no settings (aparece em `/health/`).
+- `SECURE_REDIRECT_EXEMPT` isenta `/health/` e `/health/ready/` do redirect
+  HTTPS — sem isso o healthcheck interno recebe 301 e o container nunca fica
+  saudável.
+- `backend/config/checks.py` (novo): checagens **de deploy** (rodam só com
+  `check --deploy`), registradas no fim do `settings.py`:
+
+  | id | verifica |
+  | --- | --- |
+  | `config.E001` | `DJANGO_SECRET_KEY` de exemplo/curta em produção |
+  | `config.E002` | `ALLOWED_HOSTS` com `*` |
+  | `config.E003` | banco remoto sem TLS (`POSTGRES_SSLMODE`) |
+  | `config.W004` | `POSTGRES_CONN_MAX_AGE=0` em banco remoto |
+  | `config.W005` | `USE_S3_STORAGE=false` (comprovante no disco do container) |
+  | `config.E006` | S3 sem URL assinada (`querystring_auth=false`) |
+  | `config.W007` | origem `http://` em piloto |
+
+### 11.3 Saúde
+
+`config/health.py` + rotas em `config/urls.py`:
+
+- `/health/` — liveness: `{"status":"ok","revision":"<commit>"}`, **não** toca no
+  banco (um banco fora não deve reiniciar o container por um liveness falso);
+- `/health/ready/` — readiness: testa a conexão (`SELECT 1`), devolve **503**
+  quando o banco não responde, e é o que o `healthcheck` do compose usa.
+
+Ambos são `GET`-only, sem cache e sem dado sensível.
+
+### 11.4 Compose de piloto e operação
+
+- `docker-compose.pilot.yml`: **sem** `db` e **sem** `mobile`; migração em
+  serviço separado com `profiles: [tools]` (schema nunca muda por restart);
+  healthcheck em `/health/ready/`; log `json-file` com rotação (10 MB × 5);
+  `backend` publicado em `127.0.0.1` (`PILOT_BIND`/`PILOT_PORT`); `caddy`
+  opcional no perfil `proxy`. Trava `app` = tag da imagem (rollback = tag).
+- `docker-compose.ci.yml`: só para o CI — adiciona um Postgres descartável
+  (`tmpfs`) para o job conseguir buildar, migrar e bater em `/health/`.
+- `deploy/Caddyfile`: exemplo de proxy HTTPS (inclui o arranjo
+  `/backend/* → backend:8000` que o app espera com `EXPO_PUBLIC_API_URL`).
+- `scripts/backup_postgres.sh` e `scripts/restore_postgres.sh` (reescritos):
+  TLS obrigatório em host remoto (recusa `sslmode` fraco em host remoto),
+  `trap ERR` com alerta (stderr + `BACKUP_ALERT_WEBHOOK`), carimbo
+  `ultimo-backup-ok.txt` para vigia, limpeza de `.partial`, e restauração que
+  **compara contagens origem × destino** e falha se divergirem.
+- `docs/runbook-deploy-piloto.md`, `docs/runbook-backup-restore.md` e
+  `docs/ambiente-piloto.md` (novos): deploy/rollback, backup/restauração e guia
+  do ambiente (Neon, S3/R2, domínio, saúde, checklist de go-live).
+
+### 11.5 CI
+
+`.github/workflows/ci.yml` passou de 3 para 5 jobs:
+
+- `guardas-de-deploy` — `manage.py check --deploy` com ambiente de produção
+  (segredo forte, host real, Neon + `sslmode=require`, S3, origens `https`) —
+  quebra o build quando falta configuração;
+- `stack-de-piloto` — builda a imagem de produção, sobe Postgres descartável,
+  roda `migrate`, espera `/health/`, confere `/health/ready/`, confere o estático
+  do admin (whitenoise) e roda `check --deploy` dentro do container.
+
+### 11.6 Verificação executada (evidência)
+
+| Comando | Resultado |
+| --- | --- |
+| `cd backend && python -m pytest -q` | **210 passed** (157 antes + 53 novos: `config/tests/test_env.py`, `test_health.py`, `test_deploy_checks.py`) |
+| `docker compose -p moriah-piloto -f docker-compose.pilot.yml -f docker-compose.ci.yml --env-file .env.pilot up -d --build db` + `--profile tools run --rm migrate` + `up -d backend` | build + 20 migrações aplicadas + `moriah-piloto-backend-1` **healthy** em ~77 s |
+| `curl :8090/health/` | `{"status": "ok", "revision": "ensaio-local"}` |
+| `curl :8090/health/ready/` | `{"status": "ready", "database": "ok", "revision": "ensaio-local"}` |
+| `curl -o /dev/null -w '%{http_code}' :8090/static/admin/css/base.css` | **200** (22 092 bytes, `text/css`) — estático servido pelo whitenoise, sem proxy |
+| `docker run … moriah-backend python manage.py check --deploy` (ambiente de produção) | **0 erros**, 11 avisos `drf_spectacular.W001` (colisão de nome de enum do schema; nada de segurança/configuração) |
+| `docker run … check --deploy` (ambiente local do ensaio) | 0 erros; único aviso de segurança = `security.W008` (esperado: no ensaio local `DJANGO_SECURE_SSL_REDIRECT=false`) |
+| `BACKUP_DIR=tmp/backups ./scripts/backup_postgres.sh` | dump `moriah-20260924-122847.dump` (176 KB), validado por `pg_restore --list` |
+| `./scripts/restore_postgres.sh <dump>` | `moriah_restore_test` recriado e restaurado; contagens conferidas origem × destino (users 14, contributions 14, attachments 3, members 9) |
+| `POSTGRES_HOST=ep-piloto-teste.neon.tech POSTGRES_SSLMODE=prefer ./scripts/backup_postgres.sh` | **recusado** (exit 1): banco remoto exige `require` |
+| `POSTGRES_DB=banco_que_nao_existe ./scripts/backup_postgres.sh` | alerta `FALHA no backup (linha 125: …)`, exit 1, sem `.partial` deixado; carimbo de sucesso **não** atualizado |
+
+**O que não foi verificado (e por quê):** o caminho "banco fora → `/health/ready/`
+503" foi conferido por teste automatizado (`config/tests/test_health.py`, com a
+conexão falhando de propósito), **não** por derrubar o Postgres em execução — o
+comando foi negado pelo usuário e não foi repetido. Os dois jobs novos de CI não
+rodaram no GitHub (sem push).
+
+**Ambiente deixado ligado:** `moriah_app-db-1` e `moriah_app-backend-1` (dev,
+como estavam) e a stack de ensaio `moriah-piloto-db-1` + `moriah-piloto-backend-1`
+(projeto `moriah-piloto`, porta **8090**; pode ser derrubada com
+`docker compose -p moriah-piloto -f docker-compose.pilot.yml -f docker-compose.ci.yml --env-file .env.pilot down`).
+O `.env.pilot` usado no ensaio é local (ignorado pelo Git) e aponta para o
+Postgres do próprio Compose — **não** é um ambiente de piloto real.
+
+### 11.7 O que falta para o piloto (fases seguintes do plano)
+
+1. **Decisão de produto/infra:** servir `/static/` pelo whitenoise (estado atual,
+   simples e suficiente para grupo pequeno) ou por proxy/CDN.
+2. Fase 2 — provisionar a VPS (Docker, usuário de deploy, firewall, domínio).
+3. Fase 3 — criar projeto/branch do Neon, credencial da aplicação, bucket privado
+   de comprovantes e o primeiro backup remoto com TLS.
+4. Fase 4 — deploy controlado: `.env.pilot` real, `migrate`, usuário admin do
+   piloto, dados de teste aprovados.
+5. Fase 5 — ensaio de restauração **contra o Neon** (o ensaio desta etapa foi no
+   Postgres local; o de host remoto ainda não foi feito).
+6. Aceite (`node tools/qa/run.mjs todas`) na revisão que for publicada.

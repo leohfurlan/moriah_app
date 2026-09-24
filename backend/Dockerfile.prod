@@ -1,0 +1,58 @@
+# Imagem de piloto/homologacao/producao.
+#
+# Diferencas em relacao ao Dockerfile de desenvolvimento:
+#   - o servidor e o gunicorn (o runserver nao e para producao);
+#   - os estaticos sao coletados na build e servidos pelo whitenoise;
+#   - o processo roda como usuario sem privilegio;
+#   - nao ha volume de codigo: a imagem e a unidade de deploy (rollback = voltar
+#     a tag anterior).
+#
+# Build (o CI passa a revisao para aparecer em /health/):
+#   docker build -f Dockerfile.prod --build-arg APP_REVISION=$(git rev-parse --short HEAD) .
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DJANGO_DEBUG=false
+
+WORKDIR /app
+
+# curl e usado pelo healthcheck do compose. Nao ha compilador na imagem: todas
+# as dependencias vem em wheel (o psycopg[binary] ja traz o libpq).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Usuario sem privilegio (uid fixo, para casar com volume/permissao no host).
+RUN useradd --create-home --uid 10001 app \
+    && mkdir -p /app/staticfiles /app/media \
+    && chown -R app:app /app
+USER app
+
+# Revisao implantada, exposta em /health/.
+ARG APP_REVISION=unknown
+ENV APP_REVISION=${APP_REVISION}
+
+# Estaticos do admin/DRF entram na imagem. collectstatic nao toca no banco.
+RUN python manage.py collectstatic --noinput
+
+EXPOSE 8000
+
+# `exec` deixa o gunicorn como PID 1 e os sinais do Docker (SIGTERM) chegam nele,
+# permitindo parada graciosa em vez de matar requisicoes em andamento.
+CMD ["sh", "-c", "exec gunicorn config.wsgi:application \
+  --bind 0.0.0.0:${PORT:-8000} \
+  --workers ${GUNICORN_WORKERS:-3} \
+  --threads ${GUNICORN_THREADS:-2} \
+  --timeout ${GUNICORN_TIMEOUT:-60} \
+  --graceful-timeout 30 \
+  --max-requests 1000 \
+  --max-requests-jitter 100 \
+  --access-logfile - \
+  --error-logfile -"]

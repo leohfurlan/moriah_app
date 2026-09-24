@@ -1,0 +1,57 @@
+# Exemplo de proxy HTTPS do piloto (servico `caddy`, perfil `proxy`).
+#
+#   docker compose -p moriah-piloto -f docker-compose.pilot.yml --env-file .env.pilot \
+#     --profile proxy up -d
+#
+# O Caddy fala com o container `backend` pela rede do Compose (gunicorn na 8000)
+# e cuida do certificado. O backend continua preso em 127.0.0.1 no host: quem
+# expoe a internet e este proxy, nao o gunicorn.
+#
+# Troque o dominio e o e-mail antes de usar.
+
+{
+	email ops@moriah.app
+}
+
+# API em dominio proprio (padrao): tudo vai para o Django.
+api-piloto.moriah.app {
+	encode zstd gzip
+
+	reverse_proxy backend:8000
+
+	header {
+		# HSTS vem do proprio Django (SECURE_HSTS_*), nao repetir aqui.
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 20mb
+			roll_keep 10
+		}
+	}
+}
+
+# App web (build estatico do Expo, `npx expo export --platform web`) e API no
+# mesmo dominio. E o arranjo que o app espera hoje: EXPO_PUBLIC_API_URL=/backend.
+# Descomente, ajuste `root` e remova o bloco anterior.
+#
+# piloto.moriah.app {
+# 	encode zstd gzip
+#
+# 	root * /srv/app
+# 	file_server
+#
+# 	# O app chama /backend/... na mesma origem; a API responde em /.
+# 	handle_path /backend/* {
+# 		reverse_proxy backend:8000
+# 	}
+#
+# 	header {
+# 		X-Content-Type-Options nosniff
+# 		Referrer-Policy strict-origin-when-cross-origin
+# 		-Server
+# 	}
+# }

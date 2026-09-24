@@ -6,6 +6,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from config.health import liveness, readiness
 from apps.accounts.views import MeView
 from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
@@ -42,6 +43,9 @@ router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commi
 router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
 urlpatterns = [
+    # Saude (publico, sem detalhe interno): usado pelo healthcheck do compose.
+    path("health/", liveness, name="health"),
+    path("health/ready/", readiness, name="health-ready"),
     path("admin/", admin.site.urls),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

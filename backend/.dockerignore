@@ -1,0 +1,22 @@
+# Nada disso precisa entrar na imagem: sao artefatos locais ou segredos.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.codex-uv-cache/
+.venv/
+venv/
+
+# Segredos e configuracao local (as variaveis vem do env_file do compose).
+.env
+.env.*
+!.env.example
+
+# Conteudo de usuario e estaticos coletados: vem do volume/storage, nao da imagem.
+media/
+staticfiles/
+
+# Docs e testes nao afetam a execucao em producao.
+docs/
+*.md
+.git/
+.gitignore
