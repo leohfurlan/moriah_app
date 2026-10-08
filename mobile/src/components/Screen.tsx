@@ -20,6 +20,10 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { ErrorNotice } from "./ErrorNotice";
 import { ABAS, NavGroup, ResultadoBusca, buscaItens, gruposVisiveis, rotaAtiva, temAcesso } from "@/navigation";
 import { MeResponse, Notification } from "@/types/api";
+import { AccountMenu } from "./AccountMenu";
+import { MotionView } from "./Motion";
+
+let sidebarCollapsed = false;
 
 function parentOf(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
@@ -45,12 +49,13 @@ function iniciais(nome: string): string {
 
 function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string; onNavigate: (route: string) => void; recolhida: boolean; grupos: NavGroup[] }) {
   return (
-    <View testID="sidebar" style={[styles.sidebar, recolhida && styles.sidebarRecolhida]}>
+    <View testID="sidebar" accessibilityElementsHidden={recolhida} style={[styles.sidebar, recolhida && styles.sidebarRecolhida]}>
+      <View style={styles.sidebarInner}>
       <View style={styles.brand}>
         <View style={styles.brandMark}>
           <Text style={styles.brandMarkText}>M</Text>
         </View>
-        {recolhida ? null : (
+        {(
           <View>
             <Text style={styles.brandTitle}>Moriah</Text>
             <Text style={styles.brandSubtitle}>Igreja Moriah</Text>
@@ -61,7 +66,7 @@ function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarGroups}>
         {grupos.map((grupo) => (
           <View key={grupo.label} style={styles.sidebarGroup}>
-            {recolhida ? null : <Text style={styles.sidebarGroupLabel}>{grupo.label.toUpperCase()}</Text>}
+            <Text style={styles.sidebarGroupLabel}>{grupo.label.toUpperCase()}</Text>
             {grupo.items.map((item) => {
               const ativo = rotaAtiva(pathname, item.matches);
               return (
@@ -69,24 +74,27 @@ function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string
                   key={item.id}
                   accessibilityRole="link"
                   accessibilityLabel={item.label}
+                  disabled={recolhida}
+                  focusable={!recolhida}
                   accessibilityState={{ selected: ativo }}
                   onPress={() => onNavigate(item.route)}
-                  style={({ pressed }) => [styles.sidebarItem, recolhida && styles.sidebarItemRecolhida, ativo && styles.sidebarItemActive, pressed && styles.pressed]}
+                  style={({ pressed }) => [styles.sidebarItem, ativo && styles.sidebarItemActive, pressed && styles.pressed]}
                 >
                   <item.Icon size={15} strokeWidth={1.8} color={ativo ? colors.onAccent : "#98A2B3"} />
-                  {recolhida ? null : <Text style={[styles.sidebarItemText, ativo && styles.sidebarItemTextActive]}>{item.label}</Text>}
+                  <Text style={[styles.sidebarItemText, ativo && styles.sidebarItemTextActive]}>{item.label}</Text>
                 </Pressable>
               );
             })}
           </View>
         ))}
       </ScrollView>
+      </View>
     </View>
   );
 }
 function NotificationPopover({ notifications, unreadCount, loading, error, onRetry, onClose, onNavigate }: { notifications: Notification[]; unreadCount: number; loading: boolean; error: { title: string; message: string } | null; onRetry: () => void; onClose: () => void; onNavigate: (route: string) => void }) {
   return (
-    <View style={styles.notificationPopover}>
+    <MotionView style={styles.notificationPopover}>
       <View style={styles.notificationHeader}>
         <Text style={styles.notificationTitle}>Notificações ({unreadCount})</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Fechar notificações" onPress={onClose}>
@@ -114,7 +122,7 @@ function NotificationPopover({ notifications, unreadCount, loading, error, onRet
         <Text style={styles.viewAll}>Ver todas</Text>
       </Pressable>
       {!loading && !error && !notifications.length ? <Text style={styles.notificationNote}>Nenhuma notificação nova.</Text> : null}
-    </View>
+    </MotionView>
   );
 }
 export function Screen({
@@ -139,12 +147,11 @@ export function Screen({
   const desktop = Platform.OS === "web" && width >= 900;
   const appShell = desktop && pathname !== "/";
   const parentLabel = parentOf(pathname);
-  const { me, logout } = useAuth();
-  const [signingOut, setSigningOut] = useState(false);
+  const { me } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationState = useNotifications();
   const notifications = notificationState.items;
-  const [menuRecolhido, setMenuRecolhido] = useState(false);
+  const [menuRecolhido, setMenuRecolhido] = useState(sidebarCollapsed);
   const [busca, setBusca] = useState("");
   const capabilities = me?.capabilities ?? [];
   const grupos = useMemo(() => gruposVisiveis(capabilities), [me]);
@@ -152,16 +159,6 @@ export function Screen({
   const nome = nomeDaConta(me);
   const sigla = iniciais(nome);
   const onNavigate = (route: string) => router.replace(("/" + route) as never);
-  const logoutButton = me ? (
-    <Pressable accessibilityRole="button" accessibilityLabel="Sair da conta"
-      disabled={signingOut} onPress={async () => {
-        setSigningOut(true);
-        try { await logout(); router.replace("/"); }
-        finally { setSigningOut(false); }
-      }} style={styles.signOutButton}>
-      <Text style={styles.signOutText}>{signingOut ? "Saindo…" : "Sair"}</Text>
-    </Pressable>
-  ) : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -174,7 +171,7 @@ export function Screen({
                 accessibilityRole="button"
                 accessibilityLabel={menuRecolhido ? "Expandir menu" : "Recolher menu"}
                 accessibilityState={{ expanded: !menuRecolhido }}
-                onPress={() => setMenuRecolhido((atual) => !atual)}
+                onPress={() => setMenuRecolhido((atual) => {sidebarCollapsed = !atual; return !atual;})}
                 style={({ pressed }) => [styles.sidebarToggle, pressed && styles.pressed]}
               >
                 <Menu size={18} color={colors.inkBody} />
@@ -185,7 +182,7 @@ export function Screen({
               </View>
               <View style={styles.topbarActions}>
                 <View style={styles.searchAnchor}>
-                  <View style={styles.globalSearch}>
+                  <View style={[styles.globalSearch, {width: Math.max(150,Math.min(336,width-(menuRecolhido ? 0 : 280)-460))}]}>
                     <Search size={16} color={colors.inkMuted} />
                     <TextInput
                       accessibilityLabel="Buscar no Moriah"
@@ -197,7 +194,7 @@ export function Screen({
                     />
                   </View>
                   {busca.trim() ? (
-                    <View style={styles.searchResults}>
+                    <MotionView style={styles.searchResults}>
                       {resultados.length === 0 ? (
                         <Text style={styles.searchEmptyText}>Nada encontrado nesta conta.</Text>
                       ) : (
@@ -218,7 +215,7 @@ export function Screen({
                           </Pressable>
                         ))
                       )}
-                    </View>
+                    </MotionView>
                   ) : null}
                 </View>
                 <View style={styles.notificationAnchor}>
@@ -237,19 +234,7 @@ export function Screen({
                   </Pressable>
                   {notificationsOpen ? <NotificationPopover notifications={notifications} unreadCount={notificationState.unreadCount} loading={notificationState.loading} error={notificationState.error} onRetry={() => { void notificationState.reload().catch(() => undefined); }} onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={nome ? "Abrir perfil de " + nome : "Abrir perfil"}
-                  onPress={() => onNavigate("profile")}
-                  style={({ pressed }) => [styles.profilePill, pressed && styles.pressed]}
-                >
-                  <View style={styles.profileAvatar}>
-                    <Text style={styles.profileAvatarText}>{sigla}</Text>
-                  </View>
-                  {nome ? (
-                    <Text numberOfLines={1} style={styles.profileName}>{nome}</Text>
-                  ) : null}
-                </Pressable>
+                <AccountMenu compact={width < 1150} />
               </View>
             </View>
           ) : null}
@@ -282,7 +267,7 @@ export function Screen({
                     <Text accessibilityRole="header" style={styles.title}>{title}</Text>
                     {headerSubtitle ? <Text style={styles.headerSubtitle}>{headerSubtitle}</Text> : null}
                   </View>
-                  <View style={styles.accountActions}>{headerAccessory}{logoutButton}</View>
+                  <View style={styles.accountActions}>{headerAccessory}<AccountMenu compact /></View>
                 </View>
               </View>
             ) : (
@@ -299,11 +284,11 @@ export function Screen({
                 ) : null}
                 <View style={styles.desktopPageHeaderRow}>
                   <Text style={styles.desktopPageSubtitle}>{headerSubtitle || "Gestão e vida da Igreja Moriah"}</Text>
-                  <View style={styles.accountActions}>{headerAccessory}{logoutButton}</View>
+                  <View style={styles.accountActions}>{headerAccessory}</View>
                 </View>
               </View>
             )}
-            <View style={[styles.body, appShell && styles.desktopBody]}>{children}</View>
+            <MotionView key={pathname} testID="screen-content" style={[styles.body, appShell && styles.desktopBody]}>{children}</MotionView>
           </ScrollView>
         </View>
       </View>
@@ -363,7 +348,8 @@ const styles = StyleSheet.create({
   desktopShell: { flex: 1, flexDirection: "row", backgroundColor: colors.canvas },
   desktopMain: { flex: 1, minWidth: 0, backgroundColor: colors.canvas },
   mobileMain: { flex: 1 },
-  sidebar: { width: 280, backgroundColor: "#101828", paddingHorizontal: 20, paddingTop: 24, paddingBottom: 18 },
+  sidebar: { width: 280, backgroundColor: "#101828", overflow: "hidden" },
+  sidebarInner: { width: 280, flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 18 },
   brand: { flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 26 },
   brandMark: { width: 38, height: 38, borderRadius: 10, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
   brandMarkText: { color: colors.onAccent, fontSize: 19, fontWeight: "800" },
@@ -372,11 +358,11 @@ const styles = StyleSheet.create({
   sidebarGroups: { gap: 15, paddingBottom: 16 },
   sidebarGroup: { gap: 2 },
   sidebarGroupLabel: { color: "#667085", fontSize: 10, fontWeight: "800", letterSpacing: 0.8, marginBottom: 5 },
-  sidebarItem: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 27, borderRadius: 6, paddingHorizontal: 10 },
+  sidebarItem: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 36, borderRadius: 8, paddingHorizontal: 10 },
   sidebarItemActive: { backgroundColor: "#27315A" },
   sidebarItemText: { color: "#D0D5DD", fontSize: 12, fontWeight: "500" },
   sidebarItemTextActive: { color: colors.onAccent, fontWeight: "700" },
-  sidebarRecolhida: { width: 76, paddingHorizontal: 12 },
+  sidebarRecolhida: { width: 0 },
   sidebarItemRecolhida: { justifyContent: "center", paddingHorizontal: 0, gap: 0 },
   desktopTopbar: { height: 92, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, position: "relative", zIndex: 40, overflow: "visible" },
   sidebarToggle: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },

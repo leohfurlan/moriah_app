@@ -7,6 +7,8 @@ import { ToastProvider, useToast } from "@/components/Feedback";
 import { useAuth } from "@/hooks/useAuth";
 import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, moduloOculto, podeGerenciarEscalas, raizDaRota } from "@/navigation";
 import { colors, radius, spacing } from "@/theme";
+import { WebEffects } from "@/components/WebEffects";
+import { useReducedMotion } from "@/components/Motion";
 
 /**
  * Rotas que exigem apenas estar logado com vinculo de membro. As areas de
@@ -76,6 +78,7 @@ function isMemberPath(pathname: string): boolean {
 }
 
 function LayoutComGuarda() {
+  const reducedMotion = useReducedMotion();
   const pathname = usePathname();
   const router = useRouter();
   const { me, loading } = useAuth();
@@ -118,7 +121,7 @@ function LayoutComGuarda() {
   if (loading && (isMemberPath(pathname) || rotaOculta)) return null;
   if (avisoNaTela) return <AcessoRestritoEscalas />;
   if (precisaLogin || moduloIndisponivel || semVinculo || semCapacidade) return null;
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? "none" : "default" }} />;
 }
 
 /**
@@ -183,6 +186,7 @@ const styles = StyleSheet.create({
 export default function Layout() {
   return (
     <ToastProvider>
+      <WebEffects />
       <LayoutComGuarda />
     </ToastProvider>
   );

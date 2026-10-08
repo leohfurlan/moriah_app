@@ -6,6 +6,7 @@ import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight,
 import { Badge, Button, Card } from "@/components/Form";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Screen } from "@/components/Screen";
+import { useReducedMotion } from "@/components/Motion";
 import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
@@ -391,14 +392,13 @@ export function HomeScreen({
   me,
   canAccessManagement,
   onNavigate,
-  onLogout,
 }: {
   me: MeResponse;
   canAccessManagement: boolean;
   onNavigate: (route: string) => void;
-  onLogout: () => void;
 }) {
   const isMember = Boolean(me.member_id);
+  const reducedMotion = useReducedMotion();
   const canLoadHome = isMember || canAccessManagement;
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
@@ -569,7 +569,6 @@ export function HomeScreen({
       refreshing={refreshing || loading}
       onRefresh={onRefresh}
       headerAccessory={!desktop && canLoadHome ? (<View style={styles.headerActions}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>{initials(me)}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel="Notificações" onPress={() => onNavigate("notifications")} style={styles.notificationButton}>
             <Bell size={20} strokeWidth={1.8} color={colors.accent} />
           </Pressable>
@@ -680,11 +679,11 @@ export function HomeScreen({
             ))}
           </Card>
 
-          <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text><Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}><Text style={styles.logoutText}>Sair</Text></Pressable></View>
+          <View style={styles.footer}><Text style={styles.footerText}>Moriah · {me.email}</Text></View>
         </View>
       )}
       </>}
-      <Modal visible={editingShortcuts} transparent animationType="slide" onRequestClose={() => setEditingShortcuts(false)}>
+      <Modal visible={editingShortcuts} transparent animationType={reducedMotion ? "none" : "slide"} onRequestClose={() => setEditingShortcuts(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.shortcutModal}>
             <View style={styles.modalHeader}>

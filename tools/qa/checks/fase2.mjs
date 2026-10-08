@@ -270,15 +270,14 @@ export async function executar({ browser, dir }) {
       v.check("8. Botão de recolher o menu funciona", false, "botão 'Recolher menu' ausente");
     } else {
       await botao.click({ timeout: 8000 }).catch(() => {});
-      // Fecha o menu: o rotulo visivel sai da tela (o nome acessivel do link
-      // continua existindo de proposito, para leitor de tela).
-      const sumiu = await esperarPor(async () => (await sessao.page.getByText("Visão geral", { exact: true }).count()) === 0, { timeout: 5000 });
+      // O painel desliza para largura zero e seus links saem da ordem de foco.
+      const sumiu = await esperarPor(async () => (await sessao.page.getByTestId("sidebar").boundingBox())?.width === 0, { timeout: 5000 });
       const expandir = sessao.page.getByRole("button", { name: /expandir menu/i }).first();
       const virou = (await expandir.count()) > 0;
       let voltou = false;
       if (virou) {
         await expandir.click({ timeout: 8000 }).catch(() => {});
-        voltou = await esperarPor(async () => (await sessao.page.getByText("Visão geral", { exact: true }).count()) > 0, { timeout: 5000 });
+        voltou = await esperarPor(async () => (await sessao.page.getByTestId("sidebar").boundingBox())?.width === 280, { timeout: 5000 });
       }
       v.check(
         "8. Botão de recolher/expandir o menu funciona (não é ícone decorativo)",

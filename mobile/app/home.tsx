@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function HomePage() {
   const router = useRouter();
-  const { me, loading, logout } = useAuth();
+  const { me, loading } = useAuth();
 
   if (loading) {
     return (
@@ -26,10 +26,6 @@ export default function HomePage() {
       me={me}
       canAccessManagement={me.can_access_management}
       onNavigate={(route) => router.push(`/${route}` as never)}
-      onLogout={async () => {
-        await logout();
-        router.replace("/");
-      }}
     />
   );
 }

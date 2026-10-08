@@ -7,6 +7,7 @@ import { PaginationControls } from "@/components/PaginationControls";
 import { useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { useReducedMotion } from "@/components/Motion";
 import { useAuth } from "@/hooks/useAuth";
 import { podeGerenciarEscalas } from "@/navigation";
 import { api } from "@/services/api";
@@ -39,6 +40,7 @@ function FilterMenu({
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
   const selected = options.find((option) => option.value === value)?.label || label;
   return (
     <>
@@ -52,7 +54,7 @@ function FilterMenu({
         <Text style={styles.scheduleFilterText}>{selected}</Text>
         <Text style={styles.filterChevron}>⌄</Text>
       </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType={reducedMotion ? "none" : "fade"} onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.filterOverlay} onPress={() => setOpen(false)}>
           <View style={styles.filterMenu}>
             <Text style={styles.filterMenuTitle}>{label}</Text>

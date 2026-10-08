@@ -44,6 +44,7 @@ export async function executar({ browser, dir }) {
   {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     await irPara(sessao.page, "/");
+    await sessao.page.getByRole("button", {name:"Entrar com e-mail e senha",exact:true}).click();
     const inputs = sessao.page.locator("input");
     await digitar(inputs.nth(0), membro.email);
     await digitar(inputs.nth(1), "senha-que-nao-existe-qa");
