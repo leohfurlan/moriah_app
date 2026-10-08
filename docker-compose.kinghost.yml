@@ -54,12 +54,12 @@ services:
       db:
         condition: service_healthy
   web:
-    image: moriah-web:${APP_REVISION:?Set the validated release revision}
+    image: moriah-web:${WEB_REVISION:-${APP_REVISION:?Set the validated release revision}}
     build:
       context: .
       dockerfile: deploy/Dockerfile.web
       args:
-        APP_REVISION: ${APP_REVISION}
+        APP_REVISION: ${WEB_REVISION:-${APP_REVISION}}
     cpus: 0.25
     mem_limit: 128m
     restart: unless-stopped

@@ -139,7 +139,8 @@ export function Screen({
   const desktop = Platform.OS === "web" && width >= 900;
   const appShell = desktop && pathname !== "/";
   const parentLabel = parentOf(pathname);
-  const { me } = useAuth();
+  const { me, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationState = useNotifications();
   const notifications = notificationState.items;
@@ -151,6 +152,16 @@ export function Screen({
   const nome = nomeDaConta(me);
   const sigla = iniciais(nome);
   const onNavigate = (route: string) => router.replace(("/" + route) as never);
+  const logoutButton = me ? (
+    <Pressable accessibilityRole="button" accessibilityLabel="Sair da conta"
+      disabled={signingOut} onPress={async () => {
+        setSigningOut(true);
+        try { await logout(); router.replace("/"); }
+        finally { setSigningOut(false); }
+      }} style={styles.signOutButton}>
+      <Text style={styles.signOutText}>{signingOut ? "Saindo…" : "Sair"}</Text>
+    </Pressable>
+  ) : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -271,7 +282,7 @@ export function Screen({
                     <Text accessibilityRole="header" style={styles.title}>{title}</Text>
                     {headerSubtitle ? <Text style={styles.headerSubtitle}>{headerSubtitle}</Text> : null}
                   </View>
-                  {headerAccessory}
+                  <View style={styles.accountActions}>{headerAccessory}{logoutButton}</View>
                 </View>
               </View>
             ) : (
@@ -288,7 +299,7 @@ export function Screen({
                 ) : null}
                 <View style={styles.desktopPageHeaderRow}>
                   <Text style={styles.desktopPageSubtitle}>{headerSubtitle || "Gestão e vida da Igreja Moriah"}</Text>
-                  {headerAccessory}
+                  <View style={styles.accountActions}>{headerAccessory}{logoutButton}</View>
                 </View>
               </View>
             )}
@@ -344,6 +355,9 @@ function BottomNav({ pathname, onNavigate, capabilities }: { pathname: string; o
 }
 
 const styles = StyleSheet.create({
+  accountActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  signOutButton: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center", paddingHorizontal: 8 },
+  signOutText: { color: colors.danger, fontSize: 12, fontWeight: "700" },
   safeArea: { flex: 1, position: "relative", backgroundColor: colors.canvas },
   mobileShell: { flex: 1 },
   desktopShell: { flex: 1, flexDirection: "row", backgroundColor: colors.canvas },
