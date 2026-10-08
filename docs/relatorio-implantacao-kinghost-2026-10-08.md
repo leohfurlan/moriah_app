@@ -56,13 +56,38 @@ conceder privilégio equivalente a root; a alternativa executada não alterou
 usuários ou grupos. Aplicação e gateway rodam sem root nos containers.
 
 Backups ficam na VPS, conforme a decisão atual; não há cópia externa para
-recuperação de perda do host/disco. HTTPS depende do registro DNS `app`.
-O DNS da raiz não cria automaticamente o registro do subdomínio.
+recuperação de perda do host/disco. O registro DNS `app` foi confirmado e
+o HTTPS está ativo no subdomínio aprovado.
 
 ## Execução remota
 
-Preparados diretório `/opt/moriah_app`, backup restrito `/var/backups/moriah`
-e rede exclusiva `moriah_piloto_edge`. Publicação e verificações remotas serão
-registradas nesta seção após transferência da release.
+Release `635e0fab0912` publicada em https://app.igrejamoriah.com em 08/10/2026,
+na VPS `atos-pd` (191.252.159.77). Arquivos de release verificados por SHA-256.
+Backend, web e PostgreSQL estão saudáveis. As migrações foram aplicadas no
+banco exclusivo, com usuário de aplicação sem privilégio de superusuário.
+O banco não tem porta pública; backend vinculado somente a localhost.
+Backend e gateway executam sem root. Arquivos privados usam volume persistente.
+
+Certificado TLS validado, válido até 06/01/2027, com renovação automática pelo
+Caddy. Readiness confirmou banco e revisão. Rotas SPA, arquivos estáticos do
+admin, bloqueio de arquivos sem assinatura e login administrativo real passaram.
+Login e página inicial também verificados e inspecionados visualmente em desktop
+e celular. Criada apenas a igreja e sua conta administrativa inicial; sem seed demo.
+Credenciais guardadas em arquivo local ignorado pelo Git, fora deste relatório.
+
+Backup inicial concluído às 15:54:25 UTC. Dump restaurado em PostgreSQL
+descartável: contagens de cinco tabelas críticas conferidas, arquivos restaurados
+em volume descartável. Recursos do ensaio removidos; banco original preservado.
+Serviço `moriah-kinghost.service` ativo e habilitado no boot; timer de backup
+ativo diariamente às 02h America/Sao_Paulo, com retenção de 30 dias.
+
+O Caddy recebeu apenas a nova rota e conexão à rede `moriah_piloto_edge`, com
+backup prévio da configuração e reload validado. Nexor web, API health e site
+responderam 200 após a publicação. Proxy, Simulador e Evolution mantiveram seus
+containers e tempos de execução, sem reinício provocado pela implantação.
+
+Diretório `/opt/moriah_app`; backups restritos em `/var/backups/moriah`.
+Evidências visuais locais: `tmp/moriah-live-desktop.png` e
+`tmp/moriah-live-mobile.png`. A release foi commitada; nenhum push foi realizado.
 
 Referência operacional: [runbook KingHost](runbook-kinghost.md).
