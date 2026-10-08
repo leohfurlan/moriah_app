@@ -242,4 +242,11 @@ LOGGING = {
 }
 
 # Registra as checagens de deploy (config/checks.py) em `manage.py check --deploy`.
+WHATSAPP_AUTH_ENABLED = env_flag("WHATSAPP_AUTH_ENABLED")
+WHATSAPP_AUTH_CHURCH_ID = int(os.getenv("WHATSAPP_AUTH_CHURCH_ID", "0"))
+WHATSAPP_TRUST_CLIENT_IP = env_flag("WHATSAPP_TRUST_CLIENT_IP")
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
+EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
+
 from config import checks  # noqa: E402,F401  (import no fim: depende das settings acima)

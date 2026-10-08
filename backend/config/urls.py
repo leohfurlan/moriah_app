@@ -9,6 +9,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from config.health import liveness, readiness
 from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
+from apps.accounts.whatsapp_views import (WhatsAppConfigView, WhatsAppRequestView, WhatsAppVerifyView,
+    WhatsAppRegisterView, WhatsAppLinkRequestView, WhatsAppLinkVerifyView)
 from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.audit.notification_views import MyNotificationViewSet
@@ -43,7 +45,17 @@ router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="me
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")
 router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
+whatsapp_patterns = [
+    path("config/", WhatsAppConfigView.as_view()),
+    path("request/", WhatsAppRequestView.as_view()),
+    path("verify/", WhatsAppVerifyView.as_view()),
+    path("register/", WhatsAppRegisterView.as_view()),
+    path("link/request/", WhatsAppLinkRequestView.as_view()),
+    path("link/verify/", WhatsAppLinkVerifyView.as_view()),
+]
+
 urlpatterns = [
+    path("api/auth/whatsapp/", include(whatsapp_patterns)),
     # Saude (publico, sem detalhe interno): usado pelo healthcheck do compose.
     path("health/", liveness, name="health"),
     path("health/ready/", readiness, name="health-ready"),
@@ -92,6 +104,7 @@ if not settings.PRIVATE_LOCAL_MEDIA:
 # Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
 # para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
+    path("auth/whatsapp/", include(whatsapp_patterns)),
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
     path("me/", MeView.as_view(), name="local-me"),

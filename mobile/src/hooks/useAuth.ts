@@ -100,6 +100,10 @@ export function useAuth() {
 
   async function login(email: string, password: string) {
     const tokens = await api.post<LoginResponse>("/auth/login/", { email, password });
+    await acceptTokens(tokens);
+  }
+
+  async function acceptTokens(tokens: LoginResponse) {
     await saveTokens(tokens.access, tokens.refresh);
     await carregarPerfil({ recarregar: true });
   }
@@ -117,6 +121,7 @@ export function useAuth() {
     me,
     loading,
     login,
+    acceptTokens,
     logout,
     refreshProfile,
   };

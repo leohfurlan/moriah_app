@@ -86,6 +86,8 @@ export async function login(page, { email, password }, { base = BASE, espera = 3
   try {
     await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 45000 });
     await page.waitForTimeout(2500);
+    const emailOption = page.getByRole("button", { name: "Entrar com e-mail e senha", exact: true });
+    if (await emailOption.isVisible()) await emailOption.click();
     const inputs = page.locator("input");
     if ((await inputs.count()) >= 2) {
       await digitar(inputs.nth(0), email);

@@ -6,6 +6,7 @@ import { ErrorNotice } from "@/components/ErrorNotice";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { WhatsAppAccess } from "@/components/WhatsAppAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
@@ -217,6 +218,7 @@ export function ProfileScreen() {
       headerAccessory={<Button size="compact" variant="ghost" onPress={() => router.push("/notifications" as never)}>Notificações</Button>}
     >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
+      <Card><WhatsAppAccess link /></Card>
       {aviso ? <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} /> : null}
 
       {desktop && profile ? <DesktopProfile profile={profile} requests={requests} phone={phone} address={address} setPhone={setPhone} setAddress={setAddress} submitting={submitting} submitUpdateRequest={submitUpdateRequest} onNotifications={() => router.push("/notifications" as never)} /> : profile ? (

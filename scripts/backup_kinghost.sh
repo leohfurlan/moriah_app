@@ -7,6 +7,7 @@ umask 077
 dc() { docker compose -p moriah-piloto -f docker-compose.pilot.yml \
     -f docker-compose.kinghost.yml --env-file .env.pilot "$@"; }
 backup_dir="${MORIAH_BACKUP_DIR:-/var/backups/moriah}"
+dc exec -T backend python manage.py prune_whatsapp_auth
 mkdir -p "$backup_dir"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 dump="$backup_dir/database-$stamp.dump"
