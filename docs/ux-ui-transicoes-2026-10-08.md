@@ -52,3 +52,11 @@ Resultado local: TypeScript aprovado, 12 testes mobile aprovados e 92 verificaç
 funcionais nas seis fases de QA sem falhas. Os três cenários específicos de UX
 (desktop, celular e movimento reduzido) passaram. Bundle de produção exportado
 e servido pelo mesmo Nginx usado no deploy.
+
+## Publicação
+
+Frontend publicado em https://app.igrejamoriah.com na revisão 00d61c2bff3a.
+Menu, navegação ao Perfil, logout, hover, slide, teclado e movimento reduzido
+passaram nos três cenários também no domínio público. HTTPS e health aprovados.
+Backend permanece em 2fdea81064bb e banco preservado; serviços Nexor responderam 200.
+Publicação realizada somente no container web, com rollback automático preparado.
