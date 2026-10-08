@@ -6,6 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 revision="${1:?Usage: deploy_kinghost.sh VALIDATED_REVISION}"
 [[ "$revision" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]] || exit 2
 export APP_REVISION="$revision"
+export WEB_REVISION="$revision"
 dc() { docker compose -p moriah-piloto -f docker-compose.pilot.yml \
     -f docker-compose.kinghost.yml --env-file .env.pilot "$@"; }
 test -f .env.pilot
@@ -42,6 +43,7 @@ path = pathlib.Path('.env.pilot')
 body = path.read_text()
 line = 'APP_REVISION=' + sys.argv[1]
 body = re.sub(r'^APP_REVISION=.*$', line, body, flags=re.M) if re.search(r'^APP_REVISION=', body, re.M) else body.rstrip() + '\n' + line + '\n'
+body = re.sub(r'^WEB_REVISION=.*\n?', '', body, flags=re.M)
 path.write_text(body)
 PY
 echo "Release $revision started. Validate HTTPS, login, files and existing services before admitting users."

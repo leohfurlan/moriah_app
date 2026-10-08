@@ -48,3 +48,22 @@ cadastro), TypeScript e regressões mobile. O verificador
 `tools/qa/scripts/whatsapp-onboarding.mjs` recusa hosts de produção e usa backend
 real com transporte fictício local, cobrindo desktop/celular, erro de código,
 cadastro, logout e novo login. Credenciais/demo não são copiadas para produção.
+
+## Publicação em 08/10/2026
+
+Código backend/web `2fdea81064bb`, instância `Igreja Moriah` já conectada ao
+número 553499886209. A credencial específica da instância foi validada e guardada
+somente na VPS. Fornada e demais sistemas mantiveram seus containers.
+
+249 testes passaram no PostgreSQL, incluindo concorrência. TypeScript e 12
+regressões mobile passaram. Navegador desktop/celular verificou código inválido,
+cadastro real no ambiente isolado, logout, login e vínculo do número no Perfil.
+Na produção: envio de um código pela rota pública aceito pela Evolution e
+recebimento confirmado pelo usuário; nenhuma conta fictícia criada. Cabeçalhos
+de IP forjados foram sobrescritos pela cadeia de proxy. Login/logout por e-mail
+das contas existentes também passaram nos dois tamanhos. O backup foi restaurado
+após a nova migração em recursos descartáveis, preservando a base original.
+
+A configuração Compose foi corrigida para a revisão do health acompanhar a
+imagem em execução, sobrepondo o valor antigo do env_file. Deploy completo
+também elimina o override WEB_REVISION de uma atualização anterior do frontend.

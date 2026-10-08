@@ -29,6 +29,7 @@ services:
     mem_limit: 768m
     environment:
       GUNICORN_WORKERS: "2"
+      APP_REVISION: ${APP_REVISION:?Set the validated release revision}
       POSTGRES_HOST: db
       POSTGRES_SSLMODE: disable
       USE_S3_STORAGE: "false"
@@ -43,6 +44,7 @@ services:
       - default
   migrate:
     environment:
+      APP_REVISION: ${APP_REVISION:?Set the validated release revision}
       POSTGRES_HOST: db
       POSTGRES_SSLMODE: disable
       USE_S3_STORAGE: "false"
