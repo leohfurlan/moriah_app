@@ -94,7 +94,10 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
+PRIVATE_LOCAL_MEDIA = env_flag("PRIVATE_LOCAL_MEDIA")
+LOCAL_MEDIA_PERSISTENT = env_flag("LOCAL_MEDIA_PERSISTENT")
+LOCAL_MEDIA_URL_EXPIRE_SECONDS = env_int("LOCAL_MEDIA_URL_EXPIRE_SECONDS", 900, minimum=1)
 
 # Os estaticos (admin, DRF, schema) sao servidos pelo proprio processo via
 # whitenoise, sem nginx/caddy na frente. O storage comprimido nao usa manifest:

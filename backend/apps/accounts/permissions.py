@@ -189,6 +189,23 @@ def user_capabilities(user) -> list[str]:
 
 
 def can_access_management(user) -> bool:
+    """Contas que operam o painel de gestao (mesmo sem vinculo de membro).
+
+    O conjunto precisa acompanhar `user_capabilities`: quem recebe uma
+    capacidade de gestao (ex.: `manage_finance` do tesoureiro, `manage_content`
+    do pastor) tambem opera o painel, senao o item de menu e a tela existem no
+    backend mas o app nao oferece o caminho (relatorio §5.3).
+    """
     return bool(set(user_capabilities(user)).intersection(
-        {"manage_all", "manage_pastoral", "manage_members", "review_contributions", "manage_schedules", "manage_cells", "manage_events"}
+        {
+            "manage_all",
+            "manage_pastoral",
+            "manage_members",
+            "manage_finance",
+            "manage_content",
+            "review_contributions",
+            "manage_schedules",
+            "manage_cells",
+            "manage_events",
+        }
     ))

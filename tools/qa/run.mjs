@@ -4,6 +4,7 @@
 //   node tools/qa/run.mjs fase1        # confiabilidade P0 (plano, secao 6)
 //   node tools/qa/run.mjs fase2        # navegacao e menu
 //   node tools/qa/run.mjs fase4        # gestao de escalas (coordenacao x membro)
+//   node tools/qa/run.mjs fase6        # conteudo ("Palavras")
 //   node tools/qa/run.mjs todas        # todas as fases
 //
 // Cada fase grava evidencias em docs/qa/evidencias/<fase>-<carimbo>/:
@@ -25,6 +26,7 @@ const FASES = {
   fase3: () => import("./checks/fase3.mjs"),
   fase4: () => import("./checks/fase4.mjs"),
   fase5: () => import("./checks/fase5.mjs"),
+  fase6: () => import("./checks/fase6.mjs"),
 };
 
 async function servidorResponde(base = BASE) {

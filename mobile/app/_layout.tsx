@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "expo-router";
 
 import { ToastProvider, useToast } from "@/components/Feedback";
 import { useAuth } from "@/hooks/useAuth";
-import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navigation";
+import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, moduloOculto, podeGerenciarEscalas, raizDaRota } from "@/navigation";
 import { colors, radius, spacing } from "@/theme";
 
 /**
@@ -14,8 +14,12 @@ import { colors, radius, spacing } from "@/theme";
  * ROTAS_DE_GESTAO: quem opera o painel (admin, pastor, tesouraria, secretaria,
  * coordenacao) costuma nao ter cadastro de membro, e exigir vinculo ali fechava
  * a tela para quem tem a permissao no backend.
+ *
+ * As telas sem modulo no backend (ministerios, setlists, repertorio, bandas,
+ * escola biblica, turmas) sairam desta lista e ficam em ROTAS_OCULTAS
+ * (navigation.ts): a rota nao renderiza tela vazia nem entra no menu.
  */
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/ministries", "/setlists", "/repertoire", "/bands", "/bible-school", "/classes", "/agenda", "/notifications"];
+const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/notifications"];
 
 /**
  * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade
@@ -48,7 +52,12 @@ function capacidadesDaRota(pathname: string): Capacidade[] | null {
   const porPrefixo = PREFIXOS_DE_GESTAO.find(
     (rota) => pathname === rota.prefixo || pathname.startsWith(`${rota.prefixo}/`),
   );
-  return porPrefixo ? porPrefixo.capacidades : null;
+  if (porPrefixo) return porPrefixo.capacidades;
+  // Sub-rota herda a capacidade da area (ex.: `/content/1` -> `/content`). Sem
+  // isto `/content/1` nao era area de gestao: quem nao tinha a capacidade abria
+  // o detalhe pela URL, e a sub-rota nem contava como area de membro, entao a
+  // sessao expirada ficava na tela em vez de voltar ao login (fase 6).
+  return ROTAS_DE_GESTAO[`/${raizDaRota(pathname)}`] ?? null;
 }
 
 /** A gestao de escalas tem aviso na propria tela (sem redirecionar). */
@@ -72,7 +81,12 @@ function LayoutComGuarda() {
   const { me, loading } = useAuth();
   const toast = useToast();
   const exige = capacidadesDaRota(pathname);
-  const precisaLogin = Boolean(!loading && !me && isMemberPath(pathname));
+  // Modulo ainda sem tela real (ver ROTAS_OCULTAS em navigation.ts): a rota nao
+  // renderiza o placeholder nem entra na guarda de membro — quem digitou a URL
+  // recebe o aviso em portugues e volta para a home.
+  const rotaOculta = moduloOculto(pathname);
+  const precisaLogin = Boolean(!loading && !me && (isMemberPath(pathname) || rotaOculta));
+  const moduloIndisponivel = Boolean(me && rotaOculta && !precisaLogin);
   const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management);
   const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
   const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
@@ -82,7 +96,10 @@ function LayoutComGuarda() {
 
   useEffect(() => {
     if (precisaLogin) router.replace("/");
-    else if (semVinculo) router.replace(destinoSemVinculo);
+    else if (moduloIndisponivel) {
+      toast("Este módulo ainda não está disponível.", { tone: "error", title: "Em breve" });
+      router.replace("/home");
+    } else if (semVinculo) router.replace(destinoSemVinculo);
     else if (semCapacidade && !avisoNaTela) {
       const rotaFinanceira = pathname === "/finance-review";
       const rotaDeEscala = pathname === "/schedule-create" || pathname.startsWith("/schedule-admin");
@@ -96,11 +113,11 @@ function LayoutComGuarda() {
       );
       router.replace(rotaDeEscala ? "/schedules" : "/home");
     }
-  }, [precisaLogin, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, router, toast]);
+  }, [precisaLogin, moduloIndisponivel, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, router, toast]);
 
-  if (loading && isMemberPath(pathname)) return null;
+  if (loading && (isMemberPath(pathname) || rotaOculta)) return null;
   if (avisoNaTela) return <AcessoRestritoEscalas />;
-  if (precisaLogin || semVinculo || semCapacidade) return null;
+  if (precisaLogin || moduloIndisponivel || semVinculo || semCapacidade) return null;
   return <Stack screenOptions={{ headerShown: false }} />;
 }
 

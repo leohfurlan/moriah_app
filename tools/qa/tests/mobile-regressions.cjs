@@ -172,3 +172,33 @@ test("reload forçado da mesma conta ignora respostas anteriores", async () => {
   assert.equal(s.getNotificationsSnapshot().unreadCount, 0);
   assert.equal(s.getNotificationsSnapshot().items[0].is_read, true);
 });
+
+// C-2 (2026-09-29): os 6 modulos sem backend ficam ocultos, nao removidos.
+// `load` resolve a partir de mobile/src; o modulo so precisa dos icones, que o
+// mock substitui — por isso nao ha dependencia de lucide-react-native aqui.
+const navigation = load("navigation.ts", {
+  "lucide-react-native": new Proxy({}, { get: () => () => null }),
+});
+
+test("módulos sem backend não aparecem no menu nem renderizam rota", () => {
+  const ocultas = ["ministries", "setlists", "repertoire", "bands", "bible-school", "classes"];
+  assert.deepEqual([...navigation.ROTAS_OCULTAS].sort(), [...ocultas].sort());
+
+  // Cada um bloqueia a rota, inclusive com sub-rota (id na URL).
+  for (const rota of ocultas) {
+    assert.equal(navigation.moduloOculto(`/${rota}`), true, `/${rota} deveria estar oculto`);
+    assert.equal(navigation.moduloOculto(`/${rota}/7`), true, `/${rota}/7 deveria estar oculto`);
+  }
+
+  // Rotas que continuam valendo não são afetadas pela lista.
+  for (const rota of ["/home", "/finance", "/finance-review", "/schedules", "/content", "/events"]) {
+    assert.equal(navigation.moduloOculto(rota), false, `${rota} não deveria estar oculto`);
+  }
+
+  // Nenhuma das 6 entra no menu, nem para quem tem todas as capacidades.
+  const todasAsCapacidades = ["manage_all", "manage_pastoral", "manage_members", "manage_finance", "manage_content", "manage_events", "manage_schedules", "review_contributions", "member"];
+  const rotasDoMenu = navigation.itensVisiveis(todasAsCapacidades).map((item) => item.route);
+  for (const rota of ocultas) {
+    assert.ok(!rotasDoMenu.includes(rota), `/${rota} não deveria aparecer no menu`);
+  }
+});

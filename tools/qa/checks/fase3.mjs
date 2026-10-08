@@ -51,20 +51,11 @@ export async function executar({ browser, dir }) {
   try {
     page.setDefaultTimeout(15000);
     await page.goto(BASE + '/home');
-    // Criterio do plano: tesouraria sem vinculo chega na revisao pelo mobile.
-    // O navigation.ts do origin/master tirou "Revisao" das abas do mobile (entra
-    // pelo modulo relacionado), entao o link pode nao existir. Quando nao existe,
-    // registra AVISO e segue por URL para os demais checks da tela rodarem.
-    const linkRevisao = page.getByRole('link', { name: /Revis/i }).first();
-    const temLink = (await linkRevisao.count()) > 0;
-    if (temLink) await linkRevisao.click();
-    else await page.goto(BASE + '/finance-review');
+    // A conta de gestao sem membro tem um atalho real na Home.
+    // Exigir esse caminho: URL direta mascarava um eventual menu inacessivel.
+    await page.getByRole('button', { name: 'Abrir revisão', exact: true }).click();
     await page.getByText('Maria QA', { exact: true }).waitFor();
-    if (temLink) {
-      v.check('Tesouraria sem membro acessa revisao pelo mobile', new URL(page.url()).pathname === '/finance-review');
-    } else {
-      v.aviso('Tesouraria sem membro acessa revisao pelo mobile', 'menu mobile nao expoe "Revisao"; tela aberta por URL para os demais checks');
-    }
+    v.check('Tesouraria sem membro acessa revisao pelo mobile', new URL(page.url()).pathname === '/finance-review');
     await page.getByText('Maria QA', { exact: true }).click();
     await page.getByRole('button', { name: 'comprovante.pdf', exact: true }).waitFor();
     v.check('Detalhe mostra comprovante e nota do membro', await page.getByText('Nota do membro', { exact: true }).isVisible());

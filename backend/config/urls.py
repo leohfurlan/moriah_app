@@ -7,6 +7,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from config.health import liveness, readiness
+from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
 from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
@@ -47,6 +48,7 @@ urlpatterns = [
     path("health/", liveness, name="health"),
     path("health/ready/", readiness, name="health-ready"),
     path("admin/", admin.site.urls),
+    path("api/files/<str:kind>/<int:pk>/", PrivateMediaView.as_view(), name="private-media"),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/me/", MeView.as_view(), name="me"),
@@ -81,7 +83,9 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/", include(router.urls)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+if not settings.PRIVATE_LOCAL_MEDIA:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Aliases para desenvolvimento local. Algumas extensoes de bloqueio do navegador
 # interpretam caminhos com `api` como rastreamento e impedem o fetch do Expo.

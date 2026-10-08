@@ -88,12 +88,12 @@ export async function login(page, { email, password }, { base = BASE, espera = 3
     await page.waitForTimeout(2500);
     const inputs = page.locator("input");
     if ((await inputs.count()) >= 2) {
-      await inputs.nth(0).fill(email);
-      await inputs.nth(1).fill(password);
+      await digitar(inputs.nth(0), email);
+      await digitar(inputs.nth(1), password);
     }
     const botao = page.getByRole("button", { name: /entrar/i }).first();
     await botao.click({ timeout: 10000 });
-    await page.waitForTimeout(espera);
+    await page.waitForURL((url) => url.pathname !== "/", { timeout: Math.max(espera, 10000) });
     resultado.url = new URL(page.url()).pathname;
     resultado.ok = resultado.url !== "/" && resultado.url !== "";
   } catch (erro) {

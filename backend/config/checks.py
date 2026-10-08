@@ -5,6 +5,7 @@ que o CI executa a cada push e que o runbook de deploy roda antes de liberar a
 versao. Nada aqui interfere no desenvolvimento local (que usa ``DEBUG=true``).
 """
 from django.conf import settings
+from pathlib import Path
 from django.core.checks import Error, Tags, Warning, register
 
 from .env import LOCAL_DB_HOSTS, is_insecure_secret_key
@@ -79,7 +80,12 @@ def check_arquivos_de_producao(app_configs, **kwargs):
         return []
 
     problems = []
-    if not getattr(settings, "USE_S3_STORAGE", False):
+    persistent_local = (
+        getattr(settings, "PRIVATE_LOCAL_MEDIA", False)
+        and getattr(settings, "LOCAL_MEDIA_PERSISTENT", False)
+        and Path(settings.MEDIA_ROOT).is_mount()
+    )
+    if not getattr(settings, "USE_S3_STORAGE", False) and not persistent_local:
         problems.append(
             Warning(
                 "USE_S3_STORAGE=false fora do modo debug: comprovantes ficam no disco "
@@ -88,7 +94,7 @@ def check_arquivos_de_producao(app_configs, **kwargs):
                 id="config.W005",
             )
         )
-    else:
+    elif getattr(settings, "USE_S3_STORAGE", False):
         storage = (settings.STORAGES or {}).get("default", {})
         options = storage.get("OPTIONS") or {}
         if not options.get("querystring_auth"):

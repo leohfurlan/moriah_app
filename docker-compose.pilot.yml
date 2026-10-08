@@ -5,7 +5,7 @@
 #   - sem o servico `mobile`: o app web e publicado no host/CDN, nao no piloto;
 #   - gunicorn + whitenoise (Dockerfile.prod), sem volume de codigo;
 #   - migracao explicita, em um servico separado que nao sobe sozinho;
-#   - healthcheck em /health/ready/ e log com rotacao.
+#   - healthcheck sem consulta ao banco em /health/ e log com rotacao.
 #
 # Uso:
 #   cp .env.example .env.pilot   # preencher (nunca commitar)
@@ -44,9 +44,9 @@ services:
     ports:
       - "${PILOT_BIND:-127.0.0.1}:${PILOT_PORT:-8000}:8000"
     healthcheck:
-      # /health/ready/ devolve 503 se o banco nao responde, entao o Docker
-      # reinicia o container quando o Neon nao esta acessivel.
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/ready/"]
+      # Liveness nao mantem o Neon ativo. Readiness e conferido no deploy.
+      # Unhealthy sinaliza falha; restart policy atua quando o processo sai.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 5s
       retries: 3

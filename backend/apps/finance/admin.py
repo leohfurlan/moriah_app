@@ -2,9 +2,17 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import Contribution, ContributionAttachment, FinancialEntry
+from config.private_media import PrivateMediaWidget
 
 
-class ContributionAttachmentInline(admin.TabularInline):
+class PrivateReceiptFormMixin:
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if db_field.name == "file":
+            kwargs["widget"] = PrivateMediaWidget(request, "contribution")
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+
+class ContributionAttachmentInline(PrivateReceiptFormMixin, admin.TabularInline):
     model = ContributionAttachment
     extra = 0
     readonly_fields = ("created_at",)
@@ -39,7 +47,7 @@ class ContributionAdmin(admin.ModelAdmin):
 
 
 @admin.register(ContributionAttachment)
-class ContributionAttachmentAdmin(admin.ModelAdmin):
+class ContributionAttachmentAdmin(PrivateReceiptFormMixin, admin.ModelAdmin):
     list_display = ("contribution", "original_name", "uploaded_by", "created_at")
     autocomplete_fields = ("contribution", "uploaded_by")
 

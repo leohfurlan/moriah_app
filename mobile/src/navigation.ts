@@ -183,6 +183,28 @@ export const ABAS: NavItem[] = [
   criarItem({ id: "aba-perfil", label: "Perfil", route: "profile", Icon: UserRound, required: ["member"], matches: ["profile"] }),
 ];
 
+/**
+ * Telas que existem no codigo mas ainda nao tem modulo no backend. Elas nao
+ * entram no menu (item sem tela nao entra — ver o topo deste arquivo) e a rota
+ * fica bloqueada na guarda de navegacao em vez de abrir uma tela vazia. Ficam
+ * aqui, e nao removidas, para que reabrir cada modulo seja so tirar da lista.
+ *
+ * Decisao de produto de 2026-09-29: manter ocultas ate existir fluxo real.
+ */
+export const ROTAS_OCULTAS: string[] = [
+  "ministries",
+  "setlists",
+  "repertoire",
+  "bands",
+  "bible-school",
+  "classes",
+];
+
+/** Rota oculta: nao deve renderizar tela nem aparecer na navegacao. */
+export function moduloOculto(pathname: string): boolean {
+  return ROTAS_OCULTAS.includes(raizDaRota(pathname));
+}
+
 /** Primeiro segmento da rota — o "modulo" em que o usuario esta. */
 export function raizDaRota(pathname: string): string {
   return pathname.split("/").filter(Boolean)[0] || "home";

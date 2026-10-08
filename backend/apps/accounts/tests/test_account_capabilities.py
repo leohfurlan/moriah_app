@@ -104,3 +104,60 @@ def test_membro_comum_nao_recebe_capacidade_de_escala(api_client, make_user, mak
     assert "manage_schedules" not in me.data["capabilities"]
     assert me.data["can_access_management"] is False
 
+
+# Capacidades que significam "opera o painel de gestao". O conjunto em
+# `can_access_management` precisa cobrir todas: hoje quem recebe uma delas por
+# papel tambem recebe outra (entao o furo nao aparecia), mas a divergencia
+# fechava a tela para uma capacidade concedida isoladamente (relatorio §5.3).
+CAPACIDADES_DE_GESTAO = {
+    "manage_all",
+    "manage_pastoral",
+    "manage_members",
+    "manage_finance",
+    "manage_content",
+    "review_contributions",
+    "manage_schedules",
+    "manage_cells",
+    "manage_events",
+}
+
+
+@pytest.mark.parametrize(
+    "papel",
+    [
+        User.Role.ADMIN,
+        User.Role.PASTOR,
+        User.Role.SECRETARY,
+        User.Role.TREASURER,
+        User.Role.COORDINATOR,
+        User.Role.CELL_LEADER,
+        User.Role.MEMBER,
+    ],
+)
+def test_can_access_management_acompanha_as_capacidades_de_gestao(api_client, make_user, papel):
+    """Cliente e servidor concordam: o campo e a intersecao das capacidades."""
+    gestor = make_user(f"painel.{papel}@igreja.com", role=papel)
+    api_client.force_authenticate(user=gestor)
+
+    me = api_client.get("/api/me/")
+
+    assert me.status_code == 200
+    capacidades = set(me.data["capabilities"])
+    assert me.data["can_access_management"] is bool(capacidades & CAPACIDADES_DE_GESTAO)
+
+
+@pytest.mark.parametrize("capacidade", ["manage_finance", "manage_content"])
+def test_capacidade_isolada_de_gestao_libera_o_painel(monkeypatch, capacidade):
+    """Capacidade de gestao concedida sozinha ja abre o painel (regressao §5.3).
+
+    Antes desta correcao `manage_finance` e `manage_content` ficavam de fora do
+    conjunto: uma conta que tivesse apenas uma delas recebia a permissao no
+    backend mas o app nao oferecia o caminho de gestao.
+    """
+    from apps.accounts import permissions
+
+    usuario = object()
+    monkeypatch.setattr(permissions, "user_capabilities", lambda _: [capacidade])
+
+    assert permissions.can_access_management(usuario) is True
+

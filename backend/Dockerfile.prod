@@ -38,6 +38,7 @@ USER app
 # Revisao implantada, exposta em /health/.
 ARG APP_REVISION=unknown
 ENV APP_REVISION=${APP_REVISION}
+LABEL org.opencontainers.image.revision=$APP_REVISION
 
 # Estaticos do admin/DRF entram na imagem. collectstatic nao toca no banco.
 RUN python manage.py collectstatic --noinput
@@ -54,5 +55,6 @@ CMD ["sh", "-c", "exec gunicorn config.wsgi:application \
   --graceful-timeout 30 \
   --max-requests 1000 \
   --max-requests-jitter 100 \
+  --config config/gunicorn.py \
   --access-logfile - \
   --error-logfile -"]

@@ -153,6 +153,14 @@ Agendamento sugerido (cron diario as 02:00):
 
 ## Piloto (runtime de producao)
 
+Status e plano atual para a VPS compartilhada `atos-pd`:
+[implantação KingHost — 08/10/2026](docs/plano-implantacao-kinghost-2026-10-08.md).
+Contém o escopo funcional, validações atuais e gates antes da publicação.
+
+A implantação aprovada usa `app.igrejamoriah.com`, PostgreSQL exclusivo e
+arquivos privados persistentes na própria VPS. Operação, backup e rollback:
+[runbook KingHost](docs/runbook-kinghost.md).
+
 ```bash
 cp .env.example .env.pilot                      # preencher com os valores reais
 docker compose -f docker-compose.pilot.yml --env-file .env.pilot build

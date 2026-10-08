@@ -1,6 +1,7 @@
 import datetime
 
 import pytest
+from django.utils import timezone
 
 from apps.events.models import Event
 from apps.members.models import Member, MemberLinkRequest
@@ -16,7 +17,7 @@ def test_lista_paginada_explicitamente_preserva_escopo_e_limita_tamanho(api_clie
             church=church,
             name=f"Culto {index}",
             event_type=Event.EventType.SERVICE,
-            start_at=datetime.datetime(2026, 10, index + 1, 19, tzinfo=datetime.timezone.utc),
+            start_at=timezone.now() + datetime.timedelta(days=index + 1),
         )
     api_client.force_authenticate(user=user)
 
@@ -31,15 +32,18 @@ def test_lista_paginada_explicitamente_preserva_escopo_e_limita_tamanho(api_clie
 
 def test_eventos_aceitam_filtro_de_tipo_e_rejeitam_data_invalida(api_client, make_user, church):
     user = make_user("membro@igreja.com")
+    start_at = timezone.now() + datetime.timedelta(days=2)
     Event.objects.create(
         church=church,
         name="Culto",
         event_type=Event.EventType.SERVICE,
-        start_at=datetime.datetime(2026, 10, 1, 19, tzinfo=datetime.timezone.utc),
+        start_at=start_at,
     )
     api_client.force_authenticate(user=user)
 
-    response = api_client.get("/api/me/events/?event_type=culto&date_from=2026-10-01")
+    response = api_client.get("/api/me/events/", {
+        "event_type": "culto", "date_from": timezone.localdate(start_at).isoformat(),
+    })
     invalid = api_client.get("/api/me/events/?date_from=amanha")
 
     assert response.status_code == 200

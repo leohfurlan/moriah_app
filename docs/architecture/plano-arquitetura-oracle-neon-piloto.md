@@ -1,5 +1,10 @@
 # Plano de arquitetura e implementação — piloto Moriah com Oracle VPS + Neon
 
+> Atualização de 08/10/2026: a recomendação de host e a sequência de implantação
+> estão no [plano KingHost](../plano-implantacao-kinghost-2026-10-08.md), baseado
+> na inspeção da VPS existente `atos-pd`. Este documento preserva a proposta
+> original; não aplicar seu provisionamento Oracle ao host compartilhado.
+
 **Data:** 18/09/2026  
 **Status:** proposto; não autoriza provisionamento, deploy, migração de dados ou publicação  
 **Escopo:** ambiente persistente de homologação/piloto interno do Moriah App

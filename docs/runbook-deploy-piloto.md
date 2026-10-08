@@ -1,5 +1,9 @@
 # Runbook — deploy e rollback do piloto
 
+> Para o host compartilhado `atos-pd`, seguir primeiro o
+> [plano KingHost de 08/10/2026](plano-implantacao-kinghost-2026-10-08.md).
+> O proxy existente ocupa 80/443; não ativar outro proxy nem aplicar cloud-init.
+
 **Escopo:** stack de `docker-compose.pilot.yml` (gunicorn + whitenoise, banco
 gerenciado no Neon, comprovantes em S3/R2). Adaptação local = Fase 1 do
 `docs/architecture/plano-arquitetura-oracle-neon-piloto.md`.
@@ -74,9 +78,11 @@ docker compose -f docker-compose.pilot.yml --env-file .env.pilot ps      # backe
 docker compose -f docker-compose.pilot.yml --env-file .env.pilot logs --tail 50 backend
 ```
 
-- `/health/` é o *liveness* (não toca no banco) — serve para o healthcheck.
+- `/health/` é o *liveness* (não toca no banco) — alvo recomendado para o healthcheck.
 - `/health/ready/` é o *readiness*: devolve **503** se o banco não responde, e
-  é o que o Docker usa para reiniciar o container.
+  é o alvo atual do Compose. Falha marca o container como `unhealthy`, mas
+  não o reinicia automaticamente. Antes do piloto Neon, trocar o polling
+  periódico para liveness para não manter o banco ativo por consultas de saúde.
 - `revision` em `/health/` diz qual commit está no ar: é a primeira coisa a
   olhar quando algo parece errado.
 
@@ -120,9 +126,9 @@ Migração destrutiva no piloto exige: backup verificado (§`runbook-backup-rest
   para não servir CSS antigo depois de um deploy.
 - **Migração explícita:** em restart/reboot o container **não** migra; se a
   revisão nova exige schema novo, o deploy precisa do passo 3 do §1.
-- **Manutenção curta:** para trocar a imagem sem erro de 502 no proxy, suba o
-  container novo antes de derrubar o antigo (`docker compose ... up -d backend`
-  já faz isso quando não há mudança de porta).
+- **Manutenção curta:** com uma réplica e porta fixa, `compose up -d backend`
+  pode interromper atendimento. Reservar janela; zero downtime exige uma
+  estratégia adicional, implementada e ensaiada.
 
 ## 5. Checklist de deploy
 

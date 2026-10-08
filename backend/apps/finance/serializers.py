@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 
 from apps.audit.models import AuditLog
@@ -8,7 +9,18 @@ from .validators import validate_contribution_attachment
 
 
 class ContributionAttachmentSerializer(serializers.ModelSerializer):
-    file_url = serializers.FileField(source="file", read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.URLField())
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if settings.PRIVATE_LOCAL_MEDIA and not settings.USE_S3_STORAGE:
+            from config.private_media import private_file_url
+            return private_file_url(request, "contribution", obj)
+        if not obj.file:
+            return None
+        url = obj.file.url
+        return request.build_absolute_uri(url) if request else url
 
     class Meta:
         model = ContributionAttachment

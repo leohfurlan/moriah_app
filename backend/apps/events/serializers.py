@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.conf import settings
 
 from .models import Event, EventAnnouncement
 from .validators import validate_event_announcement_image
@@ -40,6 +41,9 @@ class EventAnnouncementSerializer(serializers.ModelSerializer):
         if not obj.image:
             return None
         request = self.context.get("request")
+        if settings.PRIVATE_LOCAL_MEDIA and not settings.USE_S3_STORAGE:
+            from config.private_media import private_file_url
+            return private_file_url(request, "announcement", obj)
         url = obj.image.url
         return request.build_absolute_uri(url) if request else url
 
