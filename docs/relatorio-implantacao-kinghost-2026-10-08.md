@@ -91,3 +91,14 @@ Evidências visuais locais: `tmp/moriah-live-desktop.png` e
 `tmp/moriah-live-mobile.png`. A release foi commitada; nenhum push foi realizado.
 
 Referência operacional: [runbook KingHost](runbook-kinghost.md).
+
+## Correção de acesso ao logout
+
+Frontend `59d709032e29` publicado em 08/10/2026 com botão “Sair” no cabeçalho
+das telas autenticadas em desktop e celular. O botão anterior estava somente
+no rodapé da Home. Reutilizada a limpeza de tokens e perfil existente, seguida
+de retorno ao login. TypeScript e 12 regressões mobile passaram. No site real,
+login, logout e tentativa de voltar à Home após sair passaram nos dois tamanhos.
+Backend/banco permanecem na release `635e0fab0912`; `WEB_REVISION` permite
+atualização independente do frontend. Esta alteração não adiciona revogação
+server-side dos JWT já emitidos.
