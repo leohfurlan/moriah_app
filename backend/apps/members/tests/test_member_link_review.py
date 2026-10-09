@@ -94,6 +94,9 @@ def test_second_request_cannot_take_already_linked_candidate(make_user, make_mem
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_opening_has_one_pending_and_one_notice(make_user):
+    from django.db import connection
+    if connection.vendor != "postgresql":
+        pytest.skip("Row-lock concurrency requires PostgreSQL; covered by the PostgreSQL CI job")
     from concurrent.futures import ThreadPoolExecutor
     from django.db import close_old_connections
     admin = make_user('parallel@test.com', role='admin')
@@ -112,6 +115,9 @@ def test_concurrent_opening_has_one_pending_and_one_notice(make_user):
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_candidate_claim_has_one_winner(make_user, make_member):
+    from django.db import connection
+    if connection.vendor != "postgresql":
+        pytest.skip("Row-lock concurrency requires PostgreSQL; covered by the PostgreSQL CI job")
     from concurrent.futures import ThreadPoolExecutor
     from django.db import close_old_connections
     admin = make_user('parallel-admin@test.com', role='admin')
