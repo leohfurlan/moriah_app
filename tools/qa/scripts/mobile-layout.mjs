@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import { abrirNavegador } from '../lib/pw.mjs';
 
 const base = process.env.QA_BASE || 'http://127.0.0.1:8087';
+assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname), 'QA permitido apenas em servidor local');
 const output = 'output/playwright/mobile-layout';
 await fs.mkdir(output, { recursive: true });
 const browser = await abrirNavegador();

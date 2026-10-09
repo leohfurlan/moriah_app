@@ -180,6 +180,18 @@ const navigation = load("navigation.ts", {
   "lucide-react-native": new Proxy({}, { get: () => () => null }),
 });
 
+test("Conteúdo permanece na navegação mobile com acesso e destaque nas subrotas", () => {
+  const content = navigation.ABAS.find((item) => item.id === "aba-conteudo");
+  assert.ok(content);
+  assert.equal(content.route, "content");
+  assert.equal(navigation.temAcesso(content, ["member"]), true);
+  assert.equal(navigation.temAcesso(content, ["manage_content"]), true);
+  assert.equal(navigation.temAcesso(content, ["manage_all"]), true);
+  assert.equal(navigation.temAcesso(content, ["review_contributions"]), false);
+  assert.equal(navigation.rotaAtiva("/content/42", content.matches), true);
+  assert.deepEqual(navigation.ABAS.filter(item => item.id !== "aba-contribuicoes").map(item => item.label), ["Início", "Agenda", "Conteúdo", "Perfil"]);
+});
+
 test("módulos sem backend não aparecem no menu nem renderizam rota", () => {
   const ocultas = ["ministries", "setlists", "repertoire", "bands", "bible-school", "classes"];
   assert.deepEqual([...navigation.ROTAS_OCULTAS].sort(), [...ocultas].sort());
