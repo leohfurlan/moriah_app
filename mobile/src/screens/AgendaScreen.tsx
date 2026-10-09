@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
@@ -96,7 +96,7 @@ function DesktopAgenda({
         </View>
       </View>
       <View style={styles.desktopAgendaBottom}>
-        <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Eventos da igreja</Text>{upcomingEvents.length ? upcomingEvents.slice(0, 4).map((event) => <Pressable key={event.id} onPress={() => setSelectedDate(dateKey(event.start_at))} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{event.name}</Text><Text style={styles.meta}>{formatDate(event.start_at, true)} · {event.location || event.event_type_display}</Text></View><Text style={styles.link}>Ver no calendário</Text></Pressable>) : <Text style={styles.meta}>Nenhum evento futuro cadastrado.</Text>}</View>
+        <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Eventos da igreja</Text>{upcomingEvents.length ? upcomingEvents.slice(0, 4).map((event) => <Pressable key={event.id} onPress={() => { setSelectedDate(dateKey(event.start_at)); setCursor(new Date(event.start_at)); }} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{event.name}</Text><Text style={styles.meta}>{formatDate(event.start_at, true)} · {event.location || event.event_type_display}</Text></View><Text style={styles.link}>Ver no calendário</Text></Pressable>) : <Text style={styles.meta}>Nenhum evento futuro cadastrado.</Text>}</View>
         <View style={styles.desktopAgendaListCard}><Text style={styles.sectionTitle}>Compromissos em {selectedDate}</Text>{selectedEntries.length ? selectedEntries.map((entry) => <View key={entry.id} style={styles.agendaListRow}><View style={styles.agendaListCopy}><Text style={styles.entryTitle}>{entry.title}</Text><Text style={styles.meta}>{entry.subtitle} · {entry.detail}</Text></View><Badge label={entry.category} tone={entry.category === "Escala" ? "warning" : "neutral"} /></View>) : <Text style={styles.meta}>Nenhum compromisso para este dia.</Text>}{scheduleError ? <Text style={styles.meta}>Nao foi possivel carregar suas escalas agora.</Text> : null}{schedules.length ? <Text style={styles.agendaFootnote}>{schedules.length} escala(s) vinculada(s)</Text> : null}</View>
       </View>
     </View>
@@ -121,6 +121,7 @@ export function AgendaScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<UserFacingError | null>(null);
   const [scheduleError, setScheduleError] = useState<UserFacingError | null>(null);
+  const focusedEventId = useRef<string | undefined>(undefined);
   const requestedEventId = Array.isArray(eventParam) ? eventParam[0] : eventParam;
 
   const load = useCallback(async () => {
@@ -153,9 +154,17 @@ export function AgendaScreen() {
   }, [load]);
 
   useEffect(() => {
-    if (!requestedEventId) return;
+    if (!requestedEventId) {
+      focusedEventId.current = undefined;
+      return;
+    }
+    if (focusedEventId.current === requestedEventId) return;
     const event = churchEvents.find((item) => String(item.id) === requestedEventId);
-    if (event) setSelectedDate(dateKey(event.start_at));
+    if (event) {
+      setSelectedDate(dateKey(event.start_at));
+      setCursor(new Date(event.start_at));
+      focusedEventId.current = requestedEventId;
+    }
   }, [churchEvents, requestedEventId]);
 
   const entries = useMemo<AgendaEntry[]>(() => [
@@ -187,7 +196,6 @@ export function AgendaScreen() {
 
   const days = useMemo(() => calendarDays(cursor), [cursor]);
   const selectedEntries = entries.filter((entry) => entry.date === selectedDate);
-  const selectedEvent = requestedEventId ? churchEvents.find((event) => String(event.id) === requestedEventId) || null : null;
   const upcomingEvents = churchEvents.filter((event) => new Date(event.start_at).getTime() >= Date.now()).slice(0, 5);
 
   return (
@@ -220,7 +228,7 @@ export function AgendaScreen() {
             const selected = key === selectedDate;
             const hasEntry = entries.some((entry) => entry.date === key);
             return (
-              <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelectedDate(key)} style={[styles.calendarDay, !inMonth && styles.outsideDay, selected && styles.selectedDay]}>
+              <Pressable key={key} accessibilityLabel={`Selecionar ${key}`} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelectedDate(key)} style={[styles.calendarDay, !inMonth && styles.outsideDay, selected && styles.selectedDay]}>
                 <Text style={[styles.dayNumber, !inMonth && styles.outsideText, selected && styles.selectedText]}>{day.getDate()}</Text>
                 {hasEntry ? <View style={[styles.eventDot, selected && styles.selectedDot]} /> : null}
               </Pressable>
@@ -229,9 +237,11 @@ export function AgendaScreen() {
         </View>
       </Card>
 
-      <Card>
+      <View testID="agenda-selected-day"><Card>
         <Text style={styles.sectionTitle}>{selectedDate === dateKey(new Date()) ? "Hoje" : "Compromissos do dia"}</Text>
-        {selectedEvent ? <EventDetails event={selectedEvent} /> : selectedEntries.length ? selectedEntries.map((entry) => (
+        {selectedEntries.length ? selectedEntries.map((entry) => {
+          const event = churchEvents.find((item) => entry.id === `event-${item.id}`);
+          return event ? <EventDetails key={entry.id} event={event} /> : (
           <View key={entry.id} style={styles.entryRow}>
             <View style={styles.entryCopy}>
               <Text style={styles.entryTitle}>{entry.title}</Text>
@@ -240,13 +250,14 @@ export function AgendaScreen() {
             </View>
             <Badge label={entry.category} tone={entry.category === "Escala" ? "warning" : "neutral"} />
           </View>
-        )) : <Text style={styles.meta}>Nenhum compromisso para este dia.</Text>}
-      </Card>
+        );
+        }) : <Text style={styles.meta}>Nenhum compromisso para este dia.</Text>}
+      </Card></View>
 
       <Card>
         <Text style={styles.sectionTitle}>Eventos da igreja</Text>
         {upcomingEvents.length ? upcomingEvents.map((event) => (
-          <Pressable key={event.id} accessibilityRole="button" onPress={() => setSelectedDate(dateKey(event.start_at))} style={styles.entryRow}>
+          <Pressable key={event.id} accessibilityRole="button" onPress={() => { setSelectedDate(dateKey(event.start_at)); setCursor(new Date(event.start_at)); }} style={styles.entryRow}>
             <View style={styles.entryCopy}>
               <Text style={styles.entryTitle}>{event.name}</Text>
               <Text style={styles.meta}>{formatDate(event.start_at, true)}</Text>

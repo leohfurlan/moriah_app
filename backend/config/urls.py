@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from config.health import liveness, readiness
 from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
+from apps.accounts.talk2me_views import Talk2meContactsView
 from apps.accounts.registration_views import (ChurchDetailsView, RegistrationOptionsView,
     TeamViewSet, CellViewSet, MinistryViewSet, EventViewSet)
 from apps.accounts.onboarding_views import (PersonalOnboardingView, CompleteOnboardingView,
@@ -125,6 +126,7 @@ if not settings.PRIVATE_LOCAL_MEDIA:
 # Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
 # para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
+    path("integrations/talk2me/contacts/resolve/", Talk2meContactsView.as_view(), name="talk2me-contacts"),
     path("", include(onboarding_patterns)),
     path("auth/whatsapp/", include(whatsapp_patterns)),
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),

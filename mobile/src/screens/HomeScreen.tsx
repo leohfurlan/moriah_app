@@ -171,13 +171,17 @@ function NoticeCarousel({
   const goTo = (nextIndex: number) => setIndex((nextIndex + slides.length) % slides.length);
 
   return (
-    <View style={compact ? styles.noticeCarouselMobile : styles.noticeCarouselDesktop}>
-      {slide.imageUrl ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)}>
-          <Image accessibilityLabel={slide.title} source={{ uri: slide.imageUrl }} resizeMode="contain" style={compact ? styles.noticeImageMobile : styles.noticeImageDesktop} />
-        </Pressable>
+    <View testID="notice-carousel" style={compact ? styles.noticeCarouselMobile : styles.noticeCarouselDesktop}>
+      {slides.some((item) => item.imageUrl) ? (
+        <View testID="notice-media" style={styles.noticeMedia}>
+          {slide.imageUrl ? (
+            <Pressable style={styles.noticeMediaLink} accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)}>
+              <Image accessibilityLabel={slide.title} source={{ uri: slide.imageUrl }} resizeMode="contain" style={styles.noticeImage} />
+            </Pressable>
+          ) : <CalendarDays size={48} color={colors.accent} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />}
+        </View>
       ) : null}
-      <View style={styles.noticeCopy}>
+      <View testID="notice-copy" style={styles.noticeCopy}>
         <Text style={styles.noticeEyebrow}>{slide.eyebrow}</Text>
         <Text numberOfLines={2} style={styles.noticeTitle}>{slide.title}</Text>
         <Text numberOfLines={3} style={styles.noticeDescription}>{slide.description}</Text>
@@ -793,17 +797,19 @@ const styles = StyleSheet.create({
   desktopMetricLabel: { color: colors.inkMuted, fontSize: 11, fontWeight: "700" },
   desktopMetricValue: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   desktopMetricDetail: { color: colors.inkMuted, fontSize: 11 },
-  noticeCarouselDesktop: { minHeight: 176, flexDirection: "row", justifyContent: "space-between", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 20, overflow: "hidden" },
+  noticeCarouselDesktop: { minHeight: 176, flexDirection: "column", gap: 12, backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 20, overflow: "hidden" },
   noticeCarouselMobile: { minHeight: 168, flexDirection: "column", gap: 12, backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 16, overflow: "hidden" },
   noticeEmptyDesktop: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
   noticeEmptyMobile: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
   noticeEmptyText: { color: colors.inkMuted, fontSize: 12 },
-  noticeImageDesktop: { width: 240, aspectRatio: 16 / 9, borderRadius: 8, backgroundColor: colors.surface, marginRight: 18 },
-  noticeImageMobile: { width: "100%", aspectRatio: 16 / 9, borderRadius: 8, backgroundColor: colors.surface },
-  noticeCopy: { flex: 1, gap: 6, minWidth: 0 },
+  // Reserve the same media slot for every slide when any notice has a banner.
+  noticeMedia: { width: "100%", aspectRatio: 16 / 9, backgroundColor: colors.surface, borderRadius: 8, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  noticeMediaLink: { width: "100%", height: "100%" },
+  noticeImage: { width: "100%", height: "100%" },
+  noticeCopy: { gap: 6, minWidth: 0 },
   noticeEyebrow: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
-  noticeTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
-  noticeDescription: { color: colors.inkBody, fontSize: 12, lineHeight: 17, maxWidth: 720 },
+  noticeTitle: { color: colors.ink, fontSize: 18, lineHeight: 24, minHeight: 48, fontWeight: "800" },
+  noticeDescription: { color: colors.inkBody, fontSize: 12, lineHeight: 17, minHeight: 51 },
   noticeMeta: { color: colors.inkMuted, fontSize: 11 },
   noticeLink: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingVertical: 4 },
   noticeLinkText: { color: colors.accent, fontSize: 12, fontWeight: "800" },
