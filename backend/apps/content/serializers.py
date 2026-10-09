@@ -5,6 +5,7 @@ from .models import Content
 
 
 class ContentSerializer(serializers.ModelSerializer):
+    body = serializers.CharField(max_length=50000)
     author_name = serializers.SerializerMethodField()
     can_manage = serializers.SerializerMethodField()
 

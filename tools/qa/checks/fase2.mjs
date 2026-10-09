@@ -22,6 +22,7 @@ const caminho = (url) => {
 const MENU_MEMBRO = [
   ["Visão geral", "/home"],
   ["Agenda", "/agenda"],
+  ["Conteúdo", "/content"],
   ["Escalas", "/schedules"],
   ["Meu extrato", "/statement"],
 ];

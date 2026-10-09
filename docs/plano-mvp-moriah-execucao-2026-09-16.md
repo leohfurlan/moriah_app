@@ -299,6 +299,12 @@ Os estados exibidos após reload devem corresponder ao backend. Nenhuma ação p
 
 Cada domínio deve começar por modelagem, permissões e contrato de API. Não criar apenas shells de navegação.
 
+**Fatia de Conteúdo implementada em 17/09/2026:** modelo, permissões por igreja,
+API de rascunho/publicação/retirada, listagem paginada e detalhe no desktop/mobile.
+Contrato em `docs/architecture/conteudo-api.md`; validação em
+`docs/qa/fase-6-conteudo-mobile-2026-09-17.md`. Migration aplicada no banco local
+e preview ngrok atualizado após autorização. Os demais domínios desta fase ainda não foram implementados.
+
 ### Ordem sugerida
 
 1. Escola Bíblica, turmas e inscrições;
