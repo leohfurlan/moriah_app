@@ -10,12 +10,20 @@ const browser=await abrirNavegador();
 try {
  for (const account of accounts) {
   const context=await browser.newContext({viewport:account.label==='mobile'?{width:390,height:844}:{width:1440,height:1000}});
-  const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+  let page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
+  const applicantPage=page;
+  let reviewerContext=null;
   assert((await login(page,account,{base})).ok);
   await page.goto(base+'/profile');
   await page.getByRole('button',{name:'Solicitar vínculo cadastral',exact:true}).click();
   await page.getByText('Solicitação atual: Pendente',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Revisar solicitações de vínculo',exact:true}).click();
+  if(account.label==='member') {
+   assert.equal(await page.getByRole('button',{name:'Revisar solicitações de vínculo',exact:true}).count(),0);
+   reviewerContext=await browser.newContext({viewport:{width:1440,height:1000}});
+   page=await reviewerContext.newPage();
+   assert((await login(page,accounts[0],{base})).ok);
+   await page.goto(base+'/member-link-requests');
+  } else await page.getByRole('button',{name:'Revisar solicitações de vínculo',exact:true}).click();
   await page.getByText(account.email,{exact:true}).locator('visible=true').first().click();
   await page.getByText('Situação: Pendente',{exact:true}).waitFor();
   if(account.label==='rejection') {
@@ -32,10 +40,11 @@ try {
    await page.getByRole('button',{name:'Buscar cadastros',exact:true}).click();
    await page.getByText('Selecionar: '+account.candidate,{exact:true}).click();
    await page.getByRole('button',{name:'Aprovar vínculo',exact:true}).click();
-   await page.getByText(/Você está revisando sua própria solicitação/).waitFor();
+   if(account.label!=='member') await page.getByText(/Você está revisando sua própria solicitação/).waitFor();
    await page.getByRole('button',{name:'Confirmar aprovação',exact:true}).click();
    await page.getByText('Situação: Aprovado',{exact:true}).waitFor();
    // Navigate within the SPA to prove the cached account refreshes without login.
+   if(account.label==='member') page=applicantPage;
    await page.getByRole('button',{name:'Abrir menu da conta',exact:true}).click();
    await page.getByRole('button',{name:'Meu Perfil',exact:true}).click();
    await page.getByText(account.candidate,{exact:true}).locator('visible=true').first().waitFor();
@@ -43,14 +52,17 @@ try {
   }
   await page.goto(base+'/notifications');
   await page.getByText(account.label==='rejection'?'Vínculo cadastral não aprovado':'Vínculo cadastral aprovado',{exact:true}).first().waitFor();
-  await page.getByText('Solicitação de vínculo cadastral',{exact:true}).first().click();
-  await page.getByRole('button',{name:'Revisar solicitação',exact:true}).click();
-  await page.waitForURL(/member-link-requests\/\d+/);
-  await page.getByText(account.label==='rejection'?'Situação: Recusado':'Situação: Aprovado',{exact:true}).waitFor();
+  if(account.label!=='member') {
+   await page.getByText('Solicitação de vínculo cadastral',{exact:true}).first().click();
+   await page.getByRole('button',{name:'Revisar solicitação',exact:true}).click();
+   await page.waitForURL(/member-link-requests\/\d+/);
+   await page.getByText(account.label==='rejection'?'Situação: Recusado':'Situação: Aprovado',{exact:true}).waitFor();
+  }
   await page.screenshot({path:`tmp/member-link-${account.label}.png`,fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   assert.deepEqual(errors,[]);
   console.log('PASS '+account.label+': request, review, decision, profile, notifications, deep link');
   await context.close();
+  if(reviewerContext) await reviewerContext.close();
  }
 } finally { await browser.close(); }
