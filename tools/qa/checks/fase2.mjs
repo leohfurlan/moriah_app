@@ -154,6 +154,7 @@ export async function executar({ browser, dir }) {
       ["Início", "/home"],
       ["Agenda", "/agenda"],
       ["Nova contribuição", "/contribution"],
+      ["Conteúdo", "/content"],
       ["Perfil", "/profile"],
     ];
     const problemas = [];
@@ -168,7 +169,7 @@ export async function executar({ browser, dir }) {
       if (!chegou) problemas.push(`${rotulo} -> ${caminho(sessao.page.url())} (esperado ${rota})`);
     }
     v.check(
-      "4. Navegação mobile leva aos destinos reais (Início, Agenda, Nova contribuição, Perfil)",
+      "4. Navegação mobile leva aos destinos reais (Início, Agenda, Nova contribuição, Conteúdo, Perfil)",
       problemas.length === 0,
       problemas.length ? problemas.join(" | ") : abas.map(([rotulo, rota]) => `${rotulo}=${rota}`).join(", "),
     );
@@ -176,12 +177,12 @@ export async function executar({ browser, dir }) {
     // evidencia e o destaque visual — exatamente uma aba com fundo proprio, e
     // ela tem que ser a da rota atual.
     const destacada = await sessao.page.evaluate(() => {
-      const rotulos = ["Início", "Agenda", "Perfil"];
+      const rotulos = ["Início", "Agenda", "Conteúdo", "Perfil"];
       return [...document.querySelectorAll('[role="link"]')]
         .map((el) => ({ nome: (el.getAttribute("aria-label") || "").trim(), fundo: getComputedStyle(el).backgroundColor }))
         .filter((item) => rotulos.includes(item.nome) && item.fundo && item.fundo !== "rgba(0, 0, 0, 0)");
     });
-    const esperadaNaRota = { "/home": "Início", "/agenda": "Agenda", "/statement": "Contribuições", "/profile": "Perfil" }[caminho(sessao.page.url())];
+    const esperadaNaRota = { "/home": "Início", "/agenda": "Agenda", "/statement": "Contribuições", "/content": "Conteúdo", "/profile": "Perfil" }[caminho(sessao.page.url())];
     v.check(
       "4b. A aba da rota atual é a única destacada",
       destacada.length === 1 && destacada[0].nome === esperadaNaRota,

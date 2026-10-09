@@ -240,6 +240,7 @@ export function Screen({
           ) : null}
 
           <ScrollView
+            testID="screen-scroll"
             contentContainerStyle={[
               styles.content,
               appShell && styles.desktopContent,
@@ -321,7 +322,7 @@ function BottomNav({ pathname, onNavigate, capabilities }: { pathname: string; o
   };
 
   return (
-    <View style={styles.bottomNav}>
+    <View testID="bottom-nav" style={styles.bottomNav}>
       {esquerda.map(renderItem)}
       <View style={styles.navContributionSlot}>
         <Pressable

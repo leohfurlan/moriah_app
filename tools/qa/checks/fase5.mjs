@@ -165,12 +165,12 @@ export async function executar({ browser, dir }) {
       assert.equal(status, "conflict");
     });
     await v.screenshot(page, "conflito-desktop");
-    await check("Mobile possui três abas e ação central de contribuição, sem Conteúdo", async () => {
+    await check("Mobile possui quatro abas e ação central de contribuição, incluindo Conteúdo", async () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await go("/notifications");
       await page.getByRole("link", { name: "Perfil", exact: true }).waitFor();
-      for (const label of ["Início", "Agenda", "Nova contribuição", "Perfil"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 1);
-      for (const label of ["Conteúdo", "Escalas"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 0);
+      for (const label of ["Início", "Agenda", "Nova contribuição", "Conteúdo", "Perfil"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 1);
+      for (const label of ["Escalas"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 0);
     });
     await v.screenshot(page, "notificacoes-mobile");
     v.check("Sem exceções JavaScript não tratadas", exceptions.length === 0, exceptions.join(" | "));
