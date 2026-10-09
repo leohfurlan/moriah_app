@@ -5,6 +5,12 @@ from apps.accounts.permissions import can_access_management, get_member_profile,
 
 
 class MeSerializer(serializers.ModelSerializer):
+    onboarding_completed = serializers.SerializerMethodField()
+
+    def get_onboarding_completed(self, obj) -> bool:
+        from .models import OnboardingProfile
+        return OnboardingProfile.objects.filter(user=obj, completed_at__isnull=False).exists()
+
     member_id = serializers.SerializerMethodField()
     member_name = serializers.SerializerMethodField()
     church_name = serializers.CharField(source="church.name", read_only=True)
@@ -37,6 +43,7 @@ class MeSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
+            "onboarding_completed",
             "email",
             "first_name",
             "last_name",

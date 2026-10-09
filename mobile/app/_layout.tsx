@@ -11,6 +11,7 @@ import { WebEffects } from "@/components/WebEffects";
 import { useReducedMotion } from "@/components/Motion";
 import { useOnResume } from "@/hooks/useOnResume";
 import { loadNotifications } from "@/services/notificationStore";
+import {rememberOnboardingDestination} from "@/services/onboarding";
 
 /**
  * Rotas que exigem apenas estar logado com vinculo de membro. As areas de
@@ -31,6 +32,7 @@ const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "
  * URL for digitada na mao, avisa em portugues em vez de abrir a tela vazia.
  */
 const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
+  "/settings": ["manage_all"],
   "/member-link-requests": ["manage_members", "manage_all"],
   "/schedule-create": CAPACIDADES_DE_ESCALA,
   "/finance-review": ["review_contributions", "manage_all"],
@@ -72,7 +74,7 @@ function rotaRestritaDeEscalas(pathname: string): boolean {
 
 function isMemberPath(pathname: string): boolean {
   return (
-    MEMBER_PATHS.includes(pathname) ||
+    MEMBER_PATHS.includes(pathname) || ["/onboarding", "/welcome", "/service-times"].includes(pathname) ||
     pathname.startsWith("/schedule/") ||
     pathname.startsWith("/song/") ||
     pathname.startsWith("/notification/") ||
@@ -88,7 +90,7 @@ function LayoutComGuarda() {
   useOnResume(() => {
     if (me) {
       void refreshProfile();
-      void loadNotifications(me.id, true).catch(() => undefined);
+      if (me.onboarding_completed) void loadNotifications(me.id, true).catch(() => undefined);
     }
   });
   const toast = useToast();
@@ -99,7 +101,8 @@ function LayoutComGuarda() {
   const rotaOculta = moduloOculto(pathname);
   const precisaLogin = Boolean(!loading && !me && (isMemberPath(pathname) || rotaOculta));
   const moduloIndisponivel = Boolean(me && rotaOculta && !precisaLogin);
-  const contaSemMembroPermitida = pathname === "/profile" || pathname === "/notifications" || pathname.startsWith("/notification/");
+  const contaSemMembroPermitida = ["/onboarding", "/welcome", "/service-times", "/profile", "/notifications"].includes(pathname) || pathname.startsWith("/notification/");
+  const precisaOnboarding = Boolean(!loading && me && me.onboarding_completed === false && pathname !== "/onboarding");
   const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management && !contaSemMembroPermitida);
   const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
   const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
@@ -109,6 +112,10 @@ function LayoutComGuarda() {
 
   useEffect(() => {
     if (precisaLogin) router.replace("/");
+    else if (precisaOnboarding) {
+      if (me) rememberOnboardingDestination(me.id, pathname);
+      router.replace("/onboarding" as never);
+    }
     else if (moduloIndisponivel) {
       toast("Este módulo ainda não está disponível.", { tone: "error", title: "Em breve" });
       router.replace("/home");
@@ -126,9 +133,10 @@ function LayoutComGuarda() {
       );
       router.replace(rotaDeEscala ? "/schedules" : "/home");
     }
-  }, [precisaLogin, moduloIndisponivel, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, router, toast]);
+  }, [precisaLogin, precisaOnboarding, moduloIndisponivel, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, me?.id, pathname, router, toast]);
 
   if (loading && (isMemberPath(pathname) || rotaOculta)) return null;
+  if (precisaOnboarding) return null;
   if (avisoNaTela) return <AcessoRestritoEscalas />;
   if (precisaLogin || moduloIndisponivel || semVinculo || semCapacidade) return null;
   return <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? "none" : "default" }} />;

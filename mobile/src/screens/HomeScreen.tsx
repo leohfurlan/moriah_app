@@ -4,6 +4,7 @@ import { Image, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, u
 import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
 
 import { Badge, Button, Card } from "@/components/Form";
+import {ChurchSetup} from "@/components/ChurchSetup";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { Screen } from "@/components/Screen";
 import { useReducedMotion } from "@/components/Motion";
@@ -575,6 +576,7 @@ export function HomeScreen({
         </View>) : undefined}
     >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
+      <ChurchSetup/>
       {desktop && isMember ? (
         <DesktopDashboard
           me={me}

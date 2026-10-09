@@ -128,3 +128,25 @@ class WhatsAppSendLimit(models.Model):
     window_started = models.DateTimeField()
     last_sent = models.DateTimeField(null=True)
     count = models.PositiveIntegerField(default=0)
+
+
+class OnboardingProfile(TimestampedModel):
+    class Relationship(models.TextChoices):
+        DISCOVERING = "discovering", "Estou conhecendo a igreja"
+        ATTENDING = "attending", "Já frequento, mas ainda não sou membro"
+        MEMBER = "member", "Já sou membro"
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="onboarding")
+    birth_date = models.DateField(null=True, blank=True)
+    relationship = models.CharField(max_length=16, choices=Relationship.choices, blank=True)
+    step = models.CharField(max_length=16, default="welcome")
+    completed_at = models.DateTimeField(null=True, blank=True)
+    setup_dismissed = models.BooleanField(default=False)
+
+
+class ChurchSetup(TimestampedModel):
+    church = models.OneToOneField(Church, on_delete=models.CASCADE, related_name="setup")
+    church_reviewed_at = models.DateTimeField(null=True, blank=True)
+    church_reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="church_reviews")
+    team_reviewed_at = models.DateTimeField(null=True, blank=True)
+    team_reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="team_reviews")

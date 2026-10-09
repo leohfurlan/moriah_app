@@ -44,6 +44,10 @@ export function AccountMenu({compact = false}: {compact?: boolean}) {
         <Pressable accessibilityRole="button" accessibilityLabel="Fechar menu da conta" onPress={close} style={StyleSheet.absoluteFill}/>
         <MotionView testID="account-menu" style={[styles.menu,{width:menuWidth,top:position.top,left:position.left}]}>
           <Text style={styles.heading}>{name}</Text><Text numberOfLines={1} style={styles.email}>{me.email}</Text>
+          {me.onboarding_completed ? <>
+            <Pressable accessibilityRole="button" accessibilityLabel="Próximos passos" onPress={() => {setOpen(false);router.push("/welcome" as never);}} style={styles.item}><Text style={styles.itemText}>Próximos passos e cultos</Text></Pressable>
+            {me.capabilities.includes("manage_all") ? <Pressable accessibilityRole="button" accessibilityLabel="Configurações da igreja" onPress={() => {setOpen(false);router.push("/settings" as never);}} style={styles.item}><Text style={styles.itemText}>Configurações da igreja</Text></Pressable> : null}
+          </> : null}
           <Pressable accessibilityRole="button" accessibilityLabel="Meu Perfil" disabled={busy} onPress={() => {setOpen(false);router.push("/profile");}} style={({pressed}) => [styles.item,pressed && styles.pressed]}>
             <UserRound size={18} color={colors.inkBody}/><Text style={styles.itemText}>Meu Perfil</Text>
           </Pressable>

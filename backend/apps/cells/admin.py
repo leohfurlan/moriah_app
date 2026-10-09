@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import Cell, CellAttendance, CellMeeting
+from apps.accounts.scoped_admin import ChurchScopedAdmin
 
 
 class CellAttendanceInline(admin.TabularInline):
@@ -9,7 +10,7 @@ class CellAttendanceInline(admin.TabularInline):
 
 
 @admin.register(Cell)
-class CellAdmin(admin.ModelAdmin):
+class CellAdmin(ChurchScopedAdmin):
     list_display = ("name", "church", "leader", "meeting_day", "location")
     list_filter = ("church", "meeting_day")
     search_fields = ("name", "location")

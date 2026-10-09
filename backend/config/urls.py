@@ -9,6 +9,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from config.health import liveness, readiness
 from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
+from apps.accounts.onboarding_views import (PersonalOnboardingView, CompleteOnboardingView,
+    ChurchSetupView, ConfirmSetupView, DismissSetupView, ServiceTimeViewSet)
 from apps.accounts.whatsapp_views import (WhatsAppConfigView, WhatsAppRequestView, WhatsAppVerifyView,
     WhatsAppRegisterView, WhatsAppLinkRequestView, WhatsAppLinkVerifyView)
 from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
@@ -35,6 +37,7 @@ from apps.schedules.views import (
 
 
 router = DefaultRouter()
+router.register("church/service-times", ServiceTimeViewSet, basename="service-times")
 router.register("member-link-requests", MemberLinkReviewViewSet, basename="member-link-review")
 router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
@@ -46,6 +49,14 @@ router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="me
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")
 router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
+onboarding_patterns = [
+    path("me/onboarding/", PersonalOnboardingView.as_view()),
+    path("me/onboarding/complete/", CompleteOnboardingView.as_view()),
+    path("church/setup/", ChurchSetupView.as_view()),
+    path("church/setup/confirm/", ConfirmSetupView.as_view()),
+    path("church/setup/dismiss/", DismissSetupView.as_view()),
+]
+
 whatsapp_patterns = [
     path("config/", WhatsAppConfigView.as_view()),
     path("request/", WhatsAppRequestView.as_view()),
@@ -56,6 +67,7 @@ whatsapp_patterns = [
 ]
 
 urlpatterns = [
+    path("api/", include(onboarding_patterns)),
     path("api/auth/whatsapp/", include(whatsapp_patterns)),
     # Saude (publico, sem detalhe interno): usado pelo healthcheck do compose.
     path("health/", liveness, name="health"),
@@ -105,6 +117,7 @@ if not settings.PRIVATE_LOCAL_MEDIA:
 # Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
 # para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
+    path("", include(onboarding_patterns)),
     path("auth/whatsapp/", include(whatsapp_patterns)),
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),

@@ -65,6 +65,10 @@ class PrivateMediaView(APIView):
         if not isinstance(payload, dict) or payload.get("kind") != kind or payload.get("id") != pk:
             raise Http404
         user = get_object_or_404(User, pk=payload.get("user"), is_active=True)
+        if getattr(settings, "ONBOARDING_REQUIRED", True):
+            from apps.accounts.onboarding_middleware import OnboardingMiddleware
+            if not OnboardingMiddleware.complete(user):
+                raise Http404
         capabilities = set(user_capabilities(user))
         if kind == "contribution":
             obj = get_object_or_404(

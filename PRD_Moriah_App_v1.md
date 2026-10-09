@@ -2,10 +2,10 @@
 
 **Produto:** Moriah App  
 **Igreja:** Igreja Moriah  
-**Versão:** v1.1 — MVP replanejado e roadmap F01–F10
-**Data:** Setembro/2026
+**Versão:** v1.2 — Onboarding F11 e catálogo F01–F11
+**Data:** 09/10/2026
 **Responsável:** Leonardo Furlan  
-**Status:** Requisitos do MVP preservados; F10 adicionada como feature futura em draft
+**Status:** Requisitos anteriores preservados; F10 futura em draft; F11 implementada localmente, sem deploy
 **Objetivo:** criar uma plataforma própria para gestão de membresia, contribuições, células, eventos e escalas de ministérios da Igreja Moriah.
 
 ---
@@ -154,6 +154,7 @@ roadmap. F09 e F10 não fazem parte do MVP atual.
 | F08 | App mobile do membro | Membro, líder de célula, voluntário | MVP | Existente no escopo | F01–F06 | Consome perfil, extrato, agenda e escalas |
 | F09 | Integração com WhatsApp | Liderança, secretaria, tesouraria, membros | Pós-MVP — prioridade anterior a F10 | Roadmap | F01, F04, F05, F07 | Consome eventos/estados das features e fornece comunicação externa |
 | F10 | Projetos Sociais | Coordenador social, responsável de projeto, voluntário, educador, liderança | Pós-F09 — prioridade futura | Draft de requisitos | F01, F02, F06, F07; F09 como gate de prioridade | Fornece gestão social; consome vínculo opcional com membros, agenda e conteúdo |
+| F11 | Onboarding pessoal e configuração da igreja | Visitante, frequentador, membro, administrador | Próxima entrega | Implementada localmente; sem deploy | F01, F02, F03, F05, F06, F07, F08 | Consome identidade, vínculo e configurações; fornece acolhida, perfil inicial e progresso |
 
 F09 é uma dependência de sequência do produto para F10, não uma dependência
 técnica obrigatória do domínio social. F10 só deve iniciar depois de F09 ser
@@ -1069,3 +1070,78 @@ Depois disso, a plataforma pode evoluir para OCR, Pix integrado, Moriah Kids, Es
 A stack recomendada para começar é:
 
 > **Django + Django REST Framework + PostgreSQL + Expo React Native + Django Admin.**
+
+## 19. F11 — Onboarding pessoal e configuração da igreja
+
+Requisitos aprovados em 09/10/2026. [Registro de decisões](docs/decisoes-onboarding-2026-10-09.md).
+[Especificação](docs/features/F11-onboarding/spec.md),
+[contrato proposto](docs/features/F11-onboarding/contract.md),
+[plano](docs/features/F11-onboarding/plan.md).
+Implementada localmente, sem deploy. Primeira entrega exclusiva da Igreja Moriah.
+
+### Problema e resultado
+
+O cadastro por WhatsApp já existe, mas falta acolhida, preenchimento guiado do
+perfil e orientação para configurar a igreja. A entrega deve acolher pessoas,
+identificar sua relação com a comunidade e mostrar aos administradores o que
+falta configurar. Hoje há apenas a conta admin, segundo o responsável pelo produto;
+essa informação não foi auditada em produção nesta definição.
+
+### Histórias e critérios de aceite
+
+- **F11.1 — Acolhida e perfil:** como visitante, frequentador, membro ou admin,
+  quero uma acolhida breve e conferir meus dados para começar a usar o sistema.
+  Nome, e-mail, WhatsApp verificado, data de nascimento e relação com a igreja
+  são essenciais. Data de nascimento é obrigatória para mapear perfil etário;
+  foto, endereço e família ficam para depois. Reaproveitar dados existentes e
+  WhatsApp vinculado, inclusive o da conta admin. Apresentação pulável; perfil
+  obrigatório antes das demais telas, preservando onboarding e saída. Progresso
+  individual salvo e retomável. Admin sem Member deve concluir normalmente.
+- **F11.2 — Relação e conferência:** como usuário, quero informar “Estou
+  conhecendo a igreja”, “Já frequento, mas ainda não sou membro” ou “Já sou
+  membro”. A última resposta envia solicitação automática à secretaria na
+  conclusão, sem duplicar pendência nem refazer vínculo confirmado. Não concede
+  cargo, permissão ou membresia automaticamente; revisão continua humana.
+- **F11.3 — Próximos passos:** quem conhece a igreja vê cultos/eventos;
+  frequentadores veem também como participar de célula; membros autodeclarados
+  veem situação da conferência e atalhos autorizados. Grade semanal de cultos
+  própria, com dia, horário e local, também atende visitantes. Ausência de
+  registros deve gerar orientação, sem destinos indisponíveis.
+- **F11.4 — Configuração guiada:** como administrador, quero checklist e
+  percentual compartilhados pela igreja. Seis itens: revisar dados da igreja,
+  conferir equipe/permissões, cadastrar horários de cultos, publicar primeiro
+  evento, cadastrar primeira célula e primeiro ministério. Os dois primeiros
+  exigem confirmação; os demais são detectados nos cadastros atuais. Peso igual,
+  percentual concluídos/6×100; todos aplicáveis, sem “Não se aplica”.
+  Configurações prontas contam e remoção da condição faz o item voltar a pendente.
+- **F11.5 — Acompanhamento:** card no painel com percentual, pendências e
+  “Continuar configuração”, dispensável a 100%. Abaixo de 100% reaparece
+  automaticamente. Checklist sempre disponível nas configurações, sem bloquear
+  painel após conclusão pessoal. Acolhida e orientações pessoais são individuais.
+
+### Dependências, entrega e validação
+
+F01 → F11 fornece sessão, identidade e permissões. F02 → F11 fornece perfil
+oficial e revisão de vínculo. F03/F05/F06 → F11 fornecem células, ministérios e
+eventos; F06 recebe extensão coordenada da grade semanal. F07/F08 → F11 fornecem
+shells de gestão/app; consomem o estado F11 sem criar dependência circular de
+suas funcionalidades existentes. F09 completo e F10 não são pré-requisitos.
+
+Onda 1: perfil obrigatório e retomada; onda 2: conferência e grade semanal com
+próximos passos; onda 3: checklist e card; aceite integrado em seguida.
+Essa ordem é de implementação, sem autorização para agentes paralelos.
+
+Aceite por APIs reais em banco isolado e jornada desktop/celular, incluindo
+admin sem Member, visitante com Member, concorrência/deduplicação, outra igreja,
+rotas diretas, perfil incompleto, remoção de configurações e reaparecimento do
+card. Critérios técnicos e gates estão na spec; nenhuma meta numérica de adoção
+ou performance foi acordada. Evidências da implementação e testes no
+[relatório F11](docs/relatorio-implementacao-onboarding-2026-10-09.md).
+
+### Evolução futura e limites
+
+Futuras solicitações obrigatórias de atualização cadastral deverão reutilizar
+onboarding para exigir os campos necessários, preservando dados e vínculos.
+Campanhas, seleção de público, exceções e política de bloqueio dessa evolução
+ficam para especificação futura. Não inclui novas igrejas, marketing, aprovação
+automática de membros ou permissão para migrar, publicar ou fazer deploy.

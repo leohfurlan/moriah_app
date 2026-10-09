@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import Church, User, UserRoleAssignment
+from .scoped_admin import ChurchScopedAdmin
 
 
 @admin.register(Church)
-class ChurchAdmin(admin.ModelAdmin):
+class ChurchAdmin(ChurchScopedAdmin):
     list_display = ("name", "city", "state", "active", "created_at")
     list_filter = ("active", "state")
     search_fields = ("name", "legal_name", "tax_id")
@@ -17,7 +18,7 @@ class UserRoleAssignmentInline(admin.TabularInline):
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(ChurchScopedAdmin, BaseUserAdmin):
     list_display = ("email", "first_name", "last_name", "role", "church", "is_staff", "is_active")
     list_filter = ("role", "church", "is_staff", "is_active")
     search_fields = ("email", "first_name", "last_name", "username")
