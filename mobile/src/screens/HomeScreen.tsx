@@ -120,7 +120,7 @@ function NoticeCarousel({
 }) {
   const [index, setIndex] = useState(0);
   const slides = useMemo<NoticeSlide[]>(() => [
-    ...announcements.map((announcement) => ({
+    ...announcements.filter((announcement) => announcement.active).map((announcement) => ({
       id: `announcement-${announcement.id}`,
       eyebrow: "AVISO DE EVENTO",
       title: announcement.title || announcement.event_name,
@@ -174,7 +174,7 @@ function NoticeCarousel({
     <View style={compact ? styles.noticeCarouselMobile : styles.noticeCarouselDesktop}>
       {slide.imageUrl ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`Abrir ${slide.title}`} onPress={() => onNavigate(slide.route)}>
-          <Image source={{ uri: slide.imageUrl }} resizeMode="cover" style={compact ? styles.noticeImageMobile : styles.noticeImageDesktop} />
+          <Image accessibilityLabel={slide.title} source={{ uri: slide.imageUrl }} resizeMode="contain" style={compact ? styles.noticeImageMobile : styles.noticeImageDesktop} />
         </Pressable>
       ) : null}
       <View style={styles.noticeCopy}>
@@ -642,6 +642,8 @@ export function HomeScreen({
             </View>
           </Card>
 
+          <NoticeCarousel announcements={announcements} events={events} contents={contents} onNavigate={onNavigate} compact={!desktop}/>
+
           <Card style={styles.priorityCard} onPress={() => destaque && onNavigate(destaque.route)}>
             <View style={styles.priorityAccent} />
             <View style={styles.priorityCopy}>
@@ -792,12 +794,12 @@ const styles = StyleSheet.create({
   desktopMetricValue: { color: colors.ink, fontSize: 24, fontWeight: "800" },
   desktopMetricDetail: { color: colors.inkMuted, fontSize: 11 },
   noticeCarouselDesktop: { minHeight: 176, flexDirection: "row", justifyContent: "space-between", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 20, overflow: "hidden" },
-  noticeCarouselMobile: { minHeight: 168, flexDirection: "row", backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 16, overflow: "hidden" },
+  noticeCarouselMobile: { minHeight: 168, flexDirection: "column", gap: 12, backgroundColor: "#EEF2FF", borderWidth: 1, borderColor: "#DDE3FF", borderRadius: 12, padding: 16, overflow: "hidden" },
   noticeEmptyDesktop: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20 },
   noticeEmptyMobile: { minHeight: 96, justifyContent: "center", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
   noticeEmptyText: { color: colors.inkMuted, fontSize: 12 },
-  noticeImageDesktop: { width: 240, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 18 },
-  noticeImageMobile: { width: 112, minHeight: 134, borderRadius: 8, backgroundColor: colors.surface, marginRight: 14 },
+  noticeImageDesktop: { width: 240, aspectRatio: 16 / 9, borderRadius: 8, backgroundColor: colors.surface, marginRight: 18 },
+  noticeImageMobile: { width: "100%", aspectRatio: 16 / 9, borderRadius: 8, backgroundColor: colors.surface },
   noticeCopy: { flex: 1, gap: 6, minWidth: 0 },
   noticeEyebrow: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
   noticeTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },

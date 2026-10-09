@@ -161,8 +161,10 @@ export function EventAnnouncementsScreen() {
           <Text style={styles.fieldLabel}>Posição no carrossel</Text>
           <View style={styles.positionGroup}>{[1, 2, 3, 4].map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: position === value }} onPress={() => setPosition(value)} style={[styles.positionOption, position === value && styles.optionSelected]}><Text style={[styles.optionText, position === value && styles.optionTextSelected]}>{value}</Text></Pressable>)}</View>
           <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={() => setActive((current) => !current)} style={styles.activeToggle}><View style={[styles.check, active && styles.checkActive]} /> <Text style={styles.optionText}>{active ? "Exibir no carrossel" : "Manter oculto"}</Text></Pressable>
+          <Text style={styles.fieldLabel}>Imagem do aviso</Text>
+          <Text style={styles.help}>Recomendado: 1920 × 1080 pixels (16:9), em JPG ou PNG, com até 8 MB. Prefira textos legíveis e conteúdo importante centralizado. A imagem será exibida inteira no carrossel.</Text>
           <Button variant="secondary" disabled={saving} onPress={() => void pickImage()}>{image ? `Trocar imagem · ${image.name}` : "Selecionar folder"}</Button>
-          {image ? <Image source={{ uri: image.uri }} resizeMode="cover" style={styles.preview} /> : null}
+          {image ? <Image source={{ uri: image.uri }} resizeMode="contain" style={styles.preview} /> : null}
           <Button loading={saving} disabled={saving || !eventId || (!editingId && !image)} onPress={() => void save()}>{editingId ? "Salvar alterações" : "Criar aviso"}</Button>
           {editingId ? <Button variant="ghost" disabled={saving} onPress={resetForm}>Cancelar edição</Button> : null}
         </Card> : <Card style={styles.formCard}><Text style={styles.sectionTitle}>Avisos publicados</Text><Text style={styles.help}>Os avisos são administrados pela equipe responsável por eventos da igreja.</Text></Card>}
