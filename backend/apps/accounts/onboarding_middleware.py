@@ -1,6 +1,6 @@
 """Enforce onboarding on custom DRF permissions and Django Admin."""
 from django.conf import settings
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponseForbidden
 from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import OnboardingProfile
@@ -11,9 +11,13 @@ class OnboardingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        path = request.path_info
+        if path.startswith("/admin/") and request.user.is_authenticated and path != "/admin/logout/":
+            from .admin_site import is_panel_owner
+            if not is_panel_owner(request.user):
+                return HttpResponseForbidden("Acesso restrito ao administrador responsável.")
         if not getattr(settings, "ONBOARDING_REQUIRED", True):
             return self.get_response(request)
-        path = request.path_info
         if path.startswith("/admin/") and path not in ("/admin/login/", "/admin/logout/"):
             if request.user.is_authenticated and not self.complete(request.user):
                 return HttpResponseRedirect("/onboarding")

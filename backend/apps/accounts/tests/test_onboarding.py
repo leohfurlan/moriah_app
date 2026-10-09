@@ -234,6 +234,7 @@ def test_setup_cannot_leak_other_church_or_be_used_by_member(person, church):
 
 
 def test_admin_session_guard_and_scoped_configuration(person, church):
+    person.email = "admin@igrejamoriah.com"
     person.is_staff = True; person.is_superuser = True; person.role = "admin"; person.save()
     client = APIClient(); client.force_login(person)
     assert client.get("/admin/").url == "/onboarding"

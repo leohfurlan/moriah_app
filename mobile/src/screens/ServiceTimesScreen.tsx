@@ -41,8 +41,11 @@ export function ServiceTimesScreen() {
     </Card>)}
     {admin ? <Card>
       <Text style={{fontSize: 18, fontWeight: "700"}}>{editing ? "Editar horário" : "Adicionar horário semanal"}</Text>
+      <Text style={{fontWeight: "600", color: colors.ink}}>Dia da semana</Text>
       <View style={{flexDirection: "row", flexWrap: "wrap", gap: spacing.sm}}>{WEEKDAYS.map((day, index) => <Button key={day} size="compact" disabled={busy} variant={weekday === index ? "primary" : "secondary"} onPress={() => setWeekday(index)}>{day}</Button>)}</View>
+      <Text style={{fontWeight: "600", color: colors.ink}}>Horário do culto (HH:MM)</Text>
       <Field accessibilityLabel="Horário do culto" placeholder="Horário (HH:MM)" value={time} onChangeText={setTime} maxLength={5}/>
+      <Text style={{fontWeight: "600", color: colors.ink}}>Local do culto</Text>
       <Field accessibilityLabel="Local do culto" placeholder="Local do culto" value={location} onChangeText={setLocation} maxLength={255}/>
       <Button loading={busy} disabled={!time || !location.trim()} onPress={() => void act(async () => {
         const body = {weekday, time, location};

@@ -137,15 +137,11 @@ def setup_state(user):
     keys = ("church_review", "team_review", "service_times", "first_event", "first_cell", "first_ministry")
     labels = ("Revisar dados da igreja", "Conferir equipe e permissões", "Cadastrar horários dos cultos",
               "Publicar primeiro evento", "Cadastrar primeira célula", "Cadastrar primeiro ministério")
-    urls = (f"/admin/accounts/church/{user.church_id}/change/", "/admin/accounts/user/", "/service-times",
-            "/admin/events/event/", "/admin/cells/cell/", "/admin/ministries/ministry/")
-    # Django Admin checks model permissions and tenant scope independently.
-    model_names = ("accounts.change_church", "accounts.view_user", None, "events.view_event", "cells.view_cell", "ministries.view_ministry")
+    urls = ("/settings/church", "/settings/team", "/service-times",
+            "/settings/events", "/settings/cells", "/settings/ministries")
     items = []
     for index, key in enumerate(keys):
         url = urls[index]
-        if model_names[index] and not (user.is_staff and user.has_perm(model_names[index])):
-            url = None
         items.append({"key": key, "label": labels[index], "completed": conditions[index],
                       "mode": "confirmation" if index < 2 else "automatic", "action_url": url})
     return {"completed_count": count, "total_count": 6, "percentage": (count * 100 + 3) // 6,

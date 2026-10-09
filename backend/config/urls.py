@@ -9,6 +9,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from config.health import liveness, readiness
 from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
+from apps.accounts.registration_views import (ChurchDetailsView, RegistrationOptionsView,
+    TeamViewSet, CellViewSet, MinistryViewSet, EventViewSet)
 from apps.accounts.onboarding_views import (PersonalOnboardingView, CompleteOnboardingView,
     ChurchSetupView, ConfirmSetupView, DismissSetupView, ServiceTimeViewSet)
 from apps.accounts.whatsapp_views import (WhatsAppConfigView, WhatsAppRequestView, WhatsAppVerifyView,
@@ -37,6 +39,10 @@ from apps.schedules.views import (
 
 
 router = DefaultRouter()
+router.register("church/registrations/team", TeamViewSet, basename="church-team")
+router.register("church/registrations/cells", CellViewSet, basename="church-cells")
+router.register("church/registrations/ministries", MinistryViewSet, basename="church-ministries")
+router.register("church/registrations/events", EventViewSet, basename="church-events")
 router.register("church/service-times", ServiceTimeViewSet, basename="service-times")
 router.register("member-link-requests", MemberLinkReviewViewSet, basename="member-link-review")
 router.register("contributions", ContributionViewSet, basename="contribution")
@@ -50,6 +56,8 @@ router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commi
 router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
 onboarding_patterns = [
+    path("church/registrations/options/", RegistrationOptionsView.as_view()),
+    path("church/details/", ChurchDetailsView.as_view()),
     path("me/onboarding/", PersonalOnboardingView.as_view()),
     path("me/onboarding/complete/", CompleteOnboardingView.as_view()),
     path("church/setup/", ChurchSetupView.as_view()),

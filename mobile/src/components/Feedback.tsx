@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   noticeCopy: { flex: 1, gap: 2 },
   noticeTitle: { fontSize: 14, fontWeight: "700" },
-  noticeMessage: { color: colors.inkBody, fontSize: 13, lineHeight: 18 },
+  noticeMessage: { color: colors.inkBody, fontSize: 13, lineHeight: 18, textAlign: "justify" },
   dismiss: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   dismissText: { color: colors.inkMuted, fontSize: 12, fontWeight: "700" },
   toastLayer: { position: "absolute", top: spacing.lg, left: 0, right: 0, alignItems: "center", paddingHorizontal: spacing.lg, pointerEvents: "box-none" },

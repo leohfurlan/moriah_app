@@ -3,6 +3,8 @@ import {SafeAreaView, ScrollView, StyleSheet, Text, View} from "react-native";
 import {useRouter} from "expo-router";
 import {Button, Card, Field} from "@/components/Form";
 import {InlineNotice} from "@/components/Feedback";
+import {DateField} from "@/components/DateField";
+import {OnboardingTransition} from "@/components/OnboardingTransition";
 import {WhatsAppAccess} from "@/components/WhatsAppAccess";
 import {useAuth} from "@/hooks/useAuth";
 import {api} from "@/services/api";
@@ -56,6 +58,7 @@ export function OnboardingScreen() {
       <Text style={styles.text}>Um lugar para caminhar juntos, participar e servir.</Text>
       {error ? <InlineNotice tone="error" title="Vamos tentar novamente" message={error}/> : null}
       {saved ? <InlineNotice tone="success" title="Progresso salvo" message="Você pode sair e retomar esta etapa depois."/> : null}
+      <OnboardingTransition step={!state ? "loading" : state.status === "completed" ? "completed" : state.step}>
       {!state ? <Button loading={busy} onPress={() => void act(load)}>Carregar acolhida</Button> : state.status === "completed" ? <Card>
         <Text style={styles.subtitle}>Seu cadastro inicial está completo</Text>
         {state.member_link.state === "pending" ? <Text style={styles.text}>Sua solicitação foi enviada. A secretaria vai conferir seu vínculo com a igreja.</Text> : null}
@@ -72,9 +75,11 @@ export function OnboardingScreen() {
       </Card> : <Card>
         <Text style={styles.subtitle}>Seu perfil essencial</Text>
         <Text style={styles.text}>Os campos abaixo são necessários para concluir esta etapa.</Text>
-        <Field accessibilityLabel="Nome completo" placeholder="Nome completo" value={name} onChangeText={setName} maxLength={150}/>
-        <Text style={styles.text}>E-mail: {state.profile.email}</Text>
-        <Field accessibilityLabel="Data de nascimento" placeholder="Nascimento (DD/MM/AAAA)" value={birth} onChangeText={setBirth} maxLength={10} keyboardType="numbers-and-punctuation"/>
+        <Text style={styles.label}>Nome completo</Text>
+        <Field accessibilityLabel="Nome completo" placeholder="Nome completo" value={name} onChangeText={setName} maxLength={150} editable={!busy}/>
+        <Text style={styles.label}>E-mail</Text>
+        <Field accessibilityLabel="E-mail" value={state.profile.email} editable={false}/>
+        <DateField label="Data de nascimento" value={birth} onChange={setBirth} maximumDate={new Date()} disabled={busy}/>
         <Text style={styles.text}>Usamos sua data de nascimento para conhecer melhor o perfil etário da nossa comunidade.</Text>
         <Text style={styles.subtitle}>Como você se relaciona com a Moriah?</Text>
         {RELATIONS.map(([value, label]) => <Button key={value} variant={relation === value ? "primary" : "secondary"} disabled={busy} onPress={() => setRelation(value)}>{`${relation === value ? "✓ " : ""}${label}`}</Button>)}
@@ -83,10 +88,11 @@ export function OnboardingScreen() {
         <Button variant="secondary" loading={busy} onPress={() => void act(() => save())}>Salvar e continuar depois</Button>
         <Button loading={busy} disabled={!name.trim() || !birth || !relation || !state.whatsapp_verified} onPress={() => void act(() => save(true))}>Concluir perfil</Button>
       </Card>}
+      </OnboardingTransition>
       <Button variant="ghost" disabled={busy} onPress={() => void act(async () => {await logout(); router.replace("/");})}>Sair da conta</Button>
     </View>
   </ScrollView></SafeAreaView>;
 }
 const styles = StyleSheet.create({safe: {flex: 1, backgroundColor: colors.canvas}, container: {padding: spacing.lg, alignItems: "center"},
   content: {width: "100%", maxWidth: 620, gap: spacing.lg, paddingVertical: spacing.xl}, brand: {color: colors.accent, fontWeight: "800", letterSpacing: 4},
-  title: {fontSize: 30, fontWeight: "800", color: colors.ink}, subtitle: {fontSize: 18, fontWeight: "700", color: colors.ink}, text: {fontSize: 15, lineHeight: 23, color: colors.inkBody}});
+  title: {fontSize: 30, fontWeight: "800", color: colors.ink}, subtitle: {fontSize: 18, fontWeight: "700", color: colors.ink}, label: {fontSize: 14, fontWeight: "600", color: colors.ink}, text: {fontSize: 15, lineHeight: 23, color: colors.inkBody, textAlign: "justify"}});
