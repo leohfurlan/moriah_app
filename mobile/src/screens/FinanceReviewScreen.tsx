@@ -154,11 +154,11 @@ export function FinanceReviewScreen() {
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
             <Text style={styles.label}>De</Text>
-            <DateTimeField accessibilityLabel="Data inicial do filtro" mode="date" disabled={submitting} value={dateFrom} onChangeText={setDateFrom} placeholder="dd/mm/aaaa" />
+            <DateTimeField compact accessibilityLabel="Data inicial do filtro" mode="date" disabled={submitting} value={dateFrom} onChangeText={setDateFrom} placeholder="dd/mm/aaaa" />
           </View>
           <View style={styles.dateField}>
             <Text style={styles.label}>Até</Text>
-            <DateTimeField accessibilityLabel="Data final do filtro" mode="date" disabled={submitting} value={dateTo} onChangeText={setDateTo} placeholder="dd/mm/aaaa" />
+            <DateTimeField compact accessibilityLabel="Data final do filtro" mode="date" disabled={submitting} value={dateTo} onChangeText={setDateTo} placeholder="dd/mm/aaaa" />
           </View>
         </View>
         <Button variant="secondary" disabled={submitting} onPress={() => {
@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.ink, fontSize: 16, fontWeight: "800" },
   label: { color: colors.inkMuted, fontSize: 12, fontWeight: "700" },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  dateRow: { flexDirection: "row", gap: spacing.sm },
-  dateField: { flex: 1, gap: spacing.xs },
+  dateRow: { flexDirection: "row", gap: spacing.xs },
+  dateField: { flex: 1, minWidth: 0, gap: spacing.xs },
   feedback: { color: colors.inkMuted, fontSize: 14 },
   empty: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xxl },
   emptyTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },

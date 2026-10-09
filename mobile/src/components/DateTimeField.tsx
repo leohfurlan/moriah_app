@@ -87,6 +87,7 @@ export function DateTimeField({
   placeholder,
   accessibilityLabel,
   disabled = false,
+  compact = false,
 }: {
   value: string;
   onChangeText: (value: string) => void;
@@ -94,6 +95,7 @@ export function DateTimeField({
   placeholder?: string;
   accessibilityLabel: string;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -143,7 +145,7 @@ export function DateTimeField({
 
   return (
     <>
-      <View style={styles.fieldRow}>
+      <View style={[styles.fieldRow, compact && styles.compactRow]}>
         <TextInput
           accessibilityLabel={accessibilityLabel}
           value={value}
@@ -152,7 +154,7 @@ export function DateTimeField({
           placeholderTextColor={colors.inkPlaceholder}
           editable={!disabled}
           keyboardType={Platform.OS === "web" ? "default" : "numeric"}
-          style={styles.input}
+          style={[styles.input, compact && styles.compactInput]}
         />
         <Pressable
           accessibilityRole="button"
@@ -160,7 +162,7 @@ export function DateTimeField({
           accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={openPicker}
-          style={({ pressed }) => [styles.calendarButton, pressed && styles.pressed, disabled && styles.disabled]}
+          style={({ pressed }) => [styles.calendarButton, compact && styles.compactCalendarButton, pressed && styles.pressed, disabled && styles.disabled]}
         >
           <Text style={styles.calendarIcon}>▣</Text>
         </Pressable>
@@ -240,6 +242,9 @@ export function DateTimeField({
 
 const styles = StyleSheet.create({
   fieldRow: { flexDirection: "row", alignItems: "stretch", gap: spacing.xs },
+  compactRow: { minWidth: 0, gap: 0, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.field, backgroundColor: colors.surfaceTint, overflow: "hidden" },
+  compactInput: { minWidth: 0, paddingHorizontal: 8, paddingVertical: 8, minHeight: 44, fontSize: 12, borderWidth: 0, backgroundColor: "transparent" },
+  compactCalendarButton: { width: 44, minHeight: 44, flexShrink: 0, borderWidth: 0, backgroundColor: "transparent" },
   input: { flex: 1, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.field, paddingHorizontal: spacing.lg - 2, paddingVertical: spacing.md, minHeight: 48, backgroundColor: colors.surfaceTint, color: colors.ink, fontSize: 15 },
   calendarButton: { width: 48, minHeight: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.field, backgroundColor: colors.surfaceTint },
   calendarIcon: { color: colors.accent, fontSize: 22, fontWeight: "800" },
