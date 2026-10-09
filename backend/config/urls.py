@@ -16,7 +16,7 @@ from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.audit.notification_views import MyNotificationViewSet
 from apps.content.views import ContentViewSet
 from apps.finance.views import ContributionViewSet, FinancialEntryViewSet, MyStatementView
-from apps.members.views import MemberDirectoryViewSet, MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
+from apps.members.views import MemberLinkReviewViewSet, MemberDirectoryViewSet, MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
 from apps.ministries.views import MinistryListView
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
@@ -35,6 +35,7 @@ from apps.schedules.views import (
 
 
 router = DefaultRouter()
+router.register("member-link-requests", MemberLinkReviewViewSet, basename="member-link-review")
 router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
 router.register("content", ContentViewSet, basename="content")

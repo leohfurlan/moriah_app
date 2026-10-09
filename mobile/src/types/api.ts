@@ -104,6 +104,8 @@ export interface MemberLinkRequest {
   id: number;
   status: "pending" | "approved" | "rejected";
   created_at: string;
+  review_notes: string;
+  reviewed_at: string | null;
 }
 
 export interface Notification {

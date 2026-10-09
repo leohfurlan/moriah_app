@@ -153,6 +153,7 @@ export const MENU_LATERAL: NavGroup[] = [
   {
     label: "Gestão",
     items: [
+      criarItem({ id: "vinculos", label: "Solicitações de vínculo", route: "member-link-requests", Icon: Users, required: ["manage_members", "manage_all"], matches: ["member-link-requests"] }),
       criarItem({
         id: "gestao-escalas",
         label: "Gestão de escalas",

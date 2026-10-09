@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useOnResume } from "@/hooks/useOnResume";
 
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
@@ -121,7 +123,8 @@ function DesktopProfile({
 
 export function ProfileScreen() {
   const router = useRouter();
-  const { me } = useAuth();
+  const { me, refreshProfile } = useAuth();
+  const { reload: reloadNotifications } = useNotifications();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -167,6 +170,12 @@ export function ProfileScreen() {
     load();
   }, [load]);
 
+  useFocusEffect(useCallback(() => {
+    void refreshProfile();
+    void load();
+  }, [refreshProfile, load]));
+  useOnResume(() => { void load(); });
+
   async function submitUpdateRequest() {
     if (submitting || submittingRef.current) return;
     const requested_changes: Record<string, string> = {};
@@ -199,6 +208,7 @@ export function ProfileScreen() {
     setAviso(null);
     try {
       const request = await api.post<MemberLinkRequest>("/me/member-link-requests/");
+      void reloadNotifications().catch(() => undefined);
       setLinkRequests((current) => current.some((item) => item.id === request.id) ? current : [request, ...current]);
       toast("A secretaria vai conferir seu cadastro antes de fazer o vínculo.", { title: "Solicitação enviada" });
     } catch (err) {
@@ -273,6 +283,9 @@ export function ProfileScreen() {
           <Row label="E-mail" value={me.email} />
           <Text style={styles.meta}>Solicite a conferência da secretaria. O vínculo só será feito após revisão humana.</Text>
           {linkRequests.length ? <Text style={styles.meta}>Solicitação atual: {statusLabel(linkRequests[0].status)}</Text> : null}
+          {linkRequests[0] ? <Text style={styles.meta}>Enviada em {new Date(linkRequests[0].created_at).toLocaleString("pt-BR")}{linkRequests[0].status === "pending" ? ". Aguarde a conferência da secretaria ou administração." : ""}</Text> : null}
+          {linkRequests[0]?.review_notes ? <Text style={styles.meta}>Motivo / observações: {linkRequests[0].review_notes}</Text> : null}
+          {(me.capabilities || []).some(value => value === "manage_members" || value === "manage_all") ? <Button variant="secondary" onPress={() => router.push("/member-link-requests" as never)}>Revisar solicitações de vínculo</Button> : null}
           <Button loading={linkSubmitting} disabled={linkSubmitting || linkRequests.some((item) => item.status === "pending")} onPress={() => void submitLinkRequest()}>
             Solicitar vínculo cadastral
           </Button>

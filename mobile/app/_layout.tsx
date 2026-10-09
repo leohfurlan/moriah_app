@@ -9,6 +9,8 @@ import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPAC
 import { colors, radius, spacing } from "@/theme";
 import { WebEffects } from "@/components/WebEffects";
 import { useReducedMotion } from "@/components/Motion";
+import { useOnResume } from "@/hooks/useOnResume";
+import { loadNotifications } from "@/services/notificationStore";
 
 /**
  * Rotas que exigem apenas estar logado com vinculo de membro. As areas de
@@ -29,6 +31,7 @@ const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "
  * URL for digitada na mao, avisa em portugues em vez de abrir a tela vazia.
  */
 const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
+  "/member-link-requests": ["manage_members", "manage_all"],
   "/schedule-create": CAPACIDADES_DE_ESCALA,
   "/finance-review": ["review_contributions", "manage_all"],
   "/finance": ["manage_finance"],
@@ -81,7 +84,13 @@ function LayoutComGuarda() {
   const reducedMotion = useReducedMotion();
   const pathname = usePathname();
   const router = useRouter();
-  const { me, loading } = useAuth();
+  const { me, loading, refreshProfile } = useAuth();
+  useOnResume(() => {
+    if (me) {
+      void refreshProfile();
+      void loadNotifications(me.id, true).catch(() => undefined);
+    }
+  });
   const toast = useToast();
   const exige = capacidadesDaRota(pathname);
   // Modulo ainda sem tela real (ver ROTAS_OCULTAS em navigation.ts): a rota nao
@@ -90,7 +99,8 @@ function LayoutComGuarda() {
   const rotaOculta = moduloOculto(pathname);
   const precisaLogin = Boolean(!loading && !me && (isMemberPath(pathname) || rotaOculta));
   const moduloIndisponivel = Boolean(me && rotaOculta && !precisaLogin);
-  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management);
+  const contaSemMembroPermitida = pathname === "/profile" || pathname === "/notifications" || pathname.startsWith("/notification/");
+  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management && !contaSemMembroPermitida);
   const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
   const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
   // Gestao de escalas avisa na propria pagina: jogar o membro direto em
