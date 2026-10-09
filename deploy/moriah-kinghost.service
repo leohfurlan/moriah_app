@@ -1,0 +1,19 @@
+[Unit]
+Description=Moriah pilot backend and web
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/moriah_app
+# Docker is managed by the existing host administrator; app containers are non-root.
+User=root
+ExecStart=/usr/bin/docker compose -p moriah-piloto -f docker-compose.pilot.yml -f docker-compose.kinghost.yml --env-file .env.pilot up -d --no-build db backend web
+ExecStop=/usr/bin/docker compose -p moriah-piloto -f docker-compose.pilot.yml -f docker-compose.kinghost.yml --env-file .env.pilot stop web backend db
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

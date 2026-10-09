@@ -26,12 +26,16 @@ export async function executar({ browser, dir }) {
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const contribution_date = `${month}-17`;
-  const statements = [{ id: 1, amount: "100.00", category: "tithe", status: "approved", contribution_date, notes: "", attachments: [] }];
+  const statements = [
+    { id: 1, amount: "100.00", category: "tithe", status: "approved", contribution_date, notes: "", attachments: [] },
+    // Segundo lancamento com outro status (mesmo mes, outro dia: o check do
+    // grafico conta 5 meses zerados e procura a data civil do primeiro).
+    { id: 2, amount: "50.00", category: "offering", status: "pending", contribution_date: `${month}-18`, notes: "", attachments: [] },
+  ];
   await context.route((url) => /^\/(api|backend|local-api)\//.test(url.pathname), async (route) => {
     const endpoint = new URL(route.request().url()).pathname.replace(/^\/(api|backend|local-api)/, "");
     const send = (body, code = 200) => route.fulfill({ status: code, contentType: "application/json", body: JSON.stringify(body) });
-    if (endpoint === "/me/") return send({ id: 10, email: "qa@simulado.invalid", first_name: "Maria", last_name: "Silva", member_name: "Maria Silva", role: "member", roles: ["member"], church: 1, member_id: 10, has_member_profile: true, capabilities: ["member", "read_content"], can_access_management: false });
-    if (endpoint === "/content/") return send({ count: 0, results: [], next: null, previous: null });
+    if (endpoint === "/me/") return send({ id: 10, email: "qa@simulado.invalid", first_name: "Maria", last_name: "Silva", member_name: "Maria Silva", role: "member", roles: ["member"], church: 1, member_id: 10, has_member_profile: true, capabilities: ["member"], can_access_management: false });
     if (endpoint === "/me/notifications/") {
       if (releaseList) await new Promise((resolve) => { releaseList.resolves.push(resolve); });
       return send(failList ? { detail: "Falha simulada" } : items, failList ? 503 : 200);
@@ -140,23 +144,33 @@ export async function executar({ browser, dir }) {
       assert.equal(heights.filter((height) => height === 0).length, 5);
     });
     await v.screenshot(page, "extrato-desktop");
+    await check("Extrato: filtro abre a lista de opções e aplica a escolha", async () => {
+      await go("/statement");
+      // O filtro tem que ser dropdown: abre a lista e aceita a escolha direta.
+      await page.getByRole("button", { name: "Filtrar por status", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Pendente", exact: true }).click();
+      await page.getByText("R$ 50,00", { exact: true }).first().waitFor();
+      assert.equal(await page.getByText("R$ 100,00", { exact: true }).count(), 0);
+      await page.getByRole("button", { name: "Filtrar por status", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Aprovado", exact: true }).click();
+      await page.getByText("R$ 100,00", { exact: true }).first().waitFor();
+      assert.equal(await page.getByText("R$ 50,00", { exact: true }).count(), 0);
+    });
     await check("Confirmar com 409 mostra motivo e recarrega status de conflito", async () => {
       await go("/schedule/7");
       await page.getByRole("button", { name: "Confirmar", exact: true }).click();
       await page.getByText("Compromisso pessoal sobreposto", { exact: true }).first().waitFor();
+      // O texto aparece na tela E no toast de aviso: o criterio e o status na tela.
       await page.getByText("Conflito de horário", { exact: true }).first().waitFor();
       assert.equal(status, "conflict");
     });
     await v.screenshot(page, "conflito-desktop");
-    await check("Mobile possui quatro abas e ação central de contribuição, com Conteúdo", async () => {
+    await check("Mobile possui quatro abas e ação central de contribuição, incluindo Conteúdo", async () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await go("/notifications");
       await page.getByRole("link", { name: "Perfil", exact: true }).waitFor();
       for (const label of ["Início", "Agenda", "Nova contribuição", "Conteúdo", "Perfil"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 1);
-      assert.equal(await page.getByRole("link", { name: "Escalas", exact: true }).count(), 0);
-      await page.getByRole("link", { name: "Conteúdo", exact: true }).click();
-      await page.getByText("Conteúdo da igreja", { exact: true }).waitFor();
-      assert.equal(new URL(page.url()).pathname, "/content");
+      for (const label of ["Escalas"]) assert.equal(await page.getByRole("link", { name: label, exact: true }).count(), 0);
     });
     await v.screenshot(page, "notificacoes-mobile");
     v.check("Sem exceções JavaScript não tratadas", exceptions.length === 0, exceptions.join(" | "));

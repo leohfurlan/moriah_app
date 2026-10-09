@@ -1,0 +1,11 @@
+[Unit]
+Description=Moriah database and media backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/moriah_app
+ExecStart=/usr/bin/bash /opt/moriah_app/scripts/backup_kinghost.sh
+UMask=0077

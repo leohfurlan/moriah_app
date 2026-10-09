@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { colors, radius, spacing } from "@/theme";
+import { useReducedMotion } from "./Motion";
 
 export type DateInputMode = "date" | "datetime";
 
@@ -94,6 +95,7 @@ export function DateTimeField({
   accessibilityLabel: string;
   disabled?: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const parsed = parseDateInput(value, mode);
   const [cursor, setCursor] = useState(() => parsed || new Date());
@@ -164,7 +166,7 @@ export function DateTimeField({
         </Pressable>
       </View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType={reducedMotion ? "none" : "fade"} onRequestClose={() => setOpen(false)}>
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>

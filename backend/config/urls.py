@@ -6,14 +6,18 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from config.health import liveness, readiness
+from config.private_media import PrivateMediaView
 from apps.accounts.views import MeView
-from apps.content.views import ContentViewSet
-from apps.events.views import MyChurchEventsView
+from apps.accounts.whatsapp_views import (WhatsAppConfigView, WhatsAppRequestView, WhatsAppVerifyView,
+    WhatsAppRegisterView, WhatsAppLinkRequestView, WhatsAppLinkVerifyView)
+from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
-from apps.finance.views import ContributionViewSet, MyStatementView
-from apps.members.views import MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
-from apps.ministries.views import MinistryListView
 from apps.audit.notification_views import MyNotificationViewSet
+from apps.content.views import ContentViewSet
+from apps.finance.views import ContributionViewSet, FinancialEntryViewSet, MyStatementView
+from apps.members.views import MemberLinkReviewViewSet, MemberDirectoryViewSet, MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
+from apps.ministries.views import MinistryListView
 from apps.schedules.views import (
     MyScheduleAssignmentDetailView,
     MyScheduleAssignmentsView,
@@ -31,15 +35,33 @@ from apps.schedules.views import (
 
 
 router = DefaultRouter()
-router.register("content", ContentViewSet, basename="content")
+router.register("member-link-requests", MemberLinkReviewViewSet, basename="member-link-review")
 router.register("contributions", ContributionViewSet, basename="contribution")
+router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
+router.register("content", ContentViewSet, basename="content")
+router.register("members", MemberDirectoryViewSet, basename="member-directory")
+router.register("event-announcements", EventAnnouncementViewSet, basename="event-announcement")
 router.register("cell-meetings", CellMeetingViewSet, basename="cell-meeting")
 router.register("me/member-requests", MyMemberUpdateRequestViewSet, basename="member-update-request")
 router.register("me/agenda", PersonalCommitmentViewSet, basename="personal-commitment")
 router.register("me/notifications", MyNotificationViewSet, basename="notification")
 
+whatsapp_patterns = [
+    path("config/", WhatsAppConfigView.as_view()),
+    path("request/", WhatsAppRequestView.as_view()),
+    path("verify/", WhatsAppVerifyView.as_view()),
+    path("register/", WhatsAppRegisterView.as_view()),
+    path("link/request/", WhatsAppLinkRequestView.as_view()),
+    path("link/verify/", WhatsAppLinkVerifyView.as_view()),
+]
+
 urlpatterns = [
+    path("api/auth/whatsapp/", include(whatsapp_patterns)),
+    # Saude (publico, sem detalhe interno): usado pelo healthcheck do compose.
+    path("health/", liveness, name="health"),
+    path("health/ready/", readiness, name="health-ready"),
     path("admin/", admin.site.urls),
+    path("api/files/<str:kind>/<int:pk>/", PrivateMediaView.as_view(), name="private-media"),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/me/", MeView.as_view(), name="me"),
@@ -74,13 +96,16 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/", include(router.urls)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+if not settings.PRIVATE_LOCAL_MEDIA:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Aliases para desenvolvimento local. Algumas extensoes de bloqueio do navegador
 # interpretam caminhos com `api` como rastreamento e impedem o fetch do Expo.
 # Mantemos `/api/` como contrato publico e oferecemos caminhos equivalentes
 # para que o cliente web local consiga falar com o mesmo backend.
 local_api_urlpatterns = [
+    path("auth/whatsapp/", include(whatsapp_patterns)),
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
     path("me/", MeView.as_view(), name="local-me"),

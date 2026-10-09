@@ -9,12 +9,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
 
-from apps.accounts.permissions import HasMemberProfile, HasMemberProfileOrAdmin, IsTreasurerOrAdmin, get_member_profile, is_admin_user
+from apps.accounts.permissions import (
+    HasMemberProfile,
+    HasMemberProfileOrAdmin,
+    IsFinancialManager,
+    get_member_profile,
+    is_admin_user,
+)
 from apps.audit.notification_service import create_notification
 from apps.accounts.pagination import OptionalPaginationMixin
 
-from .models import Contribution
-from .serializers import ContributionReviewSerializer, ContributionSerializer
+from .models import Contribution, FinancialEntry
+from .serializers import ContributionReviewSerializer, ContributionSerializer, FinancialEntrySerializer
+from .services import ensure_contribution_financial_entry
 
 
 @extend_schema(
@@ -101,7 +108,7 @@ class ContributionViewSet(
 
     def get_permissions(self):
         if getattr(self, "action", None) in {"list", "retrieve", "review"}:
-            return [IsTreasurerOrAdmin()]
+            return [IsFinancialManager()]
         return [HasMemberProfile()]
 
     def get_queryset(self):
@@ -178,6 +185,8 @@ class ContributionViewSet(
             contribution.reviewed_by = request.user
             contribution.reviewed_at = timezone.now()
             contribution.save(update_fields=("status", "review_notes", "reviewed_by", "reviewed_at", "updated_at"))
+            if target_status == Contribution.Status.APPROVED:
+                ensure_contribution_financial_entry(contribution, request.user)
             decision_label = "aprovado" if target_status == Contribution.Status.APPROVED else "rejeitado"
             create_notification(
                 user=getattr(contribution.member, "user", None),
@@ -195,3 +204,32 @@ class ContributionViewSet(
                 dedupe_key=f"contribution-review-{contribution.pk}-{target_status}",
             )
         return Response(self.get_serializer(contribution).data, status=status.HTTP_200_OK)
+
+
+class FinancialEntryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """Livro administrativo: entradas, saídas e vencimentos futuros."""
+
+    serializer_class = FinancialEntrySerializer
+    permission_classes = [IsFinancialManager]
+    queryset = FinancialEntry.objects.none()
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return FinancialEntry.objects.none()
+        queryset = FinancialEntry.objects.filter(church=self.request.user.church).select_related("event", "member")
+        entry_type = self.request.query_params.get("entry_type")
+        entry_status = self.request.query_params.get("status")
+        if entry_type in {choice.value for choice in FinancialEntry.EntryType}:
+            queryset = queryset.filter(entry_type=entry_type)
+        if entry_status in {choice.value for choice in FinancialEntry.Status}:
+            queryset = queryset.filter(status=entry_status)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(church=self.request.user.church, created_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        if instance.status == FinancialEntry.Status.PAID and instance.paid_at is None:
+            instance.paid_at = timezone.now()
+            instance.save(update_fields=("paid_at", "updated_at"))

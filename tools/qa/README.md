@@ -55,6 +55,42 @@ Variáveis úteis: `QA_BASE` (default `http://localhost:8081`), `QA_SEED`
 (caminho do seed, default `backend/apps/accounts/management/commands/seed_mvp.py`),
 `PW_ENTRY` (entrada do Playwright).
 
+## Resíduo no banco de demonstração (leia antes de rodar)
+
+As fases 1 e 4 criam **fixture de verdade** no banco que o app está usando:
+
+- fase 1, check 3: escala em rascunho + evento `QA escala <carimbo>`;
+- fase 4: escala `Escala QA Fase 4` + evento `Culto QA Fase 4`, e **publica** a
+  escala — o que notifica o integrante escalado (Maria Silva, conta
+  `membro@moriah.app` do seed).
+
+A notificação **não** fica para trás: cancelar a escala (passo 7 da fase 4) retira
+o aviso do membro (`drop_schedule_notifications`, em `apps/schedules/views.py`).
+Isso nasceu de um caso real: quatro rodadas da fase 4 deixaram quatro avisos
+"Nova escala para voce" na conta do membro, apontando para escalas canceladas.
+
+Escalas e eventos de QA continuam no banco (fixtures canceladas/rascunho,
+invisíveis para o membro, visíveis na gestão e na agenda). Para purgar:
+
+```bash
+docker exec moriah_app-backend-1 python manage.py shell -c "
+from django.db.models import Q
+from apps.events.models import Event
+from apps.schedules.models import Schedule
+from apps.audit.models import Notification
+pks = [str(pk) for pk in Schedule.objects.filter(name__startswith='Escala QA').values_list('pk', flat=True)]
+for aviso in Notification.objects.filter(dedupe_key__startswith='schedule-published-'):
+    if any(aviso.dedupe_key.startswith(f'schedule-published-{pk}-') for pk in pks):
+        aviso.delete()
+Schedule.objects.filter(name__startswith='Escala QA').delete()
+Event.objects.filter(Q(name__startswith='QA escala') | Q(name__startswith='Culto QA') | Q(name__startswith='Culto diagnostico')).delete()
+"
+```
+
+Depois confira que o seed continua: escalas `Escala Principal`, `Escala de
+domingo`, `Escala do Ensaio` e `Culto de Lançamento Lar de Milagres.`, e os 6
+eventos do seed.
+
 ## Armadilhas que o harness já resolve
 
 - **`Alert.alert` é no-op no react-native-web.** Todo check de feedback verifica

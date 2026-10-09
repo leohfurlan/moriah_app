@@ -20,6 +20,9 @@ MVP full-stack para gestao interna da Igreja Moriah, com backend em Django REST 
 - Documentacao da API em `/api/docs/`
 - Storage S3/R2 opcional para comprovantes e scripts de backup/restore
 - App configurado para build de producao (icone, splash, EAS)
+- Runtime de producao: gunicorn + whitenoise (`backend/Dockerfile.prod`),
+  `/health/` e `/health/ready/`, guardas de `check --deploy` e stack de piloto em
+  `docker-compose.pilot.yml` (ver `docs/runbook-deploy-piloto.md`)
 
 ## Estrutura
 
@@ -136,11 +139,46 @@ O backup usa `pg_dump --format=custom`, valida o arquivo gerado com
 no host quanto no container do docker-compose. O restore aponta por padrao para
 `<banco>_restore_test` — restaurar sobre o banco real exige `ALLOW_PRODUCTION=yes`.
 
+Com banco remoto (Neon) os dois scripts exigem `POSTGRES_SSLMODE=require` e
+avisam por webhook quando falham (`BACKUP_ALERT_WEBHOOK`); o carimbo do ultimo
+backup bom fica em `BACKUP_HEALTH_FILE`. O restore confere as contagens das
+tabelas criticas contra o banco de origem e falha se divergirem. Detalhes e o
+ensaio registrado: `docs/runbook-backup-restore.md`.
+
 Agendamento sugerido (cron diario as 02:00):
 
 ```cron
 0 2 * * * cd /opt/moriah_app && ./scripts/backup_postgres.sh >> /var/log/moriah-backup.log 2>&1
 ```
+
+## Piloto (runtime de producao)
+
+Status e plano atual para a VPS compartilhada `atos-pd`:
+[implantação KingHost — 08/10/2026](docs/plano-implantacao-kinghost-2026-10-08.md).
+Contém o escopo funcional, validações atuais e gates antes da publicação.
+
+A implantação aprovada usa `app.igrejamoriah.com`, PostgreSQL exclusivo e
+arquivos privados persistentes na própria VPS. Operação, backup e rollback:
+[runbook KingHost](docs/runbook-kinghost.md).
+
+```bash
+cp .env.example .env.pilot                      # preencher com os valores reais
+docker compose -f docker-compose.pilot.yml --env-file .env.pilot build
+docker compose -f docker-compose.pilot.yml --env-file .env.pilot --profile tools run --rm migrate
+docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d backend
+curl -fsS http://127.0.0.1:8000/health/         # {"status":"ok","revision":"<commit>"}
+curl -fsS http://127.0.0.1:8000/health/ready/   # 503 se o banco nao responder
+```
+
+- `backend/Dockerfile.prod`: gunicorn como PID 1, usuario sem privilegio,
+  estaticos coletados na build e servidos pelo whitenoise.
+- `migrate` e explicito (servico com `profile: tools`): restart nao altera schema.
+- Antes de publicar: `python manage.py check --deploy` — as guardas de
+  `backend/config/checks.py` reprovam segredo de exemplo, `ALLOWED_HOSTS` com
+  curinga e banco remoto sem TLS. E o mesmo que o job `guardas-de-deploy` do CI roda.
+- Guias: `docs/runbook-deploy-piloto.md` (deploy/rollback),
+  `docs/runbook-backup-restore.md`, `docs/ambiente-piloto.md` (Neon, S3/R2,
+  dominio e saude) e `deploy/Caddyfile` (proxy HTTPS de exemplo).
 
 ## Build do app
 
@@ -168,7 +206,7 @@ python manage.py runserver
 ## Proximos passos naturais
 
 - Rodar o piloto interno (Fase 6 do PRD) com dados reais controlados
-- Executar o teste de restauracao do backup no servidor de producao
+- Provisionar a VPS e o Neon e executar o ensaio de restauracao contra o banco remoto
 - Evoluir o app para navegacao com tabs e estados globais
 - Substituir o icone provisorio por identidade visual definitiva
 - Endpoint de validacao de contribuicao fora do admin, se a tesouraria pedir

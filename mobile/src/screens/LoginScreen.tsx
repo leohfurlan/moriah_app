@@ -6,10 +6,13 @@ import { Button, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
 import { describeError } from "@/services/errors";
 import { colors, radius, spacing } from "@/theme";
+import { WhatsAppAccess } from "@/components/WhatsAppAccess";
+import { LoginResponse } from "@/types/api";
 
-export function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
-  const [email, setEmail] = useState("membro@moriah.app");
-  const [password, setPassword] = useState("membro123");
+export function LoginScreen({ onLogin, onTokens }: { onLogin: (email: string, password: string) => Promise<void>; onTokens: (tokens: LoginResponse) => Promise<void> }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailLogin, setEmailLogin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // Falha de login fica presa ao formulario: o membro precisa ver a mensagem
   // enquanto corrige o que digitou, sem ela sumir da tela.
@@ -41,6 +44,7 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
       </View>
 
       <View style={styles.form}>
+        {!emailLogin ? <WhatsAppAccess onTokens={onTokens} /> : <>
         <Text style={styles.label}>E-mail</Text>
         <Field
           autoCapitalize="none"
@@ -57,6 +61,10 @@ export function LoginScreen({ onLogin }: { onLogin: (email: string, password: st
         ) : null}
         <Button loading={submitting} onPress={submit}>
           Entrar
+        </Button>
+        </>}
+        <Button variant="ghost" disabled={submitting} onPress={() => {setEmailLogin(!emailLogin); setAviso(null);}}>
+          {emailLogin ? "Entrar pelo WhatsApp" : "Entrar com e-mail e senha"}
         </Button>
       </View>
     </Screen>

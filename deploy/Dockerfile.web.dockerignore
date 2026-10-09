@@ -1,0 +1,6 @@
+**
+!deploy/
+!deploy/nginx-web.conf
+!mobile/
+!mobile/dist/
+!mobile/dist/**

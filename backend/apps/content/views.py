@@ -1,19 +1,28 @@
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+from apps.accounts.pagination import OptionalPaginationMixin
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
 
 from apps.audit.models import AuditLog
-from apps.accounts.pagination import OptionalPaginationMixin
+
 from .models import Content
 from .permissions import CanAccessContent, can_manage_content
 from .serializers import ContentSerializer
 
 
-class ContentViewSet(OptionalPaginationMixin, viewsets.GenericViewSet):
+class ContentViewSet(
+    OptionalPaginationMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = ContentSerializer
     permission_classes = [IsAuthenticated, CanAccessContent]
     queryset = Content.objects.none()
@@ -21,67 +30,87 @@ class ContentViewSet(OptionalPaginationMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Content.objects.none()
-        queryset = Content.objects.filter(church_id=self.request.user.church_id)
+        queryset = Content.objects.filter(church=self.request.user.church)
         if not can_manage_content(self.request.user):
             queryset = queryset.filter(status=Content.Status.PUBLISHED)
         return queryset
 
-    def audit(self, obj, action_name):
-        AuditLog.objects.create(church=obj.church, user=self.request.user, action=action_name,
-                                model_name="Content", object_id=str(obj.pk), payload={"status": obj.status})
-
-    def list(self, request):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            return self.get_paginated_response(self.get_serializer(page, many=True).data)
-        return Response(self.get_serializer(queryset, many=True).data)
-
-    def retrieve(self, request, pk=None):
-        return Response(self.get_serializer(self.get_object()).data)
-
-    @transaction.atomic
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        obj = serializer.save(church=request.user.church, author=request.user)
-        self.audit(obj, "content_created")
-        return Response(serializer.data, status=201)
-
-    @transaction.atomic
-    def partial_update(self, request, pk=None):
-        obj = self.get_object()
-        if obj.status != Content.Status.DRAFT:
-            return Response({"detail": "Retire o conteúdo do ar antes de editar."}, status=409)
-        serializer = self.get_serializer(obj, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        self.audit(obj, "content_updated")
-        return Response(serializer.data)
+    def audit(self, content, action_name):
+        AuditLog.objects.create(church=content.church, user=self.request.user,
+                                action=action_name, model_name="Content",
+                                object_id=str(content.pk), payload={"status": content.status})
 
     def get_object(self):
-        if self.action in ("partial_update", "publish", "unpublish"):
+        if self.action in ("update", "partial_update", "destroy", "publish", "unpublish"):
             obj = get_object_or_404(self.get_queryset().select_for_update(), pk=self.kwargs["pk"])
             self.check_object_permissions(self.request, obj)
             return obj
         return super().get_object()
 
-    def change_publication(self, published):
-        obj = self.get_object()
-        target = Content.Status.PUBLISHED if published else Content.Status.DRAFT
-        if obj.status != target:
-            obj.status = target
-            obj.published_at = timezone.now() if published else None
-            obj.save(update_fields=["status", "published_at", "updated_at"])
-            self.audit(obj, "content_published" if published else "content_unpublished")
-        return Response(self.get_serializer(obj).data)
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if not can_manage_content(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Somente a lideranÃ§a pode criar conteÃºdo.")
+        content = serializer.save(church=self.request.user.church, author=self.request.user)
+        self.audit(content, "content_created")
+
+    def perform_update(self, serializer):
+        if not can_manage_content(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Somente a lideranÃ§a pode editar conteÃºdo.")
+        content = serializer.save()
+        self.audit(content, "content_updated")
+
+    def perform_destroy(self, instance):
+        if not can_manage_content(self.request.user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Somente a lideranÃ§a pode excluir conteÃºdo.")
+        AuditLog.objects.create(
+            church=instance.church,
+            user=self.request.user,
+            action="content_deleted",
+            model_name="Content",
+            object_id=str(instance.id),
+            payload={"title": instance.title, "status": instance.status},
+        )
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def publish(self, request, pk=None):
-        return self.change_publication(True)
+        if not can_manage_content(request.user):
+            return Response({"detail": "Sem permissÃ£o para publicar."}, status=status.HTTP_403_FORBIDDEN)
+        content = self.get_object()
+        if content.status == Content.Status.PUBLISHED:
+            return Response(self.get_serializer(content).data)
+        content.status = Content.Status.PUBLISHED
+        content.published_at = timezone.now()
+        content.save(update_fields=("status", "published_at", "updated_at"))
+        AuditLog.objects.create(church=content.church, user=request.user, action="content_published", model_name="Content", object_id=str(content.id), payload={"title": content.title})
+        return Response(self.get_serializer(content).data)
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def unpublish(self, request, pk=None):
-        return self.change_publication(False)
+        if not can_manage_content(request.user):
+            return Response({"detail": "Sem permissÃ£o para retirar conteÃºdo."}, status=status.HTTP_403_FORBIDDEN)
+        content = self.get_object()
+        if content.status == Content.Status.DRAFT:
+            return Response(self.get_serializer(content).data)
+        content.status = Content.Status.DRAFT
+        content.published_at = None
+        content.save(update_fields=("status", "published_at", "updated_at"))
+        AuditLog.objects.create(church=content.church, user=request.user, action="content_unpublished", model_name="Content", object_id=str(content.id), payload={"title": content.title})
+        return Response(self.get_serializer(content).data)

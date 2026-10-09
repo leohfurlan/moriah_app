@@ -1,0 +1,92 @@
+# Use together with docker-compose.pilot.yml; never enable its proxy profile.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 512m
+    environment:
+      POSTGRES_USER: moriah_admin
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set a separate database administrator password}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_PASSWORD:?Set the application database password}
+    command: postgres -c shared_buffers=128MB -c max_connections=40
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/init-moriah-db.sh:/docker-entrypoint-initdb.d/10-moriah.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U moriah_admin -d postgres]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  backend:
+    cpus: 1.0
+    mem_limit: 768m
+    environment:
+      GUNICORN_WORKERS: "2"
+      APP_REVISION: ${APP_REVISION:?Set the validated release revision}
+      POSTGRES_HOST: db
+      POSTGRES_SSLMODE: disable
+      USE_S3_STORAGE: "false"
+      PRIVATE_LOCAL_MEDIA: "true"
+      LOCAL_MEDIA_PERSISTENT: "true"
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+  migrate:
+    environment:
+      APP_REVISION: ${APP_REVISION:?Set the validated release revision}
+      POSTGRES_HOST: db
+      POSTGRES_SSLMODE: disable
+      USE_S3_STORAGE: "false"
+      PRIVATE_LOCAL_MEDIA: "true"
+      LOCAL_MEDIA_PERSISTENT: "true"
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    image: moriah-web:${WEB_REVISION:-${APP_REVISION:?Set the validated release revision}}
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+      args:
+        APP_REVISION: ${WEB_REVISION:-${APP_REVISION}}
+    cpus: 0.25
+    mem_limit: 128m
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8080/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      default:
+      edge:
+        aliases:
+          - moriah-piloto-web
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  edge:
+    external: true
+    name: moriah_piloto_edge
+volumes:
+  postgres_data:
+  media_data:

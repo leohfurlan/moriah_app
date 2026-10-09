@@ -9,15 +9,17 @@
  * menu — nada de rota vazia para "preencher" o desenho.
  */
 import {
+  BookOpen,
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
-  BookOpen,
+  ClipboardList,
   DollarSign,
   HandCoins,
   House,
   LayoutDashboard,
   UserRound,
+  Users,
 } from "lucide-react-native";
 
 export type NavIcon = typeof House;
@@ -25,14 +27,15 @@ export type NavIcon = typeof House;
 /** Capacidades publicadas por `GET /api/me/` (ver apps/accounts/permissions.py). */
 export type Capacidade =
   | "member"
-  | "read_content"
-  | "manage_content"
   | "manage_all"
   | "manage_pastoral"
   | "manage_members"
   | "review_contributions"
   | "manage_schedules"
-  | "manage_cells";
+  | "manage_cells"
+  | "manage_finance"
+  | "manage_content"
+  | "manage_events";
 
 export type NavItem = {
   id: string;
@@ -58,6 +61,34 @@ function criarItem(dados: Omit<NavItem, "required"> & { required?: Capacidade[] 
  */
 export const CAPACIDADES_DE_ESCALA: Capacidade[] = ["manage_schedules", "manage_all", "manage_pastoral"];
 
+/**
+ * Quem consulta a membresia administrativa (membros e visitantes). Espelha
+ * `IsMemberDirectoryUser` no backend: ADMIN, PASTOR, SECRETARY, TREASURER e
+ * COORDINATOR — cada papel chega aqui por uma capacidade diferente, por isso a
+ * lista e maior que o nome do item sugere.
+ */
+export const CAPACIDADES_DE_DIRETORIO: Capacidade[] = [
+  "manage_members",
+  "manage_pastoral",
+  "review_contributions",
+  "manage_schedules",
+];
+
+/**
+ * Quem cria compromisso na agenda. Espelha `IsMinistryOrCellLeader` no backend:
+ * lideranca de ministerio (coordenacao), lideranca de celula, pastor e admin.
+ */
+export const CAPACIDADES_DE_COMPROMISSO: Capacidade[] = [
+  "manage_cells",
+  "manage_schedules",
+  "manage_pastoral",
+];
+
+export function podeCriarCompromisso(capabilities: string[]): boolean {
+  if (capabilities.includes("manage_all")) return true;
+  return CAPACIDADES_DE_COMPROMISSO.some((capacidade) => capabilities.includes(capacidade));
+}
+
 export function podeGerenciarEscalas(capabilities: string[]): boolean {
   return CAPACIDADES_DE_ESCALA.some((capacidade) => capabilities.includes(capacidade));
 }
@@ -74,7 +105,20 @@ export const MENU_LATERAL: NavGroup[] = [
     label: "Cultos e eventos",
     items: [
       criarItem({ id: "agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
-      criarItem({ id: "conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["read_content"], matches: ["content"] }),
+      criarItem({ id: "eventos", label: "Cultos e eventos", route: "events", Icon: House, required: ["member", "manage_events"], matches: ["events"] }),
+    ],
+  },
+  {
+    label: "Comunidade",
+    items: [
+      criarItem({ id: "membros", label: "Membros", route: "members", Icon: Users, required: CAPACIDADES_DE_DIRETORIO, matches: ["members"] }),
+      criarItem({ id: "visitantes", label: "Visitantes", route: "visitors", Icon: UserRound, required: CAPACIDADES_DE_DIRETORIO, matches: ["visitors"] }),
+    ],
+  },
+  {
+    label: "Conteúdo",
+    items: [
+      criarItem({ id: "conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member", "manage_content"], matches: ["content"] }),
     ],
   },
   {
@@ -95,11 +139,21 @@ export const MENU_LATERAL: NavGroup[] = [
         required: ["review_contributions", "manage_all"],
         matches: ["finance-review"],
       }),
+      criarItem({
+        id: "gestao-financeira",
+        label: "Gestão financeira",
+        route: "finance-management",
+        Icon: ClipboardList,
+        // Espelha `IsFinancialManager` no backend (ADMIN, PASTOR, TREASURER).
+        required: ["manage_finance"],
+        matches: ["finance-management", "finance"],
+      }),
     ],
   },
   {
     label: "Gestão",
     items: [
+      criarItem({ id: "vinculos", label: "Solicitações de vínculo", route: "member-link-requests", Icon: Users, required: ["manage_members", "manage_all"], matches: ["member-link-requests"] }),
       criarItem({
         id: "gestao-escalas",
         label: "Gestão de escalas",
@@ -122,14 +176,36 @@ export const MENU_LATERAL: NavGroup[] = [
   },
 ];
 
-/** Abas principais do mobile; a contribuicao continua como acao central. */
+/** Abas principais do mobile; Escalas e Revisao ficam dentro dos modulos relacionados. */
 export const ABAS: NavItem[] = [
   criarItem({ id: "aba-inicio", label: "Início", route: "home", Icon: House, matches: ["home"] }),
   criarItem({ id: "aba-agenda", label: "Agenda", route: "agenda", Icon: CalendarDays, required: ["member"], matches: ["agenda"] }),
   criarItem({ id: "aba-contribuicoes", label: "Contribuições", route: "statement", Icon: HandCoins, required: ["member"], matches: ["statement", "contribution"] }),
-  criarItem({ id: "aba-conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["read_content"], matches: ["content"] }),
+  criarItem({ id: "aba-conteudo", label: "Conteúdo", route: "content", Icon: BookOpen, required: ["member", "manage_content"], matches: ["content"] }),
   criarItem({ id: "aba-perfil", label: "Perfil", route: "profile", Icon: UserRound, required: ["member"], matches: ["profile"] }),
 ];
+
+/**
+ * Telas que existem no codigo mas ainda nao tem modulo no backend. Elas nao
+ * entram no menu (item sem tela nao entra — ver o topo deste arquivo) e a rota
+ * fica bloqueada na guarda de navegacao em vez de abrir uma tela vazia. Ficam
+ * aqui, e nao removidas, para que reabrir cada modulo seja so tirar da lista.
+ *
+ * Decisao de produto de 2026-09-29: manter ocultas ate existir fluxo real.
+ */
+export const ROTAS_OCULTAS: string[] = [
+  "ministries",
+  "setlists",
+  "repertoire",
+  "bands",
+  "bible-school",
+  "classes",
+];
+
+/** Rota oculta: nao deve renderizar tela nem aparecer na navegacao. */
+export function moduloOculto(pathname: string): boolean {
+  return ROTAS_OCULTAS.includes(raizDaRota(pathname));
+}
 
 /** Primeiro segmento da rota — o "modulo" em que o usuario esta. */
 export function raizDaRota(pathname: string): string {

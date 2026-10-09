@@ -86,14 +86,16 @@ export async function login(page, { email, password }, { base = BASE, espera = 3
   try {
     await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 45000 });
     await page.waitForTimeout(2500);
+    const emailOption = page.getByRole("button", { name: "Entrar com e-mail e senha", exact: true });
+    if (await emailOption.isVisible()) await emailOption.click();
     const inputs = page.locator("input");
     if ((await inputs.count()) >= 2) {
-      await inputs.nth(0).fill(email);
-      await inputs.nth(1).fill(password);
+      await digitar(inputs.nth(0), email);
+      await digitar(inputs.nth(1), password);
     }
     const botao = page.getByRole("button", { name: /entrar/i }).first();
     await botao.click({ timeout: 10000 });
-    await page.waitForTimeout(espera);
+    await page.waitForURL((url) => url.pathname !== "/", { timeout: Math.max(espera, 10000) });
     resultado.url = new URL(page.url()).pathname;
     resultado.ok = resultado.url !== "/" && resultado.url !== "";
   } catch (erro) {
@@ -118,7 +120,9 @@ export async function digitar(locator, valor) {
 export async function esperarPor(fn, { timeout = 8000, intervalo = 250 } = {}) {
   const limite = Date.now() + timeout;
   for (;;) {
-    const valor = await fn().catch(() => false);
+    // O predicado pode ser sincrono (retorna boolean) ou assincrono. Chamar
+    // `fn().catch()` direto estourava TypeError em quem passa `() => condicao`.
+    const valor = await Promise.resolve().then(fn).catch(() => false);
     if (valor) return true;
     if (Date.now() > limite) return false;
     await new Promise((r) => setTimeout(r, intervalo));

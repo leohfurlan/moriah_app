@@ -18,6 +18,7 @@ import { PropsWithChildren, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, spacing } from "@/theme";
+import { MotionView } from "./Motion";
 
 export type FeedbackTone = "success" | "error" | "warning" | "info";
 
@@ -34,7 +35,7 @@ export function InlineNotice({
 }) {
   const paleta = TONES[tone];
   return (
-    <View accessibilityRole="alert" style={[styles.notice, paleta.box]}>
+    <MotionView accessibilityRole="alert" style={[styles.notice, paleta.box]}>
       <View style={styles.noticeCopy}>
         {title ? <Text style={[styles.noticeTitle, paleta.title]}>{title}</Text> : null}
         <Text style={styles.noticeMessage}>{message}</Text>
@@ -49,7 +50,7 @@ export function InlineNotice({
           <Text style={styles.dismissText}>Fechar</Text>
         </Pressable>
       ) : null}
-    </View>
+    </MotionView>
   );
 }
 
@@ -115,7 +116,7 @@ export function ToastHost() {
   if (!toast) return null;
   return (
     <View style={styles.toastLayer}>
-      <View accessibilityRole="alert" testID="toast" style={[styles.toast, TONES[toast.tone].box]}>
+      <MotionView key={toast.id} accessibilityRole="alert" testID="toast" style={[styles.toast, TONES[toast.tone].box]}>
         <View style={styles.noticeCopy}>
           {toast.title ? <Text style={[styles.noticeTitle, TONES[toast.tone].title]}>{toast.title}</Text> : null}
           <Text style={styles.noticeMessage}>{toast.message}</Text>
@@ -128,7 +129,7 @@ export function ToastHost() {
         >
           <Text style={styles.dismissText}>Fechar</Text>
         </Pressable>
-      </View>
+      </MotionView>
     </View>
   );
 }

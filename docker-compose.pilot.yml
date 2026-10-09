@@ -1,0 +1,80 @@
+# Stack de piloto / homologacao.
+#
+# O que muda em relacao ao docker-compose.yml (dev):
+#   - sem o servico `db`: o banco e gerenciado (Neon) e vem por POSTGRES_*;
+#   - sem o servico `mobile`: o app web e publicado no host/CDN, nao no piloto;
+#   - gunicorn + whitenoise (Dockerfile.prod), sem volume de codigo;
+#   - migracao explicita, em um servico separado que nao sobe sozinho;
+#   - healthcheck sem consulta ao banco em /health/ e log com rotacao.
+#
+# Uso:
+#   cp .env.example .env.pilot   # preencher (nunca commitar)
+#   docker compose -f docker-compose.pilot.yml --env-file .env.pilot build
+#   docker compose -f docker-compose.pilot.yml --env-file .env.pilot run --rm migrate
+#   docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d backend
+#
+# Rollback: subir a tag anterior da imagem (ver docs/runbook-deploy-piloto.md).
+
+x-backend-common: &backend-common
+  build:
+    context: ./backend
+    dockerfile: Dockerfile.prod
+    args:
+      # Aparece em /health/ para saber qual commit esta no ar.
+      APP_REVISION: ${APP_REVISION:-unknown}
+  image: ${PILOT_IMAGE:-moriah-backend}:${APP_REVISION:-latest}
+  env_file:
+    - .env.pilot
+
+services:
+  # Migracao explicita: `profiles: [tools]` impede que ela suba junto com o
+  # `up -d backend` (schema nunca muda por acidente em um restart).
+  migrate:
+    <<: *backend-common
+    profiles: ["tools"]
+    command: python manage.py migrate --noinput
+    restart: "no"
+
+  backend:
+    <<: *backend-common
+    # Sem `command`: a propria imagem ja sobe o gunicorn com os defaults e
+    # aceita GUNICORN_WORKERS/THREADS/TIMEOUT/PORT por variavel de ambiente.
+    # 127.0.0.1 por padrao: quem fala HTTPS com a internet e o proxy (Caddy/nginx)
+    # na frente. Troque para 0.0.0.0 apenas se o proxy estiver em outro host.
+    ports:
+      - "${PILOT_BIND:-127.0.0.1}:${PILOT_PORT:-8000}:8000"
+    healthcheck:
+      # Liveness nao mantem o Neon ativo. Readiness e conferido no deploy.
+      # Unhealthy sinaliza falha; restart policy atua quando o processo sai.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Proxy HTTPS opcional (perfil `proxy`). Sirva o Caddyfile de exemplo e aponte
+  # o DNS do piloto para este host.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

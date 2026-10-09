@@ -5,11 +5,25 @@ import { usePathname, useRouter } from "expo-router";
 
 import { ToastProvider, useToast } from "@/components/Feedback";
 import { useAuth } from "@/hooks/useAuth";
-import { Capacidade, CAPACIDADES_DE_ESCALA, podeGerenciarEscalas } from "@/navigation";
+import { Capacidade, CAPACIDADES_DE_COMPROMISSO, CAPACIDADES_DE_DIRETORIO, CAPACIDADES_DE_ESCALA, moduloOculto, podeGerenciarEscalas, raizDaRota } from "@/navigation";
 import { colors, radius, spacing } from "@/theme";
+import { WebEffects } from "@/components/WebEffects";
+import { useReducedMotion } from "@/components/Motion";
+import { useOnResume } from "@/hooks/useOnResume";
+import { loadNotifications } from "@/services/notificationStore";
 
-/** Rotas que exigem apenas estar logado com vinculo de membro. */
-const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/agenda-new", "/content", "/notifications"];
+/**
+ * Rotas que exigem apenas estar logado com vinculo de membro. As areas de
+ * gestao (financeiro, membros, conteudo, eventos, novo compromisso) ficam em
+ * ROTAS_DE_GESTAO: quem opera o painel (admin, pastor, tesouraria, secretaria,
+ * coordenacao) costuma nao ter cadastro de membro, e exigir vinculo ali fechava
+ * a tela para quem tem a permissao no backend.
+ *
+ * As telas sem modulo no backend (ministerios, setlists, repertorio, bandas,
+ * escola biblica, turmas) sairam desta lista e ficam em ROTAS_OCULTAS
+ * (navigation.ts): a rota nao renderiza tela vazia nem entra no menu.
+ */
+const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "/agenda", "/notifications"];
 
 /**
  * Rotas de gestao: exigem capacidade. O backend continua sendo a autoridade
@@ -17,8 +31,17 @@ const MEMBER_PATHS = ["/profile", "/statement", "/contribution", "/schedules", "
  * URL for digitada na mao, avisa em portugues em vez de abrir a tela vazia.
  */
 const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
+  "/member-link-requests": ["manage_members", "manage_all"],
   "/schedule-create": CAPACIDADES_DE_ESCALA,
   "/finance-review": ["review_contributions", "manage_all"],
+  "/finance": ["manage_finance"],
+  "/finance-management": ["manage_finance"],
+  "/members": CAPACIDADES_DE_DIRETORIO,
+  "/visitors": CAPACIDADES_DE_DIRETORIO,
+  "/events": ["member", "manage_events"],
+  "/content": ["member", "manage_content"],
+  // Compromisso na agenda e da lideranca de ministerio ou de celula.
+  "/agenda-new": CAPACIDADES_DE_COMPROMISSO,
 };
 
 /**
@@ -27,7 +50,6 @@ const ROTAS_DE_GESTAO: Record<string, Capacidade[]> = {
  */
 const PREFIXOS_DE_GESTAO: Array<{ prefixo: string; capacidades: Capacidade[] }> = [
   { prefixo: "/schedule-admin", capacidades: CAPACIDADES_DE_ESCALA },
-  { prefixo: "/content", capacidades: ["read_content"] },
 ];
 
 function capacidadesDaRota(pathname: string): Capacidade[] | null {
@@ -35,7 +57,12 @@ function capacidadesDaRota(pathname: string): Capacidade[] | null {
   const porPrefixo = PREFIXOS_DE_GESTAO.find(
     (rota) => pathname === rota.prefixo || pathname.startsWith(`${rota.prefixo}/`),
   );
-  return porPrefixo ? porPrefixo.capacidades : null;
+  if (porPrefixo) return porPrefixo.capacidades;
+  // Sub-rota herda a capacidade da area (ex.: `/content/1` -> `/content`). Sem
+  // isto `/content/1` nao era area de gestao: quem nao tinha a capacidade abria
+  // o detalhe pela URL, e a sub-rota nem contava como area de membro, entao a
+  // sessao expirada ficava na tela em vez de voltar ao login (fase 6).
+  return ROTAS_DE_GESTAO[`/${raizDaRota(pathname)}`] ?? null;
 }
 
 /** A gestao de escalas tem aviso na propria tela (sem redirecionar). */
@@ -54,13 +81,26 @@ function isMemberPath(pathname: string): boolean {
 }
 
 function LayoutComGuarda() {
+  const reducedMotion = useReducedMotion();
   const pathname = usePathname();
   const router = useRouter();
-  const { me, loading } = useAuth();
+  const { me, loading, refreshProfile } = useAuth();
+  useOnResume(() => {
+    if (me) {
+      void refreshProfile();
+      void loadNotifications(me.id, true).catch(() => undefined);
+    }
+  });
   const toast = useToast();
   const exige = capacidadesDaRota(pathname);
-  const precisaLogin = Boolean(!loading && !me && isMemberPath(pathname));
-  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management);
+  // Modulo ainda sem tela real (ver ROTAS_OCULTAS em navigation.ts): a rota nao
+  // renderiza o placeholder nem entra na guarda de membro — quem digitou a URL
+  // recebe o aviso em portugues e volta para a home.
+  const rotaOculta = moduloOculto(pathname);
+  const precisaLogin = Boolean(!loading && !me && (isMemberPath(pathname) || rotaOculta));
+  const moduloIndisponivel = Boolean(me && rotaOculta && !precisaLogin);
+  const contaSemMembroPermitida = pathname === "/profile" || pathname === "/notifications" || pathname.startsWith("/notification/");
+  const semVinculo = Boolean(me && !me.member_id && isMemberPath(pathname) && !exige && !me.can_access_management && !contaSemMembroPermitida);
   const destinoSemVinculo = me && podeGerenciarEscalas(me.capabilities || []) ? "/schedule-create" : "/home";
   const semCapacidade = Boolean(me && exige && !exige.some((capacidade) => (me.capabilities || []).includes(capacidade)));
   // Gestao de escalas avisa na propria pagina: jogar o membro direto em
@@ -69,23 +109,29 @@ function LayoutComGuarda() {
 
   useEffect(() => {
     if (precisaLogin) router.replace("/");
-    else if (semVinculo) router.replace(destinoSemVinculo);
+    else if (moduloIndisponivel) {
+      toast("Este módulo ainda não está disponível.", { tone: "error", title: "Em breve" });
+      router.replace("/home");
+    } else if (semVinculo) router.replace(destinoSemVinculo);
     else if (semCapacidade && !avisoNaTela) {
       const rotaFinanceira = pathname === "/finance-review";
-      if (pathname === "/content" || pathname.startsWith("/content/")) {
-        toast("Sua conta não tem permissão para acessar conteúdo.", { tone: "error", title: "Acesso restrito" });
-        router.replace("/home");
-        return;
-      }
-      toast(rotaFinanceira ? "Sua conta não tem permissão para revisar contribuições." : "Sua conta não tem permissão para criar escalas.", { tone: "error", title: "Acesso restrito" });
-      router.replace(rotaFinanceira ? "/home" : "/schedules");
+      const rotaDeEscala = pathname === "/schedule-create" || pathname.startsWith("/schedule-admin");
+      toast(
+        rotaFinanceira
+          ? "Sua conta não tem permissão para revisar contribuições."
+          : rotaDeEscala
+            ? "Sua conta não tem permissão para criar escalas."
+            : "Sua conta não tem permissão para acessar esta área.",
+        { tone: "error", title: "Acesso restrito" },
+      );
+      router.replace(rotaDeEscala ? "/schedules" : "/home");
     }
-  }, [precisaLogin, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, router, toast]);
+  }, [precisaLogin, moduloIndisponivel, semVinculo, semCapacidade, avisoNaTela, destinoSemVinculo, router, toast]);
 
-  if (loading && isMemberPath(pathname)) return null;
+  if (loading && (isMemberPath(pathname) || rotaOculta)) return null;
   if (avisoNaTela) return <AcessoRestritoEscalas />;
-  if (precisaLogin || semVinculo || semCapacidade) return null;
-  return <Stack screenOptions={{ headerShown: false }} />;
+  if (precisaLogin || moduloIndisponivel || semVinculo || semCapacidade) return null;
+  return <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? "none" : "default" }} />;
 }
 
 /**
@@ -150,6 +196,7 @@ const styles = StyleSheet.create({
 export default function Layout() {
   return (
     <ToastProvider>
+      <WebEffects />
       <LayoutComGuarda />
     </ToastProvider>
   );

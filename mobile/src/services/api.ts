@@ -210,4 +210,13 @@ export const api = {
       },
       true,
     ),
+  patchForm: <T>(path: string, body: FormData) =>
+    request<T>(
+      path,
+      {
+        method: "PATCH",
+        body,
+      },
+      true,
+    ),
 };

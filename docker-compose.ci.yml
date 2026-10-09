@@ -1,0 +1,40 @@
+# Apenas para o CI: adiciona um Postgres descartavel a stack de piloto, para
+# que o job consiga buildar a imagem de producao, migrar e bater em /health/
+# sem depender do Neon.
+#
+#   docker compose -f docker-compose.pilot.yml -f docker-compose.ci.yml \
+#     --env-file .env.pilot up -d --wait
+#
+# Nao use em homologacao/producao.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-moriah}
+      POSTGRES_USER: ${POSTGRES_USER:-moriah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moriah}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-moriah} -d ${POSTGRES_DB:-moriah}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  backend:
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_SSLMODE: disable
+      POSTGRES_CONN_MAX_AGE: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_SSLMODE: disable
+      POSTGRES_CONN_MAX_AGE: "0"
+    depends_on:
+      db:
+        condition: service_healthy

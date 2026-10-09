@@ -1,0 +1,28 @@
+[Unit]
+# Stack de piloto do Moriah App como servico do systemd.
+#
+# Instalado pelo deploy/cloud-init.yaml em /etc/systemd/system/. Se a VPS ja
+# existe sem cloud-init:
+#   sudo cp deploy/moriah-piloto.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable moriah-piloto
+#
+# O boot NAO migra schema: quem migra e o passo explicito do runbook de deploy
+# (docker compose ... --profile tools run --rm migrate).
+Description=Stack de piloto do Moriah App (docker compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/moriah_app
+User=deploy
+SupplementaryGroups=docker
+ExecStart=/usr/bin/docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d backend
+ExecStop=/usr/bin/docker compose -f docker-compose.pilot.yml --env-file .env.pilot down
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

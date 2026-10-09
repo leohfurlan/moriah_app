@@ -65,14 +65,25 @@ export const routeLabels: Record<string, string> = {
   index: "Entrar",
   home: "Início",
   profile: "Meu Perfil",
+  members: "Membros",
+  visitors: "Visitantes",
   statement: "Extrato",
   contribution: "Contribuição",
+  finance: "Visão geral",
+  "finance-management": "Gestão financeira",
+  content: "Conteúdo",
   schedules: "Minha Escala",
   schedule: "Minha Escala",
   song: "Minha Escala",
   agenda: "Minha Agenda",
+  events: "Cultos e eventos",
+  ministries: "Ministérios",
+  setlists: "Setlists",
+  repertoire: "Repertório",
+  bands: "Bandas",
+  "bible-school": "Escola Bíblica",
+  classes: "Turmas",
   "agenda-new": "Novo compromisso",
-  content: "Conteúdo",
   notifications: "Notificações",
   notification: "Notificação",
   "schedule-create": "Adicionar escala",
@@ -107,6 +118,22 @@ const statusLabels: Record<string, string> = {
 
 export function statusLabel(value: string): string {
   return statusLabels[value] || value;
+}
+
+/**
+ * Tom visual de um status (badge). Fonte unica: cada tela reimplementava o
+ * mapeamento e uma delas pintava "Recusado" de verde (a agenda tratava tudo que
+ * nao era conflito/pendente como sucesso).
+ *
+ * Regra: confirmado/aprovado/recebido = success | pendente/em analise/indisponivel
+ * = warning | recusado/rejeitado/em conflito/substituicao necessaria/cancelado =
+ * danger | resto = neutral.
+ */
+export function statusTone(value: string): "success" | "warning" | "danger" | "neutral" {
+  if (["confirmed", "approved", "received", "paid"].includes(value)) return "success";
+  if (["pending", "pending_confirmation", "needs_review", "unavailable"].includes(value)) return "warning";
+  if (["declined", "rejected", "conflict", "replacement_needed", "cancelled"].includes(value)) return "danger";
+  return "neutral";
 }
 
 /** Data ISO -> "12/09/2026 19:30" ou "--" se invalida. */

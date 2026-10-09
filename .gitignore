@@ -39,3 +39,6 @@ tmp/
 # Evidencias de QA (regeradas a cada execucao: node tools/qa/run.mjs)
 # Os relatorios versionados ficam em docs/qa/fase-*.md
 docs/qa/evidencias/
+
+# Anexos temporarios de sessoes de agente (imagens coladas no chat)
+.codex-remote-attachments/

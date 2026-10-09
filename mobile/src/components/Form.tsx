@@ -61,6 +61,7 @@ export function Card({ children, onPress, style }: PropsWithChildren<{ onPress?:
     return (
       <Pressable
         accessibilityRole="button"
+        testID="interactive-card"
         onPress={onPress}
         style={({ pressed }) => [styles.card, style, pressed && styles.cardPressed]}
       >

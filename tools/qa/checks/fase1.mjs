@@ -44,6 +44,7 @@ export async function executar({ browser, dir }) {
   {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     await irPara(sessao.page, "/");
+    await sessao.page.getByRole("button", {name:"Entrar com e-mail e senha",exact:true}).click();
     const inputs = sessao.page.locator("input");
     await digitar(inputs.nth(0), membro.email);
     await digitar(inputs.nth(1), "senha-que-nao-existe-qa");
@@ -152,7 +153,10 @@ export async function executar({ browser, dir }) {
     const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
     const acesso = await login(sessao.page, membro);
     v.check("preparo: login do membro (erro 500)", acesso.ok, `url=${acesso.url}`);
-    await sessao.page.route("**/api/me/statement/**", (rota) =>
+    // O app fala com a API na mesma origem, e o prefixo varia com a config
+    // (EXPO_PUBLIC_API_URL): /api na LAN, /backend e /local-api atras do proxy.
+    // Interceptar so "**/api/me/statement/**" deixava o 500 forcado sem efeito.
+    await sessao.page.route(/\/me\/statement\//, (rota) =>
       rota.fulfill({ status: 500, contentType: "text/html", body: HTML_DJANGO }),
     );
     await irPara(sessao.page, "/statement");
@@ -226,6 +230,33 @@ export async function executar({ browser, dir }) {
       `inventados=${achados.length ? achados.join(", ") : "nenhum"} | painéis reais=${reais.join(", ") || "nenhum"}`,
     );
     await v.screenshot(sessao.page, "9-painel-sem-dado-inventado");
+    await sessao.context.close();
+  }
+
+  // ---- 10. visao geral: carrossel de avisos entre os cards e os graficos ----
+  {
+    const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
+    const acesso = await login(sessao.page, membro);
+    v.check("preparo: login do membro (carrossel)", acesso.ok, `url=${acesso.url}`);
+    await irPara(sessao.page, "/home");
+    const carrossel = sessao.page.getByLabel("Próximo aviso").first();
+    const temCarrossel = (await carrossel.count()) > 0;
+    const grafico = sessao.page.getByText(/Minhas contribuições/).first();
+    const temGrafico = (await grafico.count()) > 0;
+    let acimaDoGrafico = false;
+    if (temCarrossel && temGrafico) {
+      const caixaCarrossel = await carrossel.boundingBox();
+      const caixaGrafico = await grafico.boundingBox();
+      acimaDoGrafico = Boolean(caixaCarrossel && caixaGrafico && caixaCarrossel.y < caixaGrafico.y);
+    }
+    const conteudo = await texto(sessao.page);
+    const temConteudo = contem(conteudo, "ver detalhes") || contem(conteudo, "nenhum aviso ou evento publicado");
+    v.check(
+      "10. Visão geral mostra o carrossel de avisos abaixo dos cards e antes dos gráficos",
+      temCarrossel && temGrafico && acimaDoGrafico && temConteudo,
+      `carrossel=${temCarrossel} | gráfico=${temGrafico} | carrossel acima do gráfico=${acimaDoGrafico} | conteúdo=${temConteudo}`,
+    );
+    await v.screenshot(sessao.page, "10-carrossel-visao-geral");
     await sessao.context.close();
   }
 

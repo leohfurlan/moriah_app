@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function IndexPage() {
   const router = useRouter();
-  const { me, loading, login } = useAuth();
+  const { me, loading, login, acceptTokens } = useAuth();
 
   useEffect(() => {
     if (me) {
@@ -23,5 +23,5 @@ export default function IndexPage() {
     );
   }
 
-  return <LoginScreen onLogin={login} />;
+  return <LoginScreen onLogin={login} onTokens={acceptTokens} />;
 }

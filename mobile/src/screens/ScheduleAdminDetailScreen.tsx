@@ -7,6 +7,7 @@ import { DateTimeField } from "@/components/DateTimeField";
 import { InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
 import { Screen } from "@/components/Screen";
+import { useReducedMotion } from "@/components/Motion";
 import { api } from "@/services/api";
 import { describeError, UserFacingError } from "@/services/errors";
 import { ScheduleAdminDetail, ScheduleAdminTeamMember, ScheduleCandidate } from "@/types/api";
@@ -35,6 +36,7 @@ function contato(membro: ScheduleAdminTeamMember): string {
 type Painel = { tipo: "adicionar" } | { tipo: "substituir"; membro: ScheduleAdminTeamMember } | null;
 
 export function ScheduleAdminDetailScreen() {
+  const reducedMotion = useReducedMotion();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -376,7 +378,7 @@ export function ScheduleAdminDetailScreen() {
       </Card>
 
       {painel ? (
-        <Modal visible transparent animationType="slide" onRequestClose={() => setPainel(null)}>
+        <Modal visible transparent animationType={reducedMotion ? "none" : "slide"} onRequestClose={() => setPainel(null)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <ScrollView

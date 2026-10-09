@@ -24,18 +24,19 @@ def test_publication_lifecycle_is_explicit_and_audited(api_client, make_user, ch
     repeat = api_client.post(f"/api/content/{obj.pk}/publish/")
     assert first.status_code == repeat.status_code == 200
     assert first.data["published_at"] == repeat.data["published_at"]
-    assert api_client.patch(f"/api/content/{obj.pk}/", {"body": "Nova"}, format="json").status_code == 409
+    # The deployed editor supports editing published words; publication remains explicit.
+    assert api_client.patch(f"/api/content/{obj.pk}/", {"body": "Nova"}, format="json").status_code == 200
     assert api_client.post(f"/api/content/{obj.pk}/unpublish/").status_code == 200
     assert api_client.post(f"/api/content/{obj.pk}/unpublish/").status_code == 200
     assert list(AuditLog.objects.filter(model_name="Content").order_by("id").values_list("action", flat=True)) == [
-        "content_created", "content_updated", "content_published", "content_unpublished"]
+        "content_created", "content_updated", "content_published", "content_updated", "content_unpublished"]
 
 
 def test_member_sees_only_published_content_of_own_church(api_client, make_user, make_member, church):
     user = make_user("reader@example.com")
     make_member("Leitor", user=user)
     draft = Content.objects.create(church=church, title="Segredo", body="Rascunho")
-    published = Content.objects.create(church=church, title="Público", body="Texto", status="published")
+    published = Content.objects.create(church=church, title="PÃºblico", body="Texto", status="published")
     other = Church.objects.create(name="Outra igreja")
     foreign = Content.objects.create(church=other, title="Outra", body="Texto", status="published")
     api_client.force_authenticate(user)
@@ -45,10 +46,10 @@ def test_member_sees_only_published_content_of_own_church(api_client, make_user,
     assert api_client.get(f"/api/content/{published.pk}/").status_code == 200
     for obj in (draft, foreign):
         assert api_client.get(f"/api/content/{obj.pk}/").status_code == 404
-    assert api_client.post("/api/content/", {"title": "Não", "body": "Não"}, format="json").status_code == 403
+    assert api_client.post("/api/content/", {"title": "NÃ£o", "body": "NÃ£o"}, format="json").status_code == 403
     for suffix in ("publish/", "unpublish/"):
         assert api_client.post(f"/api/content/{published.pk}/{suffix}").status_code == 403
-    assert api_client.patch(f"/api/content/{published.pk}/", {"body": "Não"}, format="json").status_code == 403
+    assert api_client.patch(f"/api/content/{published.pk}/", {"body": "NÃ£o"}, format="json").status_code == 403
 
 
 @pytest.mark.parametrize("prefix", ["api", "backend", "local-api"])
@@ -81,7 +82,7 @@ def test_anonymous_and_no_church_are_denied(api_client, make_user):
     assert api_client.get("/api/content/").status_code == 403
 
 
-@pytest.mark.parametrize("payload", [{"title": " ", "body": "Texto"}, {"title": "Título", "body": " "}, {"title": "x" * 256, "body": "Texto"}, {"title": "Título", "body": "x" * 50001}])
+@pytest.mark.parametrize("payload", [{"title": " ", "body": "Texto"}, {"title": "TÃ­tulo", "body": " "}, {"title": "x" * 256, "body": "Texto"}, {"title": "TÃ­tulo", "body": "x" * 50001}])
 def test_invalid_content_does_not_persist(api_client, make_user, payload):
     api_client.force_authenticate(make_user("admin@example.com", role="admin"))
     assert api_client.post("/api/content/", payload, format="json").status_code == 400
@@ -117,7 +118,7 @@ def test_concurrent_publication_is_idempotent_on_postgres(make_user, church):
     if connection.vendor != "postgresql":
         pytest.skip("Row-lock concurrency requires PostgreSQL")
     user = make_user("concurrent@example.com", role="admin")
-    obj = Content.objects.create(church=church, title="Concorrência", body="Texto")
+    obj = Content.objects.create(church=church, title="ConcorrÃªncia", body="Texto")
     barrier = Barrier(2)
 
     def publish():

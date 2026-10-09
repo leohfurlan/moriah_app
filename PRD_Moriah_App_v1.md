@@ -2,9 +2,10 @@
 
 **Produto:** Moriah App  
 **Igreja:** Igreja Moriah  
-**Versão:** v1.0 — MVP replanejado  
-**Data:** Junho/2026  
+**Versão:** v1.1 — MVP replanejado e roadmap F01–F10
+**Data:** Setembro/2026
 **Responsável:** Leonardo Furlan  
+**Status:** Requisitos do MVP preservados; F10 adicionada como feature futura em draft
 **Objetivo:** criar uma plataforma própria para gestão de membresia, contribuições, células, eventos e escalas de ministérios da Igreja Moriah.
 
 ---
@@ -55,6 +56,9 @@ Criar uma plataforma própria da Igreja Moriah para centralizar a gestão de mem
 - Organizar escalas de ministérios com confirmação ou recusa.
 - Reduzir retrabalho administrativo.
 - Criar uma base preparada para módulos futuros: Pix integrado, OCR, Moriah Kids, eventos pagos, Escola Bíblica e notificações.
+- Preparar uma área dedicada para projetos sociais, com gestão de beneficiários,
+  voluntários, atividades, grade curricular e recursos, após a integração com
+  WhatsApp.
 
 ---
 
@@ -129,6 +133,55 @@ Estes recursos são importantes, mas devem entrar depois:
 - Ranking de regularidade de dízimos.
 - Dashboards pastorais avançados.
 - Certificados automáticos.
+- Projetos Sociais (F10), incluindo beneficiários, voluntários, turmas,
+  atividades, presença, grade curricular, recursos e indicadores.
+
+### Catálogo de features e dependências
+
+O PRD original não possuía IDs de features. A tabela abaixo mapeia o escopo
+existente para IDs estáveis sem alterar seu significado e adiciona F10 ao
+roadmap. F09 e F10 não fazem parte do MVP atual.
+
+| ID | Feature / resultado | Atores | Prioridade / release | Status | Pré-requisitos obrigatórios | Fornece / consome |
+|---|---|---|---|---|---|---|
+| F01 | Autenticação e permissões | Admin, pastor, secretaria, tesouraria, coordenação, membro | MVP | Existente no escopo | nenhum | Fornece identidade e capacidades às demais features |
+| F02 | Membresia, famílias e perfis | Secretaria, pastor, membro | MVP | Existente no escopo | F01 | Fornece membros e famílias para F03, F04, F05 e F07 |
+| F03 | Células e frequência | Líder de célula, secretaria, membro | MVP | Existente no escopo | F01, F02 | Consome F02; fornece reuniões e presença |
+| F04 | Financeiro e comprovantes | Membro, tesoureiro, pastor | MVP | Existente no escopo | F01, F02 | Consome F02; fornece extrato e validação |
+| F05 | Ministérios e escalas | Coordenador, voluntário/membro, pastor | MVP | Existente no escopo | F01, F02, F06 | Consome membros e eventos; fornece escalas |
+| F06 | Eventos e agenda | Secretaria, liderança, membro | MVP | Existente no escopo | F01 | Fornece eventos para F05 e agenda pessoal |
+| F07 | Painel administrativo e operação | Secretaria, tesouraria, liderança, coordenadores | MVP | Existente no escopo | F01–F06 conforme o fluxo | Consome e opera os domínios administrativos |
+| F08 | App mobile do membro | Membro, líder de célula, voluntário | MVP | Existente no escopo | F01–F06 | Consome perfil, extrato, agenda e escalas |
+| F09 | Integração com WhatsApp | Liderança, secretaria, tesouraria, membros | Pós-MVP — prioridade anterior a F10 | Roadmap | F01, F04, F05, F07 | Consome eventos/estados das features e fornece comunicação externa |
+| F10 | Projetos Sociais | Coordenador social, responsável de projeto, voluntário, educador, liderança | Pós-F09 — prioridade futura | Draft de requisitos | F01, F02, F06, F07; F09 como gate de prioridade | Fornece gestão social; consome vínculo opcional com membros, agenda e conteúdo |
+
+F09 é uma dependência de sequência do produto para F10, não uma dependência
+técnica obrigatória do domínio social. F10 só deve iniciar depois de F09 ser
+implementada e validada, conforme a prioridade definida para o Moriah.
+
+```mermaid
+graph LR
+    F01["F01 Auth"] --> F02["F02 Membresia"]
+    F01 --> F03["F03 Células"]
+    F02 --> F03
+    F01 --> F04["F04 Financeiro"]
+    F02 --> F04
+    F01 --> F06["F06 Eventos"]
+    F01 --> F05["F05 Ministérios e escalas"]
+    F02 --> F05
+    F06 --> F05
+    F01 --> F07["F07 Painel administrativo"]
+    F02 --> F07
+    F04 --> F07
+    F05 --> F07
+    F01 --> F08["F08 App mobile"]
+    F04 --> F08
+    F05 --> F08
+    F07 --> F09["F09 WhatsApp"]
+    F09 -. "gate de prioridade" .-> F10["F10 Projetos Sociais"]
+    F02 -. "vínculo opcional" .-> F10
+    F06 -. "agenda opcional" .-> F10
+```
 
 ---
 
@@ -143,6 +196,10 @@ Estes recursos são importantes, mas devem entrar depois:
 | Coordenador de ministério | Criar escalas e acompanhar confirmações | Web + App |
 | Membro | Consultar extrato, enviar comprovante e ver escala | App |
 | Visitante | Cadastro inicial e vínculo futuro | App/Web futuro |
+| Coordenador social | Administrar projetos sociais e seus responsáveis | Web |
+| Responsável de projeto | Operar um projeto específico, turmas e atividades | Web + App futuro |
+| Voluntário/educador | Executar atividades e registrar informações autorizadas | App futuro |
+| Beneficiário | Participar de um projeto social; não exige conta no MVP | Sem acesso obrigatório |
 
 ---
 
@@ -180,6 +237,21 @@ Estes recursos são importantes, mas devem entrar depois:
 
 - Acesso administrativo amplo.
 - Deve ter trilha de auditoria para ações sensíveis.
+
+### Projetos sociais
+
+- Coordenador social administra somente os projetos sociais atribuídos ao seu
+  escopo.
+- Responsável de projeto gerencia turmas, atividades, presenças e recursos do
+  próprio projeto.
+- Voluntário ou educador acessa apenas as atividades e os dados mínimos
+  necessários para sua atuação.
+- Beneficiário não precisa ser membro, usuário ou possuir acesso ao app.
+- Dados de beneficiários, responsáveis legais, presenças e observações
+  sensíveis não ficam disponíveis automaticamente para secretaria, membros ou
+  coordenadores de ministério.
+- O vínculo de um beneficiário com um membro, quando existir, deve ser
+  explícito e não cria conversão automática de cadastro.
 
 ---
 
@@ -328,6 +400,115 @@ No MVP, eventos entram como base para escalas e cultos.
 
 ---
 
+## 7.6 Projetos Sociais — F10
+
+Esta feature representa uma área dedicada para programas sociais, educativos e
+comunitários da igreja. Ela não será modelada como Conteúdo nem como
+Ministério. Conteúdo pode ser referenciado por uma aula ou atividade, e um
+Ministério pode apoiar o projeto, mas cada domínio preserva sua própria
+responsabilidade.
+
+### Prioridade e status
+
+- **Prioridade:** futura, depois da integração com WhatsApp (F09).
+- **Release:** pós-F09; fora do MVP atual.
+- **Status:** draft de requisitos; os detalhes técnicos estão em
+  [`docs/features/F-PS-01-projetos-sociais/spec.md`](docs/features/F-PS-01-projetos-sociais/spec.md).
+- **Contrato:** [`docs/features/F-PS-01-projetos-sociais/contract.md`](docs/features/F-PS-01-projetos-sociais/contract.md).
+- **Plano:** [`docs/features/F-PS-01-projetos-sociais/plan.md`](docs/features/F-PS-01-projetos-sociais/plan.md).
+
+### Resultado esperado
+
+Permitir que a liderança acompanhe projetos sociais, pessoas atendidas,
+equipes voluntárias, atividades, presença, formação e recursos, mantendo
+isolamento por igreja e proteção dos dados pessoais.
+
+### Histórias de usuário
+
+- **F10-US01 — Projeto:** como coordenador social, quero cadastrar e acompanhar
+  projetos sociais para organizar sua operação e situação.
+- **F10-US02 — Beneficiário:** como responsável de projeto, quero cadastrar
+  beneficiários mesmo quando eles não são membros da igreja, para acompanhar o
+  atendimento sem criar uma membresia artificial.
+- **F10-US03 — Voluntário:** como responsável de projeto, quero atribuir
+  voluntários internos ou externos a funções e períodos, para organizar a
+  equipe.
+- **F10-US04 — Turma e atividade:** como responsável de projeto, quero criar
+  turmas/ciclos e atividades, para estruturar a execução do projeto.
+- **F10-US05 — Presença:** como voluntário autorizado, quero registrar presença,
+  ausência ou justificativa, para manter histórico de participação.
+- **F10-US06 — Grade curricular:** como educador, quero organizar módulos e
+  encontros e referenciar conteúdos existentes, para conduzir a formação.
+- **F10-US07 — Recursos:** como responsável de projeto, quero registrar entrada,
+  consumo e saldo de recursos, para controlar os materiais utilizados.
+- **F10-US08 — Indicadores:** como liderança autorizada, quero consultar
+  indicadores básicos de participação e operação, sem expor dados sensíveis
+  além do necessário.
+
+### Escopo inicial de F10
+
+- Cadastro e ciclo do projeto: rascunho, ativo, pausado e encerrado.
+- Cadastro de beneficiários separado da membresia, com vínculo opcional a um
+  membro quando houver correspondência confirmada.
+- Cadastro de voluntários internos ou externos, com função e período.
+- Turmas, ciclos e inscrições.
+- Atividades, responsáveis e controle de presença.
+- Grade curricular própria e referência opcional a Conteúdo.
+- Recursos operacionais, estoque e movimentações auditáveis.
+- Indicadores básicos e relatórios com acesso restrito.
+- Auditoria de alterações sensíveis e isolamento por igreja.
+
+### Regras de domínio
+
+- Beneficiário não é sinônimo de membro e não precisa de conta de usuário.
+- Voluntário pode ser membro ou pessoa externa.
+- A existência de um membro não concede automaticamente acesso à gestão
+  social.
+- O projeto pode ser apoiado por um Ministério, mas não herda automaticamente
+  suas permissões ou escalas.
+- Recursos sociais não aparecem no extrato individual de contribuições.
+- Encerrar um projeto preserva seu histórico de beneficiários, atividades,
+  presença e movimentações, conforme a política de retenção aprovada.
+- Dados de menores, responsáveis legais e observações sensíveis exigem política
+  específica de consentimento e acesso antes da implementação.
+
+### Dependências
+
+- **F01:** autenticação e capacidades para proteger as operações.
+- **F02:** vínculo opcional com membros, sem tornar a membresia obrigatória.
+- **F06:** agenda, quando atividades sociais forem exibidas no calendário.
+- **F07:** operação administrativa e auditoria.
+- **F09:** gate de prioridade do produto; a feature deve iniciar somente após a
+  integração com WhatsApp ser concluída e validada.
+
+### Fora do escopo de F10
+
+- Integração com WhatsApp ou notificações externas.
+- Portal público de inscrição.
+- Prontuário médico ou avaliação clínica.
+- Elegibilidade automatizada ou decisão assistencial por IA.
+- Contabilidade completa, conciliação bancária e prestação fiscal.
+- Conversão automática de beneficiário em membro.
+
+### Critérios de aceite de produto
+
+F10 só poderá ser considerada pronta para implementação quando:
+
+1. O PRD e os documentos técnicos definirem os papéis sociais e seus limites
+   de acesso.
+2. Houver decisão sobre o tratamento de menores, responsáveis e consentimento.
+3. O escopo de recursos estiver definido entre inventário, orçamento, doações e
+   prestação financeira.
+4. O sistema permitir um fluxo completo de projeto → beneficiário/voluntário →
+   turma → atividade → presença, com dados isolados por igreja.
+5. A grade curricular puder referenciar conteúdo sem alterar o ciclo editorial
+   de Conteúdo.
+6. Movimentações de recursos e alterações sensíveis forem auditáveis.
+7. A integração WhatsApp (F09) estiver validada antes do início da execução de
+   F10.
+
+---
+
 ## 8. Stack Recomendada
 
 ### Recomendação principal
@@ -389,6 +570,7 @@ moriah-app/
 │   │   ├── events/
 │   │   ├── schedules/
 │   │   ├── finance/
+│   │   ├── social_projects/  # futuro — F10, após F09
 │   │   └── audit/
 │   ├── manage.py
 │   ├── requirements.txt
@@ -432,6 +614,22 @@ moriah-app/
 - `Contribution`
 - `ContributionAttachment`
 - `AuditLog`
+
+### Entidades futuras previstas para F10
+
+As entidades abaixo são conceitos de produto, não autorização para criar
+migrations no MVP. O contrato técnico definitivo pertence aos artefatos de
+F10.
+
+- `SocialProject`
+- `Beneficiary`
+- `BeneficiaryEnrollment`
+- `VolunteerProfile` e `ProjectAssignment`
+- `ProjectCohort`/`ProjectClass`
+- `ProjectActivity` e `Attendance`
+- `Curriculum`, `CurriculumModule` e `LessonPlan`
+- `ProjectResource` e `ResourceMovement`
+- indicadores e relatórios sociais
 
 ### Observação importante
 
@@ -596,7 +794,22 @@ A Moriah consegue rodar um ciclo real com membresia, comprovantes e escalas sem 
 - Planos comerciais.
 - Dashboards avançados.
 - App público.
-- Integração com WhatsApp.
+- Integração com WhatsApp (F09).
+
+## Fase 5 do Produto — Projetos Sociais
+
+Esta fase só deve começar depois que a integração com WhatsApp (F09) estiver
+concluída e validada. A ordem é uma decisão de prioridade do produto; F10 não
+deve ser iniciada em paralelo por padrão.
+
+- Cadastro de projetos sociais e responsáveis.
+- Cadastro de beneficiários, inclusive pessoas sem vínculo de membresia.
+- Cadastro e atribuição de voluntários internos ou externos.
+- Turmas, ciclos, atividades e controle de presença.
+- Grade curricular e referência opcional a Conteúdo.
+- Controle de recursos, estoque e movimentações.
+- Indicadores básicos e relatórios com acesso restrito.
+- Auditoria e controles de privacidade para dados sensíveis.
 
 ---
 
@@ -822,7 +1035,28 @@ Comece criando a estrutura do projeto, arquivos de configuração e models. Depo
 
 ---
 
-## 17. Veredito
+## 17. Handoff para to-specs
+
+Quando F10 for liberada após F09, a especificação técnica deve consumir:
+
+- **Feature:** F10 — Projetos Sociais.
+- **PRD:** esta revisão v1.1.
+- **Dependências:** F01, F02, F06 e F07; F09 é gate de prioridade e sequência.
+- **Provedores/consumidores:** Accounts/Church fornece identidade e escopo;
+  Members fornece vínculo opcional; Events fornece agenda opcional; Content
+  fornece material opcional; Audit registra operações sensíveis.
+- **Artefatos técnicos existentes:**
+  [`docs/features/F-PS-01-projetos-sociais/spec.md`](docs/features/F-PS-01-projetos-sociais/spec.md),
+  [`contract.md`](docs/features/F-PS-01-projetos-sociais/contract.md) e
+  [`plan.md`](docs/features/F-PS-01-projetos-sociais/plan.md), ainda em draft.
+
+A existência deste handoff não autoriza implementação, migration, deploy ou
+publicação de tickets. A especificação precisa ser revisada quando as decisões
+sobre menores, papéis sociais e escopo financeiro forem confirmadas.
+
+---
+
+## 18. Veredito
 
 O projeto é viável e tem valor real para a Igreja Moriah. O caminho correto é começar pequeno, com foco em três frentes:
 

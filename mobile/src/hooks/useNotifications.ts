@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useFocusEffect } from "expo-router";
 import { useAuth } from "./useAuth";
 import { getNotificationsSnapshot, loadNotifications, readAllNotifications, readNotification, subscribeNotifications } from "@/services/notificationStore";
 
@@ -7,6 +8,7 @@ export function useNotifications() {
   const userId = me?.id ?? null;
   const snapshot = useSyncExternalStore(subscribeNotifications, getNotificationsSnapshot, getNotificationsSnapshot);
   useEffect(() => { void loadNotifications(userId).catch(() => undefined); }, [userId]);
+  useFocusEffect(useCallback(() => { void loadNotifications(userId, true).catch(() => undefined); }, [userId]));
   const reload = useCallback(() => loadNotifications(userId, true), [userId]);
   const loadPage = useCallback((page: number) => loadNotifications(userId, true, page), [userId]);
   const markRead = useCallback((id: number) => {

@@ -260,7 +260,10 @@ export async function executar({ browser, dir }) {
     const salvou = await clicar(sessao.page, UI.salvarRascunho);
     await sessao.page.waitForTimeout(3000);
 
-    const escritas = sessao.escritas.filter((item) => item.url.includes("/api/schedules"));
+    // O prefixo da API muda com a config (EXPO_PUBLIC_API_URL): /api na LAN,
+    // /backend e /local-api atras do proxy. Filtrar so "/api/schedules" deixava
+    // a checagem de POST 201 e de ministry_id no corpo sem efeito.
+    const escritas = sessao.escritas.filter((item) => /(\/api|\/backend|\/local-api)\/schedules/.test(item.url));
     const criouNaApi = escritas.some((item) => item.metodo === "POST" && item.status === 201);
     const enviouEscopo = escritas.some(
       (item) => item.metodo === "POST" && /"ministry_id"\s*:\s*\d+/.test(item.corpo || ""),
@@ -313,23 +316,27 @@ export async function executar({ browser, dir }) {
       `abriu=${abriu} | equipe na fonte=${equipeNoDado.join(", ")} | na tela=${equipeNaTela} | situações ${situacoesNaTela}/${situacoesNoDado.length} | histórico=${historico ? `${historico.original_member_name} -> ${historico.replacement_member_name}` : "ausente"} (${historicoNaTela}) | contagem=${contagem}`,
     );
     let substituicaoSelecionaFuncaoOriginal = false;
+    let funcaoOriginal = "";
     const lucas = sessao.page.getByText("Lucas Dias").first();
     if ((await lucas.count()) > 0) {
       await lucas.locator("../..").getByRole("button", { name: "Substituir" }).click().catch(() => {});
       await esperarPor(
-        async () => (await sessao.page.getByRole("button", { name: /Função Bateria/ }).count()) > 0,
+        async () => (await sessao.page.getByRole("button", { name: /filtrar função bateria/i }).count()) > 0,
         { timeout: 8000 },
       );
-      const bateria = sessao.page.getByRole("button", { name: /Função Bateria/ }).first();
-      const vocal = sessao.page.getByRole("button", { name: /Função Vocal/ }).first();
-      const bateriaBackground = await bateria.evaluate((el) => getComputedStyle(el).backgroundColor).catch(() => "");
-      const vocalBackground = await vocal.evaluate((el) => getComputedStyle(el).backgroundColor).catch(() => "");
-      substituicaoSelecionaFuncaoOriginal = Boolean(bateriaBackground) && bateriaBackground !== vocalBackground;
+      // Os chips da linha de funcoes viraram FILTRO ("Filtrar funcao X" / "Todas
+      // as funcoes"), entao a funcao do integrante original nao aparece como chip
+      // selecionado. O painel declara a funcao escolhida no texto "Funcao da
+      // escalacao: <funcao>" e usa esse id no POST da substituicao — a funcao
+      // esperada vem da propria API (team[].role_name), nao de um literal.
+      funcaoOriginal = (detalhe?.team || []).find((item) => item.member_name === "Lucas Dias")?.role_name || "";
+      const painel = await texto(sessao.page);
+      substituicaoSelecionaFuncaoOriginal = Boolean(funcaoOriginal) && contem(painel, `funcao da escalacao: ${funcaoOriginal}`);
     }
     v.check(
       "4b. Abrir substituição seleciona a função do integrante original",
       substituicaoSelecionaFuncaoOriginal,
-      "Bateria selecionada=" + substituicaoSelecionaFuncaoOriginal,
+      `função esperada=${funcaoOriginal || "—"} | painel declara=${substituicaoSelecionaFuncaoOriginal}`,
     );    await v.screenshot(sessao.page, "4-detalhe-equipe");
     await sessao.context.close();
   }

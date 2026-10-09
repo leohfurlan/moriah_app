@@ -4,9 +4,7 @@ import warnings
 
 from dotenv import load_dotenv
 
-
-def env_flag(name: str, default: str = "false") -> bool:
-    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+from config.env import database_config, env_flag, env_int, env_list, is_insecure_secret_key
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,11 +14,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-dev-secret-key")
 DEBUG = env_flag("DJANGO_DEBUG")
 # Sem curinga por padrao: um host aberto em producao facilita ataques de
 # Host header. O ambiente de dev define explicitamente no .env.
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+
+# Revisao implantada, exposta em /health/ para saber qual commit esta no ar.
+APP_REVISION = os.getenv("APP_REVISION", "unknown")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -41,13 +38,16 @@ INSTALLED_APPS = [
     "apps.events",
     "apps.schedules",
     "apps.finance",
-    "apps.audit",
     "apps.content",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Serve os estaticos coletados (admin, DRF) direto do processo WSGI, sem
+    # nginx na frente. Precisa vir logo apos o SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -77,16 +77,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "moriah"),
-        "USER": os.getenv("POSTGRES_USER", "moriah"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "moriah"),
-        "HOST": os.getenv("POSTGRES_HOST", "db"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-    }
-}
+DATABASES = {"default": database_config()}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -103,7 +94,20 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
+PRIVATE_LOCAL_MEDIA = env_flag("PRIVATE_LOCAL_MEDIA")
+LOCAL_MEDIA_PERSISTENT = env_flag("LOCAL_MEDIA_PERSISTENT")
+LOCAL_MEDIA_URL_EXPIRE_SECONDS = env_int("LOCAL_MEDIA_URL_EXPIRE_SECONDS", 900, minimum=1)
+
+# Os estaticos (admin, DRF, schema) sao servidos pelo proprio processo via
+# whitenoise, sem nginx/caddy na frente. O storage comprimido nao usa manifest:
+# o nome do arquivo nao carrega hash, entao o cache do navegador fica curto o
+# bastante para nao servir CSS antigo depois de um deploy.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+WHITENOISE_MAX_AGE = 0 if DEBUG else 3600
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
@@ -133,28 +137,20 @@ SPECTACULAR_SETTINGS = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_MINUTES", "60"))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_DAYS", "7"))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env_int("JWT_ACCESS_MINUTES", "60", minimum=1)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env_int("JWT_REFRESH_DAYS", "7", minimum=1)),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "http://localhost:19006,http://127.0.0.1:19006,exp://127.0.0.1:19000",
-    ).split(",")
-    if origin.strip()
-]
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:19006,http://127.0.0.1:19006,exp://127.0.0.1:19000",
+)
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "CSRF_TRUSTED_ORIGINS",
-        "http://localhost:8000,http://127.0.0.1:8000",
-    ).split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:8000,http://127.0.0.1:8000",
+)
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
@@ -170,24 +166,19 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 USE_S3_STORAGE = env_flag("USE_S3_STORAGE")
 
 if USE_S3_STORAGE:
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                "bucket_name": os.getenv("S3_BUCKET_NAME"),
-                "access_key": os.getenv("S3_ACCESS_KEY_ID"),
-                "secret_key": os.getenv("S3_SECRET_ACCESS_KEY"),
-                "endpoint_url": os.getenv("S3_ENDPOINT_URL") or None,
-                "region_name": os.getenv("S3_REGION_NAME", "auto"),
-                "default_acl": None,
-                "querystring_auth": True,
-                "querystring_expire": int(os.getenv("S3_URL_EXPIRE_SECONDS", "900")),
-                "file_overwrite": False,
-                "signature_version": "s3v4",
-            },
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.getenv("S3_BUCKET_NAME"),
+            "access_key": os.getenv("S3_ACCESS_KEY_ID"),
+            "secret_key": os.getenv("S3_SECRET_ACCESS_KEY"),
+            "endpoint_url": os.getenv("S3_ENDPOINT_URL") or None,
+            "region_name": os.getenv("S3_REGION_NAME", "auto"),
+            "default_acl": None,
+            "querystring_auth": True,
+            "querystring_expire": int(os.getenv("S3_URL_EXPIRE_SECONDS", "900")),
+            "file_overwrite": False,
+            "signature_version": "s3v4",
         },
     }
 
@@ -198,6 +189,11 @@ if USE_S3_STORAGE:
 # qualquer cliente poderia se declarar seguro.
 if env_flag("DJANGO_TRUST_PROXY_SSL_HEADER"):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Os endpoints de saude ficam isentos do redirect para HTTPS: o healthcheck do
+# Docker fala HTTP de dentro do container e, sem a excecao, receberia 301 e
+# nunca ficaria saudavel. Definido fora do bloco de DEBUG para poder ser testado.
+SECURE_REDIRECT_EXEMPT = [r"^health/$", r"^health/ready/$"]
 
 # --- Endurecimento de producao ----------------------------------------------
 # Fora do modo debug assume-se HTTPS (requisito da secao 13 do PRD).
@@ -212,9 +208,45 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
 
-    if SECRET_KEY == "unsafe-dev-secret-key":
+    if is_insecure_secret_key(SECRET_KEY):
         warnings.warn(
-            "DJANGO_SECRET_KEY nao foi definido: a chave de desenvolvimento esta "
-            "em uso fora do modo debug. Defina uma chave propria antes do deploy.",
+            "DJANGO_SECRET_KEY nao foi definido: a chave de exemplo do repositorio "
+            "esta em uso fora do modo debug. Defina uma chave propria antes do deploy.",
             RuntimeWarning,
         )
+
+# --- Logs para container ------------------------------------------------------
+# O Docker captura stdout/stderr: log em console com timestamp, sem escrever em
+# arquivo dentro do container (que seria perdido no redeploy).
+LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "console"},
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "loggers": {
+        "django.request": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.security": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        # Consultas SQL so entram no log em nivel WARNING (evita log de dados).
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": os.getenv("DJANGO_DB_LOG_LEVEL", "WARNING"),
+            "propagate": False,
+        },
+    },
+}
+
+# Registra as checagens de deploy (config/checks.py) em `manage.py check --deploy`.
+WHATSAPP_AUTH_ENABLED = env_flag("WHATSAPP_AUTH_ENABLED")
+WHATSAPP_AUTH_CHURCH_ID = int(os.getenv("WHATSAPP_AUTH_CHURCH_ID", "0"))
+WHATSAPP_TRUST_CLIENT_IP = env_flag("WHATSAPP_TRUST_CLIENT_IP")
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
+EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
+
+from config import checks  # noqa: E402,F401  (import no fim: depende das settings acima)

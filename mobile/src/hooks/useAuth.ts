@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api, setUnauthorizedHandler } from "@/services/api";
 import { clearTokens, getAccessToken, saveTokens } from "@/services/storage";
@@ -100,6 +100,10 @@ export function useAuth() {
 
   async function login(email: string, password: string) {
     const tokens = await api.post<LoginResponse>("/auth/login/", { email, password });
+    await acceptTokens(tokens);
+  }
+
+  async function acceptTokens(tokens: LoginResponse) {
     await saveTokens(tokens.access, tokens.refresh);
     await carregarPerfil({ recarregar: true });
   }
@@ -109,14 +113,15 @@ export function useAuth() {
     limparPerfilEmMemoria();
   }
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     await carregarPerfil({ recarregar: true });
-  }
+  }, []);
 
   return {
     me,
     loading,
     login,
+    acceptTokens,
     logout,
     refreshProfile,
   };

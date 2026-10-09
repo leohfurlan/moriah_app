@@ -30,6 +30,21 @@ class IsTreasurerOrAdmin(BasePermission):
         )
 
 
+class IsFinancialManager(BasePermission):
+    """Acesso ao livro financeiro administrativo da igreja."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.TREASURER)
+            )
+        )
+
+
 class IsCellLeaderOrAdmin(BasePermission):
     def has_permission(self, request, view) -> bool:
         user = request.user
@@ -37,6 +52,31 @@ class IsCellLeaderOrAdmin(BasePermission):
             user
             and user.is_authenticated
             and (user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.CELL_LEADER))
+        )
+
+
+class IsMinistryOrCellLeader(BasePermission):
+    """Cria compromisso na agenda: lideranca de ministerio (coordenacao) ou de celula.
+
+    Decisao de produto: compromisso nao e para qualquer membro — quem organiza
+    agenda e a lideranca. Criar e editar exige tambem vinculo de membro
+    (`HasMemberProfile`), porque o compromisso pertence ao cadastro do membro.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(
+                    User.Role.ADMIN,
+                    User.Role.PASTOR,
+                    User.Role.COORDINATOR,
+                    User.Role.CELL_LEADER,
+                )
+            )
         )
 
 
@@ -85,6 +125,39 @@ class IsScheduleCoordinatorOrAdmin(BasePermission):
         )
 
 
+class IsEventManager(BasePermission):
+    """Permite administrar eventos e os folders do carrossel."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR))
+        )
+
+
+class IsMemberDirectoryUser(BasePermission):
+    """Permite consultar a membresia administrativa da propria igreja."""
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.has_role(
+                    User.Role.ADMIN,
+                    User.Role.PASTOR,
+                    User.Role.SECRETARY,
+                    User.Role.TREASURER,
+                    User.Role.COORDINATOR,
+                )
+            )
+        )
+
+
 def user_capabilities(user) -> list[str]:
     """Expõe capacidades de produto sem transformar superuser em membro."""
     capabilities: set[str] = set()
@@ -98,6 +171,12 @@ def user_capabilities(user) -> list[str]:
         capabilities.add("manage_members")
     if user.has_role(User.Role.TREASURER):
         capabilities.add("review_contributions")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.TREASURER):
+        capabilities.add("manage_finance")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR):
+        capabilities.add("manage_content")
+    if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.COORDINATOR):
+        capabilities.add("manage_events")
     # Mesma regra de `IsScheduleCoordinatorOrAdmin`: quem o backend autoriza a
     # operar escalas recebe a capacidade, para o cliente nao adivinhar.
     if user.is_superuser or user.has_role(
@@ -117,6 +196,23 @@ def user_capabilities(user) -> list[str]:
 
 
 def can_access_management(user) -> bool:
+    """Contas que operam o painel de gestao (mesmo sem vinculo de membro).
+
+    O conjunto precisa acompanhar `user_capabilities`: quem recebe uma
+    capacidade de gestao (ex.: `manage_finance` do tesoureiro, `manage_content`
+    do pastor) tambem opera o painel, senao o item de menu e a tela existem no
+    backend mas o app nao oferece o caminho (relatorio §5.3).
+    """
     return bool(set(user_capabilities(user)).intersection(
-        {"manage_all", "manage_pastoral", "manage_members", "review_contributions", "manage_schedules", "manage_cells"}
+        {
+            "manage_all",
+            "manage_pastoral",
+            "manage_members",
+            "manage_finance",
+            "manage_content",
+            "review_contributions",
+            "manage_schedules",
+            "manage_cells",
+            "manage_events",
+        }
     ))

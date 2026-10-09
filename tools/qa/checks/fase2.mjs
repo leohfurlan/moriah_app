@@ -27,9 +27,12 @@ const MENU_MEMBRO = [
   ["Meu extrato", "/statement"],
 ];
 
-/** Rotulos decorativos que existiam antes e nao tem tela: nao podem voltar. */
+/**
+ * Rotulos decorativos que existiam antes e nao tem tela: nao podem voltar.
+ * "Visitantes" saiu da lista: deixou de ser decorativo quando /visitors passou a
+ * renderizar PeopleDirectoryScreen (diretorio real, servido por /api/members/).
+ */
 const ROTULOS_DECORATIVOS = [
-  "Visitantes",
   "Setlists",
   "Repertório",
   "Bandas",
@@ -104,6 +107,26 @@ export async function executar({ browser, dir }) {
     );
     await v.screenshot(sessaoAdmin.page, "2-menu-gestao");
     await sessaoAdmin.context.close();
+  }
+
+  // ---- 2b. novo compromisso: so a lideranca (ministerio/celula) ------------
+  {
+    const sessao = await novaSessao(browser, { viewport: VIEWPORT_DESKTOP });
+    await login(sessao.page, membro);
+    await irPara(sessao.page, "/agenda");
+    const membroVe = (await sessao.page.getByLabel("Novo compromisso").count()) > 0;
+    // Digitar a URL na mao tambem nao abre: a guarda avisa e manda de volta.
+    await irPara(sessao.page, "/agenda-new");
+    const conteudo = await texto(sessao.page);
+    const guarda = contem(conteudo, "acesso restrito") || contem(conteudo, "nao tem permissao");
+    const saiuDaTela = caminho(sessao.page.url()) !== "/agenda-new";
+    await v.screenshot(sessao.page, "2b-compromisso-restrito");
+    await sessao.context.close();
+    v.check(
+      "2b. Novo compromisso não é oferecido ao membro e a rota é bloqueada (liderança de ministério/célula)",
+      !membroVe && guarda && saiuDaTela,
+      `membro vê o atalho=${membroVe} | aviso de acesso restrito=${guarda} | saiu de /agenda-new=${saiuDaTela} | url=${caminho(sessao.page.url())}`,
+    );
   }
 
   // ---- 3. nenhum rotulo decorativo no menu --------------------------------
@@ -249,15 +272,14 @@ export async function executar({ browser, dir }) {
       v.check("8. Botão de recolher o menu funciona", false, "botão 'Recolher menu' ausente");
     } else {
       await botao.click({ timeout: 8000 }).catch(() => {});
-      // Fecha o menu: o rotulo visivel sai da tela (o nome acessivel do link
-      // continua existindo de proposito, para leitor de tela).
-      const sumiu = await esperarPor(async () => (await sessao.page.getByText("Visão geral", { exact: true }).count()) === 0, { timeout: 5000 });
+      // O painel desliza para largura zero e seus links saem da ordem de foco.
+      const sumiu = await esperarPor(async () => (await sessao.page.getByTestId("sidebar").boundingBox())?.width === 0, { timeout: 5000 });
       const expandir = sessao.page.getByRole("button", { name: /expandir menu/i }).first();
       const virou = (await expandir.count()) > 0;
       let voltou = false;
       if (virou) {
         await expandir.click({ timeout: 8000 }).catch(() => {});
-        voltou = await esperarPor(async () => (await sessao.page.getByText("Visão geral", { exact: true }).count()) > 0, { timeout: 5000 });
+        voltou = await esperarPor(async () => (await sessao.page.getByTestId("sidebar").boundingBox())?.width === 280, { timeout: 5000 });
       }
       v.check(
         "8. Botão de recolher/expandir o menu funciona (não é ícone decorativo)",

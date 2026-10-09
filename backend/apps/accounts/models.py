@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -91,3 +93,38 @@ class UserRoleAssignment(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.user} - {self.get_role_display()}"
+
+
+class WhatsAppIdentity(TimestampedModel):
+    """Verified login identity; contact fields alone never grant access."""
+    church = models.ForeignKey(Church, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="whatsapp_identity")
+    phone = models.CharField(max_length=16)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=("church", "phone"), name="unique_church_whatsapp")]
+
+
+class WhatsAppChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    church = models.ForeignKey(Church, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=16)
+    purpose = models.CharField(max_length=8, default="login")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    code_digest = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    sent = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True)
+    consumed_at = models.DateTimeField(null=True)
+    proof_digest = models.CharField(max_length=64, blank=True)
+    proof_expires_at = models.DateTimeField(null=True)
+
+
+class WhatsAppSendLimit(models.Model):
+    """Database locks share rate limits across workers, without Redis."""
+    key = models.CharField(max_length=64, primary_key=True)
+    window_started = models.DateTimeField()
+    last_sent = models.DateTimeField(null=True)
+    count = models.PositiveIntegerField(default=0)
