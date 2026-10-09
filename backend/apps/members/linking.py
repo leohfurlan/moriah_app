@@ -1,7 +1,7 @@
 """Transactional member/account linking; shared by API, admin and recovery."""
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
@@ -49,7 +49,7 @@ def open_request(user):
     user = User.objects.select_for_update().get(pk=user.pk)
     if not user.church_id:
         raise ValidationError("A conta não está associada a uma igreja.")
-    if Member.objects.filter(user=user).exists():
+    if Member.objects.filter(user=user).exclude(status=Member.Status.VISITOR).exists():
         raise LinkConflict("Esta conta já está vinculada a um cadastro de membro.")
     pending = MemberLinkRequest.objects.filter(user=user, church_id=user.church_id, status="pending").first()
     if pending:
@@ -83,9 +83,40 @@ def validate_decision(actor, item, decision, candidate, notes):
         raise ValidationError("Selecione um cadastro de membro da mesma igreja.")
     if candidate.user_id not in (None, item.user_id):
         raise LinkConflict("Este cadastro já está vinculado a outra conta.")
-    if Member.objects.filter(user_id=item.user_id).exclude(pk=candidate.pk).exists():
+    if Member.objects.filter(user_id=item.user_id).exclude(pk=candidate.pk).exclude(status=Member.Status.VISITOR).exists():
         raise LinkConflict("A conta já está vinculada a outro cadastro.")
     return True
+
+
+def attach_reviewed_member(item, candidate):
+    """Human-approved merge; keep visitor activity and official fields."""
+    from apps.cells.models import CellAttendance
+    from apps.finance.models import Contribution, FinancialEntry
+    from apps.schedules.models import ScheduleAssignment, PersonalCommitment, WorshipTeamMember
+    from .models import MemberUpdateRequest, FamilyRelationship
+    previous = Member.objects.select_for_update().filter(user_id=item.user_id).exclude(pk=candidate.pk).first()
+    try:
+        with transaction.atomic():
+            if previous:
+                if previous.status != Member.Status.VISITOR:
+                    raise LinkConflict()
+                for model, field in ((CellAttendance, "member"), (Contribution, "member"),
+                                     (FinancialEntry, "member"), (ScheduleAssignment, "member"),
+                                     (PersonalCommitment, "member"), (WorshipTeamMember, "member"),
+                                     (MemberUpdateRequest, "member"), (FamilyRelationship, "member"),
+                                     (FamilyRelationship, "related_member")):
+                    model.objects.filter(**{field: previous}).update(**{field: candidate})
+                for ministry in previous.ministries.all():
+                    ministry.members.add(candidate)
+                    ministry.members.remove(previous)
+                previous.user = None
+                previous.save(update_fields=("user", "updated_at"))
+            candidate.user_id = item.user_id
+            if candidate.status == Member.Status.VISITOR:
+                candidate.status = Member.Status.ACTIVE
+            candidate.save(update_fields=("user", "status", "updated_at"))
+    except IntegrityError:
+        raise LinkConflict("Há registros conflitantes entre os cadastros. A secretaria deve conciliá-los antes de aprovar.") from None
 
 
 @transaction.atomic
@@ -97,8 +128,7 @@ def review_request(actor, pk, decision, candidate_id=None, notes=""):
     if not validate_decision(actor, item, decision, candidate, notes):
         return item
     if decision == "approved":
-        candidate.user_id = item.user_id
-        candidate.save(update_fields=("user", "updated_at"))
+        attach_reviewed_member(item, candidate)
         item.candidate_member = candidate
     item.status = decision
     item.review_notes = notes.strip()

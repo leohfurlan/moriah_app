@@ -2,13 +2,20 @@ from django.contrib import admin
 
 from .models import Event, EventAnnouncement
 from config.private_media import PrivateMediaWidget
+from apps.accounts.scoped_admin import ChurchScopedAdmin
+from .models import ServiceTime
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(ChurchScopedAdmin):
     list_display = ("name", "church", "event_type", "start_at", "location", "active")
     list_filter = ("church", "event_type", "active")
     search_fields = ("name", "location")
+
+
+@admin.register(ServiceTime)
+class ServiceTimeAdmin(ChurchScopedAdmin):
+    list_display = ("weekday", "time", "location", "active")
 
 
 @admin.register(EventAnnouncement)

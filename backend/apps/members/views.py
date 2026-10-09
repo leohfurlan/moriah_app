@@ -140,7 +140,10 @@ class MemberLinkReviewViewSet(OptionalPaginationMixin, viewsets.ReadOnlyModelVie
     def candidates(self, request, pk=None):
         self.get_object()
         term = request.query_params.get("search", "").strip()
-        qs = Member.objects.filter(church=request.user.church, user__isnull=True)
+        item = self.get_object()
+        qs = Member.objects.filter(church=request.user.church).filter(
+            Q(user__isnull=True) | Q(user_id=item.user_id, status=Member.Status.VISITOR)
+        )
         if term:
             qs = qs.filter(Q(full_name__icontains=term) | Q(email__icontains=term))
         return Response(list(qs.order_by("full_name").values("id", "full_name", "email", "status")[:50]))

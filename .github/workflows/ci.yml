@@ -105,7 +105,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest apps/finance/tests apps/schedules/tests apps/audit/tests apps/content/tests apps/members/tests -q --ds=config.settings_test_postgres
+      - run: python -m pytest apps/accounts/tests apps/finance/tests apps/schedules/tests apps/audit/tests apps/content/tests apps/members/tests -q --ds=config.settings_test_postgres
 
   # Guardas de deploy: roda o `check --deploy` do Django com um ambiente igual
   # ao do piloto (fora do debug, banco remoto com TLS, S3, HTTPS). Se faltar

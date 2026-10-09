@@ -34,3 +34,7 @@ STORAGES = {
 # fala HTTP, entao o redirect para HTTPS precisa ficar desligado aqui.
 SECURE_SSL_REDIRECT = False
 SECURE_HSTS_SECONDS = 0
+
+# Domain suites exercise their own permissions. F11 enables the production guard
+# explicitly and uses real JWTs, including API bypass and Admin session cases.
+ONBOARDING_REQUIRED = False

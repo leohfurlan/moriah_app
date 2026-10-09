@@ -9,6 +9,7 @@ export type UserRole =
 
 export interface LoginResponse { access: string; refresh: string; }
 export interface MeResponse {
+  onboarding_completed?: boolean;
   id: number; email: string; first_name: string; last_name: string; phone: string;
   role: UserRole; church: number | null; church_name?: string; member_id?: number | null; member_name?: string | null;
   roles: UserRole[]; capabilities: string[]; has_member_profile: boolean; can_access_management: boolean;

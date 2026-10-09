@@ -1,10 +1,11 @@
 from django.contrib import admin
+from apps.accounts.scoped_admin import ChurchScopedAdmin
 
 from .models import Ministry, MinistryRole
 
 
 @admin.register(Ministry)
-class MinistryAdmin(admin.ModelAdmin):
+class MinistryAdmin(ChurchScopedAdmin):
     list_display = ("name", "church")
     list_filter = ("church",)
     search_fields = ("name",)

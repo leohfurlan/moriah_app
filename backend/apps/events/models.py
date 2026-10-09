@@ -32,6 +32,21 @@ class Event(TimestampedModel):
         return self.name
 
 
+class ServiceTime(TimestampedModel):
+    church = models.ForeignKey(Church, on_delete=models.CASCADE, related_name="service_times")
+    weekday = models.PositiveSmallIntegerField(choices=enumerate(("Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo")))
+    time = models.TimeField()
+    location = models.CharField(max_length=255)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("weekday", "time", "id")
+        constraints = [
+            models.CheckConstraint(condition=Q(weekday__gte=0, weekday__lte=6), name="service_weekday_valid"),
+            models.UniqueConstraint(fields=("church", "weekday", "time", "location"), name="unique_service_time"),
+        ]
+
+
 def event_announcement_path(instance: "EventAnnouncement", filename: str) -> str:
     return f"event-announcements/{instance.church_id}/{instance.event_id}/{filename}"
 
