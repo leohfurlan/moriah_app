@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
-import { Bell, BookOpen, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
+import { BookOpen, CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, HandCoins, MoreHorizontal, Settings2 } from "lucide-react-native";
 
 import { Badge, Button, Card } from "@/components/Form";
 import {ChurchSetup} from "@/components/ChurchSetup";
 import { ErrorNotice } from "@/components/ErrorNotice";
+import { NotificationButton } from "@/components/NotificationButton";
 import { Screen } from "@/components/Screen";
 import { useReducedMotion } from "@/components/Motion";
 import { podeGerenciarEscalas } from "@/navigation";
@@ -574,9 +575,7 @@ export function HomeScreen({
       refreshing={refreshing || loading}
       onRefresh={onRefresh}
       headerAccessory={!desktop && canLoadHome ? (<View style={styles.headerActions}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Notificações" onPress={() => onNavigate("notifications")} style={styles.notificationButton}>
-            <Bell size={20} strokeWidth={1.8} color={colors.accent} />
-          </Pressable>
+          <NotificationButton onPress={() => onNavigate("notifications")} />
         </View>) : undefined}
     >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
@@ -722,7 +721,6 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   avatar: { width: 36, height: 36, borderRadius: 6, backgroundColor: colors.avatar, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 12, fontWeight: "700", color: colors.accent },
-  notificationButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   mobileHome: { gap: spacing.md },
   adminHomeCard: { gap: spacing.sm, backgroundColor: colors.surfaceSelected, borderColor: "#C7D2FE" },
   adminHomeCopy: { gap: spacing.xs },

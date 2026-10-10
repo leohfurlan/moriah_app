@@ -17,7 +17,7 @@ type Filter = (typeof filters)[number];
 export function NotificationsScreen() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("Todas");
-  const { items, loading, error, unreadCount, pageInfo, loadPage, reload, markRead: persistRead, markAllRead: persistAll } = useNotifications();
+  const { items, loading, error, pageInfo, loadPage, reload, markRead: persistRead, markAllRead: persistAll } = useNotifications();
   const [mutationError, setMutationError] = useState<UserFacingError | null>(null);
   const [retryTarget, setRetryTarget] = useState<number | "all" | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,7 +65,7 @@ export function NotificationsScreen() {
   return (
     <Screen title="Notificações" headerSubtitle="Avisos e atualizações da igreja" refreshing={loading} onRefresh={() => { void reload().catch(() => undefined); }}>
       <Pressable accessibilityRole="button" disabled={submitting || loading || Boolean(error)} onPress={markAllRead}>
-        <Text style={styles.markAll}>Marcar todas como lidas{unreadCount ? ` (${unreadCount})` : ""}</Text>
+        <Text style={styles.markAll}>Marcar todas como lidas</Text>
       </Pressable>
       <View style={styles.filters}>
         {filters.map((item) => (

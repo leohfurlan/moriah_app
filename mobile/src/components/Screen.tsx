@@ -27,7 +27,7 @@ let sidebarCollapsed = false;
 
 function parentOf(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
-  const rootParents: Record<string, string> = { "agenda-new": "Agenda" };
+  const rootParents: Record<string, string> = { "agenda-new": "Agenda", notifications: "Início" };
   if (segments.length <= 1) return rootParents[segments[0]] || "";
   const last = segments[segments.length - 1];
   if (last in routeLabels) return "";
@@ -92,11 +92,11 @@ function Sidebar({ pathname, onNavigate, recolhida, grupos }: { pathname: string
     </View>
   );
 }
-function NotificationPopover({ notifications, unreadCount, loading, error, onRetry, onClose, onNavigate }: { notifications: Notification[]; unreadCount: number; loading: boolean; error: { title: string; message: string } | null; onRetry: () => void; onClose: () => void; onNavigate: (route: string) => void }) {
+function NotificationPopover({ notifications, loading, error, onRetry, onClose, onNavigate }: { notifications: Notification[]; loading: boolean; error: { title: string; message: string } | null; onRetry: () => void; onClose: () => void; onNavigate: (route: string) => void }) {
   return (
     <MotionView style={styles.notificationPopover}>
       <View style={styles.notificationHeader}>
-        <Text style={styles.notificationTitle}>Notificações ({unreadCount})</Text>
+        <Text style={styles.notificationTitle}>Notificações</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Fechar notificações" onPress={onClose}>
           <Text style={styles.markRead}>Fechar</Text>
         </Pressable>
@@ -230,9 +230,9 @@ export function Screen({
                     style={({ pressed }) => [styles.topbarIconButton, pressed && styles.pressed]}
                   >
                     <Bell size={17} color={colors.inkBody} />
-                    {!notificationState.error && notificationState.unreadCount > 0 ? <View testID="notification-badge" style={styles.notificationBadge}><Text style={styles.notificationBadgeText}>{notificationState.unreadCount > 99 ? "99+" : notificationState.unreadCount}</Text></View> : null}
+                    {notificationState.unreadCount > 0 ? <View testID="notification-badge" style={styles.notificationBadge} /> : null}
                   </Pressable>
-                  {notificationsOpen ? <NotificationPopover notifications={notifications} unreadCount={notificationState.unreadCount} loading={notificationState.loading} error={notificationState.error} onRetry={() => { void notificationState.reload().catch(() => undefined); }} onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
+                  {notificationsOpen ? <NotificationPopover notifications={notifications} loading={notificationState.loading} error={notificationState.error} onRetry={() => { void notificationState.reload().catch(() => undefined); }} onClose={() => setNotificationsOpen(false)} onNavigate={onNavigate} /> : null}
                 </View>
                 <AccountMenu compact={width < 1150} />
               </View>
@@ -255,9 +255,9 @@ export function Screen({
                 {parentLabel ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={"Voltar para " + parentLabel}
+                    accessibilityLabel={pathname === "/notifications" ? "Voltar" : "Voltar para " + parentLabel}
                     hitSlop={12}
-                    onPress={() => router.back()}
+                    onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/home" as never); }}
                     style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
                   >
                     <ArrowLeft size={20} strokeWidth={2} color={colors.accent} />
@@ -276,8 +276,8 @@ export function Screen({
                 {parentLabel ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={"Voltar para " + parentLabel}
-                    onPress={() => router.back()}
+                    accessibilityLabel={pathname === "/notifications" ? "Voltar" : "Voltar para " + parentLabel}
+                    onPress={() => { if (router.canGoBack()) router.back(); else router.replace("/home" as never); }}
                     style={({ pressed }) => [styles.desktopBackButton, pressed && styles.pressed]}
                   >
                     <ArrowLeft size={18} strokeWidth={2} color={colors.accent} />
@@ -382,8 +382,7 @@ const styles = StyleSheet.create({
   searchEmptyText: { color: colors.inkMuted, fontSize: 12, paddingHorizontal: 10, paddingVertical: 10 },
   notificationAnchor: { position: "relative", zIndex: 42 },
   topbarIconButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  notificationBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
-  notificationBadgeText: { color: colors.onAccent, fontSize: 9, fontWeight: "800" },
+  notificationBadge: { position: "absolute", top: 5, right: 5, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" },
   profilePill: { height: 40, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 10, backgroundColor: colors.avatar, borderRadius: 6, maxWidth: 230 },
   profileName: { flexShrink: 1, color: colors.ink, fontSize: 12, fontWeight: "700" },
   profileAvatar: { width: 28, height: 28, borderRadius: 6, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },

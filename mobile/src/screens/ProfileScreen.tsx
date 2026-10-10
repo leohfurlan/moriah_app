@@ -7,6 +7,7 @@ import { useOnResume } from "@/hooks/useOnResume";
 import { ErrorNotice } from "@/components/ErrorNotice";
 import { FeedbackTone, InlineNotice, useToast } from "@/components/Feedback";
 import { Badge, Button, Card, Field } from "@/components/Form";
+import { NotificationButton } from "@/components/NotificationButton";
 import { Screen } from "@/components/Screen";
 import { WhatsAppAccess } from "@/components/WhatsAppAccess";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,7 +70,7 @@ function DesktopProfile({
           <Text style={styles.meta}>{profile.email}</Text>
         </View>
         <Badge label={statusLabel(profile.status)} tone="neutral" />
-        <Button size="compact" variant="ghost" onPress={onNotifications}>Notificações</Button>
+        <NotificationButton onPress={onNotifications} />
       </View>
 
       <View style={styles.desktopProfileSummary}>
@@ -225,7 +226,7 @@ export function ProfileScreen() {
       headerSubtitle="Seus dados, vínculos e atalhos pessoais"
       refreshing={refreshing}
       onRefresh={load}
-      headerAccessory={<Button size="compact" variant="ghost" onPress={() => router.push("/notifications" as never)}>Notificações</Button>}
+      headerAccessory={<NotificationButton onPress={() => router.push("/notifications" as never)} />}
     >
       {error ? <ErrorNotice title={error.title} message={error.message} onRetry={load} /> : null}
       <Card><WhatsAppAccess link /></Card>
