@@ -22,7 +22,7 @@ da branch/PR e deploy. O registro da implantação será acrescentado ao final.
 | S07 | Bloqueio de dotfiles/mídia direta, cabeçalhos HTTP e CSP gerada a partir do bundle sem unsafe-eval | Implementado; QA com CSP aplicado |
 | S08 | Templates SSH/Monit/Caddy, verificador somente leitura e procedimento de firewall/rollback na VPS compartilhada | Preparado; aplicação em produção pendente |
 | S09 | Diretório reduzido por papel; backup cifrado com restic, vigia de atraso e restauração descartável | Código e ensaio local concluídos; destino externo/alertas pendentes |
-| S10 | Suítes, schema, builds, browser, migrations e evidências | Aceite local concluído; publicação pendente |
+| S10 | Suítes, schema, builds, browser, migrations e evidências | Publicado no PR #14 e implantado; detalhes abaixo |
 
 O DRF foi atualizado também após consulta ao aviso oficial de exposição via
 AdminRenderer ([GHSA-g47c-3xmw-q6m2](https://github.com/encode/django-rest-framework/security/advisories/GHSA-g47c-3xmw-q6m2)).
@@ -83,16 +83,19 @@ ao final; as evidências e a worktree foram preservadas.
 
 ## Pendências para publicação e produção
 
-1. Revisar o diff e autorizar commit/publicação. Não há PR criado nesta execução.
-2. Preparar chave Fernet com custódia independente. Publicar backend e clientes
-   coordenadamente; JWT antigos serão recusados e todos precisarão relogar.
+1. Revisão/merge do [PR #14](https://github.com/leohfurlan/moriah_app/pull/14)
+   seguem separados da implantação já autorizada. Commit e push concluídos.
+2. Backend e web já publicados; chave Fernet separada preparada e cópia cifrada
+   independente guardada no Windows. JWT antigos são recusados e todos precisam
+   relogar. Contas de gestão devem cadastrar seu autenticador no primeiro acesso.
 3. Ensaiar Android/iOS em aparelho real e rebuild nativo com SecureStore. Export
    Hermes e testes com mocks não comprovam comportamento do Keychain/Keystore
    em hardware, reinstalação, bloqueio de tela ou falha de armazenamento.
 4. Confirmar operador/chave/CIDRs/VPN/console e janela antes de SSH/firewall.
    Validar serviços compartilhados, IPv6, Docker e rollback temporizado.
-5. Aplicar Monit somente em loopback e validar externamente; confirmar firewall
-   do provedor. Configurar cadeia de IP confiável antes de habilitar o flag.
+5. Monit foi revalidado: já escuta somente em 127.0.0.1:2812 e não respondeu
+   externamente; não precisou de alteração. A cadeia de IP foi conferida e o
+   flag de autenticação foi habilitado. Firewall/console seguem pendentes.
 6. Escolher destino, custo, retenção, credenciais, custódia e canal autorizado
    para backup externo/alertas. O risco de perda integral da VPS permanece
    até ativar e ensaiar essa cópia fora do host.
@@ -121,3 +124,51 @@ ao final; as evidências e a worktree foram preservadas.
 
 Procedimento detalhado e matriz de campos: [runbook-seguranca.md](runbook-seguranca.md).
 Plano original: [plano-correcao-seguranca-2026-10-12.md](plano-correcao-seguranca-2026-10-12.md).
+
+## Publicação e deploy autorizados — 13/10/2026
+
+- Commit principal: `888c52388f67`, com código de segurança e correções do audit.
+- Correção de CI: `e8d708246e5c`, com lock completo e hashes também para pytest
+  e dependências de teste. O pip foi validado em Linux antes da nova rodada.
+- Branch publicada: `codex/security-hardening`; PR aberto:
+  [#14](https://github.com/leohfurlan/moriah_app/pull/14), sem merge automático.
+- Os cinco jobs passaram na revisão implantada:
+  [CI 38397997926](https://github.com/leohfurlan/moriah_app/actions/runs/38397997926).
+- Imagens imutáveis: `moriah-backend:e8d708246e5c` e
+  `moriah-web:e8d708246e5c`. Arquivo de código e imagens transferidos por SSH;
+  SHA256 comparado na VPS antes de carregar/extrair.
+- Backup pré-deploy: `20261013T121726Z`, dump e mídia com checksums aprovados.
+  Configuração anterior preservada em diretório privado, sem credenciais no Git.
+- Chave MFA gerada na VPS e mantida no env 600. Cópia fora do host em
+  `backups/security/mfa-key-e8d708246e5c.dpapi` nesta worktree, cifrada com
+  **Windows DPAPI CurrentUser** e ignorada pelo Git. Essa cópia requer o mesmo
+  usuário/perfil Windows para decifrar; não substitui política de custódia
+  organizacional nem backup externo do banco/mídia. Nenhum segredo foi exibido.
+- Rota real conferida no Caddy `fornada-evolution-proxy-1`: header Moriah de IP
+  sobrescrito a partir do IP de cliente calculado pela cadeia restrita já
+  configurada. Nenhuma alteração no proxy compartilhado. `AUTH_TRUST_CLIENT_IP=true`.
+- `check --deploy --tag security --fail-level WARNING`, privilégios do papel
+  PostgreSQL e isolamento financeiro passaram em produção. Nenhuma referência
+  financeira inconsistente foi encontrada. Migration accounts 0005 aplicada.
+- Somente backend/web Moriah foram recriados. O PostgreSQL existente foi
+  preservado; os outros sistemas continuaram em execução, sem restart por esta tarefa.
+- HTTPS `/health/ready/`: `ready`, revisão `e8d708246e5c`, banco `ok`.
+  Backend e web saudáveis. Cabeçalhos verificados publicamente, CSP Report-Only.
+  Dotfiles e mídia direta retornam 404. Imagem web sem Node, node_modules ou
+  sourcemaps publicados.
+- Smoke no código implantado: senha de conta operacional → desafio MFA →
+  enrollment → cookie Secure/HttpOnly/Strict → refresh → logout → access negado.
+  Os usuários/igreja/desafios/sessões temporários foram criados dentro de uma
+  transação revertida integralmente; contagens anteriores e posteriores iguais.
+  Nenhuma conta ou fator real foi modificado por esse teste.
+- Chromium em HTTPS: tela pública de login renderizada. Refresh 401 na ausência
+  de sessão é esperado. Não houve login em conta real nem cadastro de fator
+  de usuário real pelo agente.
+- Backup pós-deploy: `20261013T124330Z`, incluindo o schema novo e mídia.
+- Monit: loopback confirmado e conexão HTTP externa sem resposta; estava
+  corrigido na configuração corrente e não foi alterado por esta implantação.
+
+Pendências preservadas: atualização/distribuição dos binários nativos, cadastro
+MFA pelos gestores, revisão/merge do PR, CIDRs/operador/console para SSH/firewall,
+destino/custódia/canal para backup externo e tratamento dos alertas residuais
+da cadeia de build. A implantação não equivale a encerrar esses itens.
