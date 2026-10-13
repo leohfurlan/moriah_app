@@ -6,7 +6,7 @@ import pytest
 from django.db import close_old_connections, connection
 from django.utils import timezone
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
+from apps.accounts.sessions import issue_session
 
 from apps.accounts.models import Church, ChurchSetup, OnboardingProfile, User, WhatsAppIdentity
 from apps.accounts.onboarding import complete_personal
@@ -26,7 +26,7 @@ def enable_guard(settings):
 
 def client_for(user):
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_session(user)['access']}")
     return client
 
 
@@ -74,7 +74,7 @@ def test_missing_identity_and_no_church(person):
     assert "whatsapp" in client.post("/backend/me/onboarding/complete/", {}, format="json").json()
     person.church = None
     person.save()
-    assert client.get("/backend/me/onboarding/").status_code == 403
+    assert client.get("/backend/me/onboarding/").status_code == 401
 
 
 def test_admin_without_member_reuses_identity(person):
@@ -262,6 +262,8 @@ def test_private_signed_media_does_not_bypass_profile_guard(person, church, sett
     contribution = Contribution.objects.create(church=church, member=member, amount="10", contribution_date=date.today(), category="offering")
     attachment = ContributionAttachment.objects.create(contribution=contribution, uploaded_by=person, original_name="qa.pdf", file=SimpleUploadedFile("qa.pdf", b"%PDF-1.4 QA"))
     request = RequestFactory().get("/"); request.user = person
+    from rest_framework_simplejwt.tokens import AccessToken
+    request.auth = AccessToken(issue_session(person)["access"])
     url = private_file_url(request, "contribution", attachment)
     anonymous = APIClient()
     assert anonymous.get(url).status_code == 404

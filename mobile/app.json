@@ -45,6 +45,7 @@
     "plugins": [
       "expo-router",
       "expo-document-picker",
+      "expo-secure-store",
       [
         "expo-image-picker",
         {

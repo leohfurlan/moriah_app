@@ -9,7 +9,7 @@ from apps.accounts.pagination import OptionalPaginationMixin
 from apps.accounts.permissions import HasMemberProfile, IsMemberDirectoryUser, get_member_profile
 
 from .models import Member, MemberLinkRequest, MemberUpdateRequest
-from .serializers import MemberSerializer, MemberUpdateRequestSerializer
+from .serializers import MemberSerializer, MemberUpdateRequestSerializer, LimitedMemberDirectorySerializer
 from .linking import can_review, open_request, review_request
 from rest_framework.decorators import action
 from django.db.models import Q
@@ -21,6 +21,15 @@ class MemberDirectoryViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, v
     serializer_class = MemberSerializer
     permission_classes = [IsAuthenticated, IsMemberDirectoryUser]
     queryset = Member.objects.none()
+
+    def get_serializer_class(self):
+        if getattr(self, "swagger_fake_view", False):
+            return MemberSerializer
+        from apps.accounts.models import User
+        user = self.request.user
+        if user.is_superuser or user.has_role(User.Role.ADMIN, User.Role.PASTOR, User.Role.SECRETARY):
+            return MemberSerializer
+        return LimitedMemberDirectorySerializer
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

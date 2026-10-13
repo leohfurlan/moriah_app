@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
 from apps.accounts.models import Church, TimestampedModel
 
@@ -123,3 +124,18 @@ class FinancialEntry(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.description} - {self.amount}"
+
+    def clean(self):
+        super().clean()
+        for field in ('member', 'event', 'contribution', 'created_by'):
+            identifier = getattr(self, field + '_id')
+            if identifier is not None:
+                related = self._meta.get_field(field).remote_field.model
+                if not related.objects.filter(pk=identifier, church_id=self.church_id).exists():
+                    raise ValidationError({field: 'Referência inválida para esta igreja.'})
+
+    def save(self, *args, **kwargs):
+        # API, Admin and get_or_create all cross this write boundary.
+        # QuerySet.update/bulk_create and raw SQL remain administrative operations.
+        self.clean()
+        return super().save(*args, **kwargs)

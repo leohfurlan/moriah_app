@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { api, setUnauthorizedHandler } from "@/services/api";
-import { clearTokens, getAccessToken, saveTokens } from "@/services/storage";
+import { api, setUnauthorizedHandler, restoreSession, revokeSession } from "@/services/api";
+import { clearTokens, saveTokens, setPendingLogout } from "@/services/storage";
 import { resetNotifications } from "@/services/notificationStore";
-import { LoginResponse, MeResponse } from "@/types/api";
+import { AuthResponse, MFAChallenge, MeResponse } from "@/types/api";
 
 /**
  * Perfil e capacidades da conta logada, compartilhados por toda a aplicacao.
@@ -46,10 +46,10 @@ function garantirHandlerDeSessao() {
 function carregarPerfil({ recarregar = false }: { recarregar?: boolean } = {}): Promise<MeResponse | null> {
   garantirHandlerDeSessao();
   if (!recarregar && !perfilAtual && !requisicaoEmAndamento) {
-    return getAccessToken().then((token) => {
+    return restoreSession().then((token) => {
       if (token) return carregarPerfil({ recarregar: true });
       return null;
-    });
+    }).catch(() => null);
   }
   if (!recarregar) {
     if (perfilAtual) return Promise.resolve(perfilAtual);
@@ -82,6 +82,7 @@ function carregarPerfil({ recarregar = false }: { recarregar?: boolean } = {}): 
 }
 
 export function useAuth() {
+  const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [me, setMe] = useState<MeResponse | null>(perfilAtual);
   const [loading, setLoading] = useState(perfilAtual === null);
 
@@ -99,18 +100,27 @@ export function useAuth() {
   }, []);
 
   async function login(email: string, password: string) {
-    const tokens = await api.post<LoginResponse>("/auth/login/", { email, password });
+    const tokens = await api.post<AuthResponse>("/auth/login/", { email, password });
     await acceptTokens(tokens);
   }
 
-  async function acceptTokens(tokens: LoginResponse) {
+  async function acceptTokens(tokens: AuthResponse) {
+    if ("mfa_required" in tokens) {
+      setMfaChallenge(tokens);
+      return;
+    }
+    setMfaChallenge(null);
+    await setPendingLogout(false);
     await saveTokens(tokens.access, tokens.refresh);
     await carregarPerfil({ recarregar: true });
   }
 
   async function logout() {
-    await clearTokens();
-    limparPerfilEmMemoria();
+    // Failure is shown to the caller; never claim remote revocation offline.
+    try { await revokeSession(); } finally {
+      await clearTokens();
+      limparPerfilEmMemoria();
+    }
   }
 
   const refreshProfile = useCallback(async () => {
@@ -124,5 +134,7 @@ export function useAuth() {
     acceptTokens,
     logout,
     refreshProfile,
+    mfaChallenge,
+    cancelMfa: () => setMfaChallenge(null),
   };
 }

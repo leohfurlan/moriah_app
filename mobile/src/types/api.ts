@@ -7,7 +7,9 @@ export type UserRole =
   | "coordinator"
   | "member";
 
-export interface LoginResponse { access: string; refresh: string; }
+export interface LoginResponse { access: string; refresh?: string; recovery_codes?: string[]; }
+export interface MFAChallenge { mfa_required: true; challenge: string; enrollment_required: boolean; }
+export type AuthResponse = LoginResponse | MFAChallenge;
 export interface MeResponse {
   onboarding_completed?: boolean;
   id: number; email: string; first_name: string; last_name: string; phone: string;

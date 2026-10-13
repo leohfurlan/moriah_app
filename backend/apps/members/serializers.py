@@ -35,6 +35,11 @@ class MemberSerializer(serializers.ModelSerializer):
         return list(obj.ministries.values_list("name", flat=True))
 
 
+class LimitedMemberDirectorySerializer(MemberSerializer):
+    class Meta(MemberSerializer.Meta):
+        fields = ("id", "full_name", "preferred_name", "email", "phone", "status", "cell", "cell_name", "ministry_names")
+
+
 class MemberUpdateRequestSerializer(serializers.ModelSerializer):
     ALLOWED_FIELDS = frozenset({
         "full_name", "preferred_name", "email", "phone", "birth_date",

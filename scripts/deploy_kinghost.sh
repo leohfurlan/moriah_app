@@ -25,6 +25,8 @@ docker network inspect moriah_piloto_edge >/dev/null
 dc config --quiet
 dc up -d --wait --wait-timeout 120 db
 dc --profile tools run --rm migrate python manage.py check --deploy --tag security --fail-level WARNING
+dc --profile tools run --rm migrate python manage.py check_database_privileges
+dc --profile tools run --rm migrate python manage.py check_financial_isolation
 dc --profile tools run --rm migrate python manage.py migrate --plan
 if [[ "${MORIAH_BACKUP_VERIFIED:-}" != yes ]]; then
     echo 'Set MORIAH_BACKUP_VERIFIED=yes after verifying the backup (or empty first-deploy database).' >&2

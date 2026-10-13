@@ -5,6 +5,7 @@ import secrets
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from .models import Church, WhatsAppIdentity
 
@@ -14,6 +15,7 @@ class Talk2meContactsView(APIView):
     permission_classes = []
     throttle_classes = []
 
+    @extend_schema(exclude=True)  # Separate service-to-service contract; no user JWT.
     def post(self, request):
         token = os.environ.get("TALK2ME_DIRECTORY_TOKEN", "")
         scope = os.environ.get("TALK2ME_DIRECTORY_CHURCH_ID", "")

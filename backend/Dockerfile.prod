@@ -24,8 +24,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 COPY . .
 
@@ -41,7 +41,7 @@ ENV APP_REVISION=${APP_REVISION}
 LABEL org.opencontainers.image.revision=$APP_REVISION
 
 # Estaticos do admin/DRF entram na imagem. collectstatic nao toca no banco.
-RUN python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput --settings=config.settings_build
 
 EXPOSE 8000
 
