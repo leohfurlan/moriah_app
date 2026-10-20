@@ -41,6 +41,9 @@ def receipt(make_user, make_member, church):
 def link(user, obj, kind="contribution"):
     request = APIRequestFactory().get("/", secure=True)
     request.user = user
+    from apps.accounts.sessions import issue_session
+    from rest_framework_simplejwt.tokens import AccessToken
+    request.auth = AccessToken(issue_session(user)["access"])
     url = urlsplit(private_file_url(request, kind, obj))
     return url.path + "?" + url.query
 
@@ -129,6 +132,8 @@ def test_admin_widget_uses_a_private_file_link(receipt):
     user, obj = receipt
     request = APIRequestFactory().get("/admin/", secure=True)
     request.user = user
+    from apps.accounts.sessions import create_session
+    request.session = {"moriah_auth_sid": str(create_session(user).pk)}
     context = PrivateMediaWidget(request, "contribution").get_context("file", obj.file, {})
     assert context["widget"]["is_initial"]
     assert "/api/files/contribution/" in context["widget"]["value"].url

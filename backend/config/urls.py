@@ -4,7 +4,8 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from apps.accounts.auth_views import LoginView as TokenObtainPairView, RefreshView as TokenRefreshView, LogoutView, CSRFView
+from apps.accounts.mfa_views import MFAEnrollView, MFAVerifyView
 
 from config.health import liveness, readiness
 from config.private_media import PrivateMediaView
@@ -84,6 +85,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/files/<str:kind>/<int:pk>/", PrivateMediaView.as_view(), name="private-media"),
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/auth/logout/", LogoutView.as_view()),
+    path("api/auth/csrf/", CSRFView.as_view()),
+    path("api/auth/mfa/enroll/", MFAEnrollView.as_view()),
+    path("api/auth/mfa/verify/", MFAVerifyView.as_view()),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/me/", MeView.as_view(), name="me"),
     path("api/me/member/", MyMemberView.as_view(), name="my-member"),
@@ -130,6 +135,10 @@ local_api_urlpatterns = [
     path("", include(onboarding_patterns)),
     path("auth/whatsapp/", include(whatsapp_patterns)),
     path("auth/login/", TokenObtainPairView.as_view(), name="local-token-obtain-pair"),
+    path("auth/logout/", LogoutView.as_view()),
+    path("auth/csrf/", CSRFView.as_view()),
+    path("auth/mfa/enroll/", MFAEnrollView.as_view()),
+    path("auth/mfa/verify/", MFAVerifyView.as_view()),
     path("auth/refresh/", TokenRefreshView.as_view(), name="local-token-refresh"),
     path("me/", MeView.as_view(), name="local-me"),
     path("me/member/", MyMemberView.as_view(), name="local-my-member"),

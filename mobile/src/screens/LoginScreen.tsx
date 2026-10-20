@@ -7,9 +7,10 @@ import { Screen } from "@/components/Screen";
 import { describeError } from "@/services/errors";
 import { colors, radius, spacing } from "@/theme";
 import { WhatsAppAccess } from "@/components/WhatsAppAccess";
-import { LoginResponse } from "@/types/api";
+import { AuthResponse, MFAChallenge } from "@/types/api";
+import { MFAAccess } from "@/components/MFAAccess";
 
-export function LoginScreen({ onLogin, onTokens }: { onLogin: (email: string, password: string) => Promise<void>; onTokens: (tokens: LoginResponse) => Promise<void> }) {
+export function LoginScreen({ onLogin, onTokens, mfaChallenge, onCancelMfa }: { onLogin: (email: string, password: string) => Promise<void>; onTokens: (tokens: AuthResponse) => Promise<void>; mfaChallenge: MFAChallenge | null; onCancelMfa: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailLogin, setEmailLogin] = useState(false);
@@ -44,6 +45,7 @@ export function LoginScreen({ onLogin, onTokens }: { onLogin: (email: string, pa
       </View>
 
       <View style={styles.form}>
+        {mfaChallenge ? <MFAAccess key={mfaChallenge.challenge} challenge={mfaChallenge} onTokens={onTokens} onCancel={onCancelMfa} /> : <>
         {!emailLogin ? <WhatsAppAccess onTokens={onTokens} /> : <>
         <Text style={styles.label}>E-mail</Text>
         <Field
@@ -62,6 +64,7 @@ export function LoginScreen({ onLogin, onTokens }: { onLogin: (email: string, pa
         <Button loading={submitting} onPress={submit}>
           Entrar
         </Button>
+        </>}
         </>}
         <Button variant="ghost" disabled={submitting} onPress={() => {setEmailLogin(!emailLogin); setAviso(null);}}>
           {emailLogin ? "Entrar pelo WhatsApp" : "Entrar com e-mail e senha"}

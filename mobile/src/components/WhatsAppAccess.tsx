@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { api } from "@/services/api";
 import { describeError } from "@/services/errors";
-import { LoginResponse } from "@/types/api";
+import { AuthResponse } from "@/types/api";
 import { InlineNotice } from "./Feedback";
 import { Button, Field } from "./Form";
 import { colors, spacing } from "@/theme";
 
-type Verification = LoginResponse | { registration_required: true; proof: string } | { linked: true };
+type Verification = AuthResponse | { registration_required: true; proof: string } | { linked: true };
 
-export function WhatsAppAccess({ onTokens, link = false }: { onTokens?: (tokens: LoginResponse) => Promise<void>; link?: boolean }) {
+export function WhatsAppAccess({ onTokens, link = false }: { onTokens?: (tokens: AuthResponse) => Promise<void>; link?: boolean }) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [challenge, setChallenge] = useState("");
@@ -37,12 +37,12 @@ export function WhatsAppAccess({ onTokens, link = false }: { onTokens?: (tokens:
   });
   const verify = () => run(async () => {
     const result = await api.post<Verification>(prefix + "verify/", {challenge, code});
-    if ("access" in result) await onTokens?.(result);
+    if ("access" in result || "mfa_required" in result) await onTokens?.(result);
     else if ("proof" in result) setProof(result.proof);
     else setLinked(true);
   });
   const register = () => run(async () => {
-    const result = await api.post<LoginResponse>("/auth/whatsapp/register/", {proof, name, email});
+    const result = await api.post<AuthResponse>("/auth/whatsapp/register/", {proof, name, email});
     await onTokens?.(result);
   });
   return <View style={{gap: spacing.sm}}>

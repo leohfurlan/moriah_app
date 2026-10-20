@@ -19,7 +19,7 @@ dc exec -T backend tar -czf - -C /app media > "$media.partial"
 tar -tzf "$media.partial" > /dev/null
 mv "$dump.partial" "$dump"
 mv "$media.partial" "$media"
-sha256sum "$dump" "$media" > "$backup_dir/checksums-$stamp.txt"
+(cd "$backup_dir"; sha256sum "database-$stamp.dump" "media-$stamp.tar.gz") > "$backup_dir/checksums-$stamp.txt"
 date -u +%FT%TZ > "$backup_dir/last-success.txt"
 # Retention only touches the exact artifact names created by this script.
 find "$backup_dir" -maxdepth 1 -type f \( -name 'database-*.dump' -o -name 'media-*.tar.gz' -o -name 'checksums-*.txt' \) -mtime +30 -delete

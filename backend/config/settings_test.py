@@ -4,6 +4,9 @@ Herda de ``config.settings`` e sobrescreve apenas o necessario para rodar a
 suite de testes de forma isolada e rapida, sem depender de um Postgres externo.
 """
 import tempfile
+import os
+
+os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-disposable-927bad" * 3)
 
 from .settings import *  # noqa: F401,F403
 
@@ -38,3 +41,5 @@ SECURE_HSTS_SECONDS = 0
 # Domain suites exercise their own permissions. F11 enables the production guard
 # explicitly and uses real JWTs, including API bypass and Admin session cases.
 ONBOARDING_REQUIRED = False
+MFA_REQUIRED = False
+MFA_ENCRYPTION_KEY = "a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s="

@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from apps.accounts.models import WhatsAppChallenge, WhatsAppSendLimit
+from apps.accounts.models import AuthAttempt, AuthSession, MFAChallenge
 
 
 class Command(BaseCommand):
@@ -11,4 +12,7 @@ class Command(BaseCommand):
         now = timezone.now()
         WhatsAppChallenge.objects.filter(expires_at__lt=now-timedelta(days=1)).delete()
         WhatsAppSendLimit.objects.filter(window_started__lt=now-timedelta(days=2)).delete()
+        AuthAttempt.objects.filter(window_started__lt=now-timedelta(days=2)).delete()
+        MFAChallenge.objects.filter(expires_at__lt=now-timedelta(days=1)).delete()
+        AuthSession.objects.filter(expires_at__lt=now-timedelta(days=1)).delete()
         self.stdout.write("Expired WhatsApp authentication metadata removed")

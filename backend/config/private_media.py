@@ -10,8 +10,12 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 from apps.accounts.models import User
+from apps.accounts.models import AuthSession
+from apps.accounts.sessions import session_valid
 from apps.accounts.permissions import get_member_profile, user_capabilities
 from apps.events.models import EventAnnouncement
 from apps.finance.models import ContributionAttachment
@@ -22,7 +26,11 @@ SALT = "moriah.private-media.v1"
 def private_file_url(request, kind, obj):
     if request is None or not request.user.is_authenticated:
         return None
-    token = signing.dumps({"kind": kind, "id": obj.pk, "user": request.user.pk}, salt=SALT)
+    auth = getattr(request, "auth", None)
+    sid = auth.get("sid") if auth else getattr(request, "session", {}).get("moriah_auth_sid")
+    if not sid:
+        return None
+    token = signing.dumps({"kind": kind, "id": obj.pk, "user": request.user.pk, "sid": str(sid)}, salt=SALT)
     path = reverse("private-media", kwargs={"kind": kind, "pk": obj.pk})
     return request.build_absolute_uri(path + "?" + urlencode({"token": token}))
 
@@ -52,6 +60,8 @@ class PrivateMediaView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @extend_schema(responses={(200, "application/octet-stream"): OpenApiTypes.BINARY},
+                   parameters=[OpenApiParameter("token", str, required=True)])
     def get(self, request, kind, pk):
         if not settings.PRIVATE_LOCAL_MEDIA or settings.USE_S3_STORAGE:
             raise Http404
@@ -65,6 +75,12 @@ class PrivateMediaView(APIView):
         if not isinstance(payload, dict) or payload.get("kind") != kind or payload.get("id") != pk:
             raise Http404
         user = get_object_or_404(User, pk=payload.get("user"), is_active=True)
+        try:
+            session = AuthSession.objects.select_related("user__church").get(pk=payload.get("sid"), user=user)
+        except (AuthSession.DoesNotExist, ValueError, TypeError):
+            raise Http404 from None
+        if not session_valid(session, user):
+            raise Http404
         if getattr(settings, "ONBOARDING_REQUIRED", True):
             from apps.accounts.onboarding_middleware import OnboardingMiddleware
             if not OnboardingMiddleware.complete(user):

@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import whatsapp
+from .auth_views import enforce_web_csrf, token_response
+from .auth_views import EmptyInput
 
 
 class RequestSerializer(serializers.Serializer):
@@ -28,6 +30,7 @@ class PublicWhatsAppView(APIView):
 
 
 class WhatsAppConfigView(PublicWhatsAppView):
+    serializer_class = EmptyInput
     def get(self, request):
         return Response({"enabled": settings.WHATSAPP_AUTH_ENABLED})
 
@@ -40,6 +43,7 @@ def client_ip(request):
 
 
 class WhatsAppRequestView(PublicWhatsAppView):
+    serializer_class = RequestSerializer
     def post(self, request):
         data = RequestSerializer(data=request.data)
         data.is_valid(raise_exception=True)
@@ -48,20 +52,25 @@ class WhatsAppRequestView(PublicWhatsAppView):
 
 
 class WhatsAppVerifyView(PublicWhatsAppView):
+    serializer_class = VerifySerializer
     def post(self, request):
+        enforce_web_csrf(request)
         data = VerifySerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        return Response(whatsapp.verify_code(data.validated_data["challenge"], data.validated_data["code"]))
+        return token_response(request, whatsapp.verify_code(data.validated_data["challenge"], data.validated_data["code"]))
 
 
 class WhatsAppRegisterView(PublicWhatsAppView):
+    serializer_class = RegisterSerializer
     def post(self, request):
+        enforce_web_csrf(request)
         data = RegisterSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        return Response(whatsapp.register_account(**data.validated_data), status=201)
+        return token_response(request, whatsapp.register_account(**data.validated_data), status=201)
 
 
 class WhatsAppLinkRequestView(APIView):
+    serializer_class = RequestSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -72,6 +81,7 @@ class WhatsAppLinkRequestView(APIView):
 
 
 class WhatsAppLinkVerifyView(APIView):
+    serializer_class = VerifySerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

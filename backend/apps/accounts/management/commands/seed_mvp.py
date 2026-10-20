@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.core.management.base import CommandError
+from django.conf import settings
 from django.utils import timezone
 
 from apps.accounts.models import Church
@@ -19,6 +21,8 @@ class Command(BaseCommand):
     help = "Cria dados seed para o fluxo principal do MVP."
 
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError("seed_mvp cria senhas públicas: permitido somente com DEBUG=true em banco descartável.")
         user_model = get_user_model()
         church, _ = Church.objects.get_or_create(name="Igreja Moriah", defaults={"city": "Sorocaba", "state": "SP"})
 

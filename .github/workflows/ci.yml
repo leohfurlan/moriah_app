@@ -26,6 +26,9 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt
 
+      - name: Verificar artefatos de credenciais (offline)
+        run: python ../scripts/check_repository_secrets.py
+
       # A suite usa config.settings_test (SQLite em memoria), entao nao
       # precisa de um servico Postgres aqui.
       - name: Rodar testes
@@ -64,10 +67,13 @@ jobs:
       - name: Checagem de tipos
         run: npm run typecheck
 
+      - name: Audit de dependencias (bloqueia criticas)
+        run: npm audit --audit-level=critical
+
       - name: Bundle web de producao
         env:
           EXPO_PUBLIC_API_URL: /backend
-        run: npx expo export --platform web --output-dir dist
+        run: npm run export:web
 
       - name: RegressÃµes de notificaÃ§Ãµes e extrato
         env:
@@ -105,7 +111,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest apps/accounts/tests apps/finance/tests apps/schedules/tests apps/audit/tests apps/content/tests apps/members/tests -q --ds=config.settings_test_postgres
+      - run: python -m pytest -q --ds=config.settings_test_postgres
 
   # Guardas de deploy: roda o `check --deploy` do Django com um ambiente igual
   # ao do piloto (fora do debug, banco remoto com TLS, S3, HTTPS). Se faltar
@@ -121,6 +127,7 @@ jobs:
       # piloto passa nas checagens, nao conectar em nada.
       DJANGO_SETTINGS_MODULE: config.settings
       DJANGO_SECRET_KEY: ci-descartavel-nao-use-em-producao-9f2c7a1d4b8e6503
+      MFA_ENCRYPTION_KEY: a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s=
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: piloto.moriah.app
       POSTGRES_HOST: ep-piloto-ci.neon.tech
@@ -160,6 +167,7 @@ jobs:
         run: |
           {
             echo "DJANGO_SECRET_KEY=ci-$(openssl rand -hex 32)"
+            echo "MFA_ENCRYPTION_KEY=a2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2s="
             echo "DJANGO_DEBUG=false"
             # TLS fica no proxy do piloto; no runner nao ha certificado.
             echo "DJANGO_SECURE_SSL_REDIRECT=false"
@@ -175,6 +183,9 @@ jobs:
             echo "APP_REVISION=${GITHUB_SHA::12}"
             echo "PILOT_BIND=127.0.0.1"
           } > .env.pilot
+
+      - name: Validar separacao de segredos do Compose (sentinelas)
+        run: python3 scripts/verify_compose_security.py
 
       - name: Subir banco e rodar as migracoes
         run: |

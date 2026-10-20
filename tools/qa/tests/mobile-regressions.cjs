@@ -5,6 +5,14 @@ const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("../../../mobile/node_modules/typescript");
 
+test("Expo Router mantém query-string CommonJS com decoder corrigido", () => {
+  const query = require("../../../mobile/node_modules/query-string");
+  assert.equal(query.parse("name=Jo%C3%A3o&route=%2Fhome").name, "João");
+  assert.equal(query.parse("name=Jo%C3%A3o&route=%2Fhome").route, "/home");
+  assert.equal(query.parse("value=%E0%A4%A").value, "%E0%A4%A");
+  assert.equal(query.stringify({ route: "/home" }), "route=%2Fhome");
+});
+
 // Executa os módulos reais, sem dependências nativas nem servidor/banco.
 function load(relative, mocks = {}) {
   const filename = path.resolve(__dirname, "../../../mobile/src", relative);
@@ -24,8 +32,86 @@ const dates = load("services/dates.ts");
 const theme = load("theme.ts", { "react-native": {} });
 const errors = load("services/errors.ts");
 const apiHelpers = load("services/api.ts", {
+  "react-native": { Platform: { OS: "native" } },
   "./storage": { clearTokens: async () => {}, getAccessToken: async () => null, getRefreshToken: async () => null, saveAccessToken: async () => {} },
   "./errors": errors,
+});
+
+test("credenciais nativas usam SecureStore e access permanece somente em memória", async () => {
+  const writes = [];
+  const secure = new Map();
+  const storage = load("services/storage.ts", {
+    "react-native": { Platform: { OS: "android" } },
+    "@react-native-async-storage/async-storage": { default: { multiRemove: async () => {}, setItem: async (...args) => writes.push(args), getItem: async () => null } },
+    "expo-secure-store": { setItemAsync: async (key, value) => secure.set(key, value), getItemAsync: async key => secure.get(key), deleteItemAsync: async key => secure.delete(key) },
+  });
+  await storage.saveTokens("access-only-memory", "refresh-private");
+  assert.equal(await storage.getAccessToken(), "access-only-memory");
+  assert.equal(await storage.getRefreshToken(), "refresh-private");
+  assert.deepEqual(writes, []);
+  await storage.clearTokens();
+  assert.equal(await storage.getAccessToken(), null);
+  assert.equal(secure.size, 0);
+});
+
+test("web nunca persiste tokens nem chama SecureStore", async () => {
+  const removed = [];
+  const storage = load("services/storage.ts", {
+    "react-native": { Platform: { OS: "web" } },
+    "@react-native-async-storage/async-storage": { default: { multiRemove: async keys => removed.push(...keys) } },
+    "expo-secure-store": {},
+  });
+  await storage.saveTokens("web-access", "must-not-persist");
+  assert.equal(await storage.getRefreshToken(), null);
+  assert.equal(await storage.getAccessToken(), "web-access");
+  assert.deepEqual(removed.sort(), ["moriah_access_token", "moriah_refresh_token"]);
+});
+
+test("401 simultâneos fazem um refresh e persistem o par rotativo nativo", async () => {
+  let access = "old-access";
+  let refreshCalls = 0;
+  const pairs = [];
+  const originalFetch = global.fetch;
+  const client = load("services/api.ts", {
+    "react-native": { Platform: { OS: "android" } },
+    "./errors": errors,
+    "./storage": { clearTokens: async () => {}, getAccessToken: async () => access, getRefreshToken: async () => "old-refresh", hasPendingLogout: async () => false,
+      saveTokens: async (a, r) => { access = a; pairs.push([a, r]); } },
+  });
+  global.fetch = async (url, init) => {
+    if (url.endsWith("/auth/refresh/")) {
+      refreshCalls++;
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return new Response(JSON.stringify({ access: "new-access", refresh: "new-refresh" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ ok: true }), { status: init.headers.get("Authorization") === "Bearer new-access" ? 200 : 401 });
+  };
+  try {
+    const results = await Promise.all([client.api.get("/me/"), client.api.get("/me/")]);
+    assert.equal(refreshCalls, 1);
+    assert.deepEqual(pairs, [["new-access", "new-refresh"]]);
+    assert.ok(results.every(result => result.ok));
+  } finally { global.fetch = originalFetch; }
+});
+
+test("autenticação web atualiza CSRF após rotação do cookie pelo Django Admin", async () => {
+  let csrfRequests = 0;
+  const sent = [];
+  const originalFetch = global.fetch;
+  const client = load("services/api.ts", {
+    "react-native": { Platform: { OS: "web" } }, "./errors": errors,
+    "./storage": { getAccessToken: async () => null },
+  });
+  global.fetch = async (url, init) => {
+    if (url.endsWith("/auth/csrf/")) return new Response(JSON.stringify({ csrfToken: `csrf-${++csrfRequests}` }));
+    sent.push(init.headers.get("X-CSRFToken"));
+    return new Response(JSON.stringify({ mfa_required: true }));
+  };
+  try {
+    await client.api.post("/auth/login/", { email: "qa@example.invalid", password: "fake" });
+    await client.api.post("/auth/logout/", {});
+    assert.deepEqual(sent, ["csrf-1", "csrf-2"]);
+  } finally { global.fetch = originalFetch; }
 });
 const notice = (id, read = false) => ({ id, is_read: read, read_at: read ? "2026-09-17T12:00:00Z" : null });
 function store(api) {

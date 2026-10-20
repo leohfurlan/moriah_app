@@ -103,7 +103,8 @@ def test_real_jwt_reader_can_access_but_cannot_publish(api_client, make_user, ma
     user = make_user("jwt@example.com")
     make_member("JWT reader", user=user)
     obj = Content.objects.create(church=church, title="JWT", body="Texto", status="published")
-    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+    from apps.accounts.sessions import issue_session
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_session(user)['access']}")
     assert api_client.get(f"/api/content/{obj.pk}/").status_code == 200
     assert api_client.post(f"/api/content/{obj.pk}/unpublish/").status_code == 403
 
@@ -125,7 +126,8 @@ def test_concurrent_publication_is_idempotent_on_postgres(make_user, church):
         close_old_connections()
         try:
             client = APIClient()
-            client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+            from apps.accounts.sessions import issue_session
+            client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_session(user)['access']}")
             barrier.wait(timeout=10)
             response = client.post(f"/api/content/{obj.pk}/publish/")
             return response.status_code, response.data["published_at"]

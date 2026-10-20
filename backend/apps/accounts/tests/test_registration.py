@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
+from apps.accounts.sessions import issue_session
 from apps.accounts.models import Church, OnboardingProfile, User, WhatsAppIdentity
 from apps.audit.models import AuditLog
 from apps.cells.models import Cell
@@ -15,7 +16,7 @@ pytestmark = pytest.mark.django_db
 
 
 def client(user):
-    c = APIClient(); c.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+    c = APIClient(); c.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_session(user)['access']}")
     return c
 
 

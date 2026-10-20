@@ -150,3 +150,38 @@ class ChurchSetup(TimestampedModel):
     church_reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="church_reviews")
     team_reviewed_at = models.DateTimeField(null=True, blank=True)
     team_reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="team_reviews")
+
+
+class AuthSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="auth_sessions")
+    church = models.ForeignKey(Church, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    revoked_at = models.DateTimeField(null=True)
+    password_digest = models.CharField(max_length=64)
+    refresh_digest = models.CharField(max_length=64)
+    mfa_verified = models.BooleanField(default=False)
+
+
+class AuthAttempt(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    window_started = models.DateTimeField()
+    count = models.PositiveIntegerField(default=0)
+
+
+class MFAFactor(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="mfa_factor")
+    encrypted_secret = models.TextField()
+    confirmed_at = models.DateTimeField(null=True)
+    last_counter = models.BigIntegerField(default=-1)
+    recovery_hashes = models.JSONField(default=list)
+
+
+class MFAChallenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    password_digest = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
