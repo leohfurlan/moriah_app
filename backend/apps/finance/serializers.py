@@ -4,7 +4,8 @@ from drf_spectacular.utils import extend_schema_field
 
 from apps.audit.models import AuditLog
 
-from .models import Contribution, ContributionAttachment, FinancialEntry
+from .models import Contribution, ContributionAttachment, FinancialEntry, PixIntent
+from django.db import transaction
 from .validators import validate_contribution_attachment
 
 
@@ -35,6 +36,26 @@ class ContributionReviewHistorySerializer(serializers.Serializer):
 
 
 class ContributionSerializer(serializers.ModelSerializer):
+    pix_intent_id = serializers.UUIDField(required=False, write_only=True)
+    payment_origin = serializers.SerializerMethodField()
+
+    def get_payment_origin(self, obj) -> str:
+        return "cora_pix" if hasattr(obj, "pix_intent") else "receipt"
+
+    def validate(self, attrs):
+        intent_id = attrs.get("pix_intent_id")
+        if intent_id:
+            request = self.context["request"]
+            from apps.accounts.permissions import get_member_profile
+            intent = PixIntent.objects.filter(pk=intent_id, church=request.user.church, member=get_member_profile(request.user)).first()
+            if not intent or intent.state != "ready":
+                raise serializers.ValidationError({"pix_intent_id": "Cobrança indisponível para este comprovante."})
+            if attrs["amount"] != intent.amount or attrs["category"] != intent.category:
+                raise serializers.ValidationError({"pix_intent_id": "Valor e categoria devem corresponder ao Pix."})
+            if not request.FILES.getlist("files") and not attrs.get("files"):
+                raise serializers.ValidationError({"files": "Anexe um comprovante."})
+        return attrs
+
     member_name = serializers.CharField(source="member.full_name", read_only=True)
     attachments = ContributionAttachmentSerializer(many=True, read_only=True)
     member_name = serializers.CharField(source="member.full_name", read_only=True)
@@ -51,6 +72,8 @@ class ContributionSerializer(serializers.ModelSerializer):
         model = Contribution
         fields = (
             "id",
+            "pix_intent_id",
+            "payment_origin",
             "member_name",
             "category",
             "status",
@@ -86,7 +109,14 @@ class ContributionSerializer(serializers.ModelSerializer):
             ).select_related("user")
         ]
 
+    @transaction.atomic
     def create(self, validated_data):
+        intent_id = validated_data.pop("pix_intent_id", None)
+        intent = None
+        if intent_id:
+            intent = PixIntent.objects.select_for_update().get(pk=intent_id, church=validated_data["church"], member=validated_data["member"])
+            if intent.contribution_id:
+                return intent.contribution
         parsed_files = validated_data.pop("files", [])
         files = self.context["request"].FILES.getlist("files") or parsed_files
         for file in files:
@@ -99,6 +129,9 @@ class ContributionSerializer(serializers.ModelSerializer):
                 original_name=getattr(file, "name", ""),
                 uploaded_by=self.context["request"].user,
             )
+        if intent:
+            intent.contribution = contribution
+            intent.save(update_fields=["contribution", "updated_at"])
         return contribution
 
 class ContributionReviewSerializer(serializers.Serializer):

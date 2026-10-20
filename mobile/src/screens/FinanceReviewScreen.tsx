@@ -212,6 +212,7 @@ export function FinanceReviewScreen() {
           <View style={styles.detailHeader}>
             <View style={styles.copy}>
               <Text style={styles.sectionTitle}>Detalhe da contribuição</Text>
+              <Text style={styles.meta}>{selected.payment_origin === "cora_pix" ? "Pix Cora · confirmação manual" : "Comprovante"}</Text>
               <Text style={styles.meta}>{selected.member_name || "Membro não identificado"} · {formatDate(selected.contribution_date)}</Text>
             </View>
             <Badge label={statusLabel(selected.status)} tone={statusTone(selected.status)} />

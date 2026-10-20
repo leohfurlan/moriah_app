@@ -1,3 +1,5 @@
+import uuid
+
 from decimal import Decimal
 
 from django.conf import settings
@@ -139,3 +141,35 @@ class FinancialEntry(TimestampedModel):
         # QuerySet.update/bulk_create and raw SQL remain administrative operations.
         self.clean()
         return super().save(*args, **kwargs)
+
+
+class PixPayer(TimestampedModel):
+    """Documento privado informado no pagamento, fora do cadastro geral."""
+    church = models.ForeignKey(Church, on_delete=models.CASCADE)
+    member = models.OneToOneField("members.Member", on_delete=models.CASCADE)
+    cpf_encrypted = models.TextField()
+
+
+class PixIntent(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    church = models.ForeignKey(Church, on_delete=models.CASCADE)
+    member = models.ForeignKey("members.Member", on_delete=models.CASCADE)
+    request_key = models.UUIDField()
+    provider_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    category = models.CharField(max_length=20, choices=Contribution.Category.choices)
+    due_date = models.DateField()
+    environment = models.CharField(max_length=12)
+    recipient_name = models.CharField(max_length=255)
+    payer_name = models.CharField(max_length=60)
+    cpf_encrypted = models.TextField()
+    state = models.CharField(max_length=12, default="creating")
+    provider_id = models.CharField(max_length=255, blank=True)
+    provider_status = models.CharField(max_length=32, blank=True)
+    emv = models.TextField(blank=True)
+    error_code = models.CharField(max_length=40, blank=True)
+    contribution = models.OneToOneField(Contribution, on_delete=models.PROTECT, null=True, blank=True, related_name="pix_intent")
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["church", "member", "request_key"], name="pix_intent_request_unique")]
