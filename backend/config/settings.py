@@ -1,6 +1,6 @@
 from pathlib import Path
 import os
-import warnings
+from django.core.exceptions import ImproperlyConfigured
 
 from dotenv import load_dotenv
 
@@ -115,8 +115,9 @@ AUTH_USER_MODEL = "accounts.User"
 ONBOARDING_REQUIRED = True
 
 REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.sessions.SessionJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -139,7 +140,7 @@ SPECTACULAR_SETTINGS = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env_int("JWT_ACCESS_MINUTES", "60", minimum=1)),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env_int("JWT_ACCESS_MINUTES", "10", minimum=1)),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=env_int("JWT_REFRESH_DAYS", "7", minimum=1)),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
@@ -211,11 +212,7 @@ if not DEBUG:
     X_FRAME_OPTIONS = "DENY"
 
     if is_insecure_secret_key(SECRET_KEY):
-        warnings.warn(
-            "DJANGO_SECRET_KEY nao foi definido: a chave de exemplo do repositorio "
-            "esta em uso fora do modo debug. Defina uma chave propria antes do deploy.",
-            RuntimeWarning,
-        )
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY deve ser uma chave propria fora de DEBUG.")
 
 # --- Logs para container ------------------------------------------------------
 # O Docker captura stdout/stderr: log em console com timestamp, sem escrever em
@@ -250,6 +247,18 @@ WHATSAPP_TRUST_CLIENT_IP = env_flag("WHATSAPP_TRUST_CLIENT_IP")
 EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
+
+AUTH_TRUST_CLIENT_IP = env_flag("AUTH_TRUST_CLIENT_IP")
+AUTH_ACCOUNT_ATTEMPTS = env_int("AUTH_ACCOUNT_ATTEMPTS", 5, minimum=1)
+AUTH_IP_ATTEMPTS = env_int("AUTH_IP_ATTEMPTS", 50, minimum=1)
+AUTH_WINDOW_SECONDS = 900
+MFA_REQUIRED = True
+MFA_ENCRYPTION_KEY = os.getenv("MFA_ENCRYPTION_KEY", "")
+SESSION_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_SAMESITE = "Strict"
+CORS_ALLOW_CREDENTIALS = True
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = (*default_headers, "x-moriah-client")
 
 from config import checks  # noqa: E402,F401  (import no fim: depende das settings acima)
 

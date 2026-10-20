@@ -1,0 +1,6 @@
+# Replace the existing `set httpd` block, do not append a duplicate.
+# Preserve its existing credentials in the private configuration on the host.
+set httpd port 2812 and
+    use address 127.0.0.1
+    allow localhost
+# Access through a trusted SSH tunnel, or disable HTTP if unused.

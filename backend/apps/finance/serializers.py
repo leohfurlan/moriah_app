@@ -152,6 +152,13 @@ class FinancialEntrySerializer(serializers.ModelSerializer):
     source_display = serializers.CharField(source="get_source_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        church_id = getattr(getattr(request, "user", None), "church_id", None)
+        for name in ("member", "event"):
+            self.fields[name].queryset = self.fields[name].queryset.filter(church_id=church_id)
+
     class Meta:
         model = FinancialEntry
         fields = (
@@ -163,6 +170,11 @@ class FinancialEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ("paid_at", "contribution")
 
     def validate(self, attrs):
+        church_id = self.context['request'].user.church_id
+        for field in ('member', 'event', 'contribution'):
+            value = attrs.get(field, getattr(self.instance, field, None))
+            if value is not None and value.church_id != church_id:
+                raise serializers.ValidationError({field: 'Referência inválida para esta igreja.'})
         entry_type = attrs.get("entry_type", getattr(self.instance, "entry_type", None))
         current_type = getattr(self.instance, "entry_type", None)
         if entry_type == FinancialEntry.EntryType.INCOME and current_type != FinancialEntry.EntryType.INCOME:

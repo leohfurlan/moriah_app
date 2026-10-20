@@ -1,0 +1,9 @@
+# Merge ONLY this hostname into the existing shared Caddy configuration.
+app.igrejamoriah.com {
+    encode zstd gzip
+    header -Server
+    reverse_proxy moriah-piloto-web:8080 {
+        # Overwrite, never append or trust a browser-supplied value.
+        header_up X-Moriah-Client-IP {remote_host}
+    }
+}

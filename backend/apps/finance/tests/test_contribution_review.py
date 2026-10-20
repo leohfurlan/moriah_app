@@ -219,7 +219,8 @@ def test_revisao_com_jwt_registra_responsavel_real(api_client, make_user, make_m
     from rest_framework_simplejwt.tokens import RefreshToken
     user = make_user("reviewer@church.com", role=role)
     contribution = _criar_contribuicao(make_member("Maria"))
-    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(user).access_token}")
+    from apps.accounts.sessions import issue_session
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_session(user)['access']}")
     response = api_client.post(f"/api/contributions/{contribution.pk}/review/", {"status": "approved"}, format="json")
     assert response.status_code == 200
     assert response.data["review_history"][0]["reviewed_by_name"] == user.email

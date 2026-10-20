@@ -1,0 +1,11 @@
+# Install only after testing the non-root operator + sudo + authorized key
+# through a SECOND session and retaining an independent provider console.
+# Confirm effective sshd -T includes these values (first setting wins).
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+LoginGraceTime 30
+X11Forwarding no
+AllowAgentForwarding no

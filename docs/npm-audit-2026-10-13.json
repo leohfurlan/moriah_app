@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-13",
+  "baseline": {
+    "moderate": 14,
+    "high": 30,
+    "critical": 1,
+    "total": 45
+  },
+  "final": {
+    "info": 0,
+    "low": 0,
+    "moderate": 6,
+    "high": 20,
+    "critical": 0,
+    "total": 26
+  },
+  "fixes": [
+    "npm audit fix sem force",
+    "postcss 8.5.30 override",
+    "xcode uuid 11.1.1 override",
+    "query-string 7.1.3 explícito + decoder corrigido 0.5.0 com adaptador de importação"
+  ],
+  "remaining": [
+    {
+      "name": "braces",
+      "severity": "high",
+      "range": "*",
+      "advisories": [
+        {
+          "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "range": "<=3.0.3"
+        }
+      ]
+    },
+    {
+      "name": "image-size",
+      "severity": "high",
+      "range": "0.6.3 - 2.0.2",
+      "advisories": [
+        {
+          "title": "image-size: JXL and HEIF parsers allow denial of service through infinite loops",
+          "url": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+          "range": ">=1.2.0 <=2.0.2"
+        },
+        {
+          "title": "image-size: ICNS parser allows denial of service through an infinite loop",
+          "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+          "range": ">=0.6.3 <=2.0.2"
+        }
+      ]
+    },
+    {
+      "name": "node-forge",
+      "severity": "high",
+      "range": "*",
+      "advisories": [
+        {
+          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "range": "<=1.4.0"
+        }
+      ]
+    },
+    {
+      "name": "sprintf-js",
+      "severity": "moderate",
+      "range": "*",
+      "advisories": [
+        {
+          "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+          "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+          "range": "<=1.1.3"
+        }
+      ]
+    }
+  ],
+  "scope": "Remaining roots are Expo/React Native build tooling. Production web image contains static artifacts and Nginx, not node_modules. No claim of complete absence of risk."
+}

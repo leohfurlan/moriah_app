@@ -57,7 +57,7 @@ export function AccountMenu({compact = false}: {compact?: boolean}) {
           }} style={({pressed}) => [styles.item,pressed && styles.pressed]}>
             <LogOut size={18} color={colors.danger}/><Text style={[styles.itemText,{color:colors.danger}]}>{busy ? "Saindo…" : "Sair"}</Text>
           </Pressable>
-          {error ? <InlineNotice tone="error" message="Não foi possível sair. Tente novamente."/> : null}
+          {error ? <InlineNotice tone="error" message="A sessão foi limpa neste aparelho, mas a revogação no servidor não foi confirmada. Conecte-se e tente novamente."/> : null}
         </MotionView>
       </View>
     </Modal>

@@ -34,3 +34,13 @@ Warnings do backend incluem diretório staticfiles ausente nos runners e avisos 
 Não há credenciais Cora disponíveis nesta execução. Portanto, autenticação mTLS, resposta real da invoice, leitura do QR por banco e limites da conta ainda precisam de homologação stage. Mocks e QR sintético não demonstram cobrança autorizada. Android/iOS nativos ainda precisam de QA com build atualizado pelas dependências Expo adicionadas; a inspeção em largura de celular foi feita no navegador.
 
 Não foram executados deploy checks com infraestrutura real, stack piloto completa ou migração no banco da igreja. Não há webhook, consulta bancária nem baixa automática. Intenção vencida não é tratada como cancelada. Configurar a igreja, favorecido, credenciais, arquivos privados e chave de dados antes de habilitar em ambiente autorizado.
+
+## Integração com a versão publicada — 20/10/2026
+
+Antes do deploy foi identificado que produção usa o backend 24f972be2670 e web e8d708246e5c, ambos da linha de segurança do PR #14, ainda não incorporada à master. O Pix foi integrado com origin/codex/security-hardening (2a0e3a9), preservando isolamento de referências financeiras, sessões revogáveis, MFA apenas para administradores, cookies/CSRF, SecureStore, dependências corrigidas e allowlist de variáveis do Compose. O novo PR tem essa branch como base para mostrar somente o acréscimo Pix.
+
+Resolução: FinancialEntry mantém clean/save de isolamento; PixPayer/PixIntent são acrescentados após a classe existente. Cryptography permanece na versão 50.0.2 da segurança; qrcode 8.2 foi adicionado aos locks com hashes. Lock npm preserva overrides de segurança e acrescenta dependências Pix. A allowlist do Compose agora inclui CORA_* com habilitação false por padrão.
+
+Revalidação da integração: 380 testes PostgreSQL passaram; SQLite 370 passaram e 10 foram pulados por exigirem PostgreSQL. Tipos, 18 regressões mobile, exportação web com /backend e headers de segurança passaram. Teste adicional de sessão real para Pix passou, incluindo rejeição após logout (15 testes Pix passaram, 1 pulado em SQLite). Sem migrações faltantes; guards de segredos e allowlist Compose passaram.
+
+Backup pré-deploy 20261020T121326Z: dump e mídia com checksums verificados; pg_restore executado com exit-on-error em PostgreSQL 16 isolado sem rede. Migrações e tabelas verificadas; nenhum dado alterado no banco principal pelo ensaio.

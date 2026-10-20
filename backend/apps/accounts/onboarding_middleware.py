@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponseForbidden
 from rest_framework.exceptions import APIException
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from .sessions import SessionJWTAuthentication as JWTAuthentication
 from .models import OnboardingProfile
 
 
@@ -16,6 +16,8 @@ class OnboardingMiddleware:
             from .admin_site import is_panel_owner
             if not is_panel_owner(request.user):
                 return HttpResponseForbidden("Acesso restrito ao administrador responsável.")
+            if settings.MFA_REQUIRED and not request.session.get("moriah_mfa_verified") and path != "/admin/login/":
+                return HttpResponseRedirect("/admin/login/?next=/admin/")
         if not getattr(settings, "ONBOARDING_REQUIRED", True):
             return self.get_response(request)
         if path.startswith("/admin/") and path not in ("/admin/login/", "/admin/logout/"):

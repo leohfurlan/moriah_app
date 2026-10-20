@@ -201,3 +201,17 @@ def test_adapter_transport_contract_without_network(api_client, payer):
     assert payload["services"][0]["amount"] == 1000
     assert payload["payment_terms"] == {"due_date": intent.due_date.isoformat()}
     assert "notification" not in payload
+
+
+def test_pix_uses_revocable_session_auth(payer):
+    from rest_framework.test import APIClient
+    from conftest import DEFAULT_PASSWORD
+    client = APIClient()
+    login = client.post("/api/auth/login/", {"email": payer.user.email, "password": DEFAULT_PASSWORD}, format="json")
+    assert login.status_code == 200
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + login.data["access"])
+    assert client.get(URL + "config/").status_code == 200
+    with patch.object(cora, "issue_pix", side_effect=response):
+        assert create(client).status_code == 201
+    assert client.post("/api/auth/logout/", {}, format="json").status_code == 204
+    assert client.get(URL + "config/").status_code == 401

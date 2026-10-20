@@ -3,6 +3,7 @@ from django.utils.html import format_html
 
 from .models import Contribution, ContributionAttachment, FinancialEntry
 from config.private_media import PrivateMediaWidget
+from apps.accounts.scoped_admin import ChurchScopedAdmin
 
 
 class PrivateReceiptFormMixin:
@@ -53,7 +54,7 @@ class ContributionAttachmentAdmin(PrivateReceiptFormMixin, admin.ModelAdmin):
 
 
 @admin.register(FinancialEntry)
-class FinancialEntryAdmin(admin.ModelAdmin):
+class FinancialEntryAdmin(ChurchScopedAdmin):
     list_display = ("description", "entry_type", "category", "amount", "due_date", "status", "church")
     list_filter = ("entry_type", "category", "status", "source", "church")
     search_fields = ("description", "notes", "member__full_name", "event__name")

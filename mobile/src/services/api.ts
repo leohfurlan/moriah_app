@@ -1,9 +1,12 @@
 import { ApiError, NetworkError, SessionExpiredError } from "./errors";
+import { Platform } from "react-native";
 import {
   clearTokens,
   getAccessToken,
   getRefreshToken,
-  saveAccessToken,
+  saveTokens,
+  hasPendingLogout,
+  setPendingLogout,
 } from "./storage";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000/backend";
@@ -44,6 +47,16 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
 // Mutex/single-flight: garante que multiplas chamadas com 401 simultaneo
 // disparem apenas UM refresh; as demais aguardam o mesmo resultado.
 let refreshPromise: Promise<string | null> | null = null;
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (Platform.OS !== "web") return { "Content-Type": "application/json" };
+  // Django Admin rotates the CSRF cookie on login. Obtain a fresh masked
+  // token for each auth mutation rather than caching an obsolete value.
+  const response = await safeFetch(`${API_URL}/auth/csrf/`, { credentials: "include" });
+  if (!response.ok) throw new ApiError(response.status, null);
+  const csrfToken: string = (await response.json()).csrfToken;
+  return { "Content-Type": "application/json", "X-Moriah-Client": "web", "X-CSRFToken": csrfToken };
+}
 
 /** `fetch` que converte falha de rede em `NetworkError` tratavel pela UI. */
 async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -91,30 +104,53 @@ function payloadDeErro(status: number, contentType: string, corpo: unknown): unk
 }
 
 async function performRefresh(): Promise<string | null> {
+  if (await hasPendingLogout()) return null;
   const refresh = await getRefreshToken();
-  if (!refresh) {
+  if (!refresh && Platform.OS !== "web") {
     return null;
   }
   const response = await safeFetch(`${API_URL}/auth/refresh/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
+    headers: await authHeaders(),
+    credentials: "include",
+    body: JSON.stringify(Platform.OS === "web" ? {} : { refresh }),
   });
   if (!response.ok) {
     return null;
   }
-  const data = (await response.json()) as { access: string };
-  await saveAccessToken(data.access);
+  const data = (await response.json()) as { access: string; refresh?: string };
+  await saveTokens(data.access, data.refresh);
   return data.access;
 }
 
 function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
-    refreshPromise = performRefresh().finally(() => {
+    const locks = (globalThis as typeof globalThis & { navigator?: { locks?: { request: <T>(name: string, cb: () => Promise<T>) => Promise<T> } } }).navigator?.locks;
+    // Serializes rotating cookies across tabs without persisting credentials.
+    refreshPromise = (Platform.OS === "web" && locks ? locks.request("moriah-refresh", performRefresh) : performRefresh()).finally(() => {
       refreshPromise = null;
     });
   }
   return refreshPromise;
+}
+
+export async function restoreSession() {
+  if (await hasPendingLogout()) {
+    try { await revokeSession(); } catch { /* Keep pending until server confirms. */ }
+    return null;
+  }
+  return (await getAccessToken()) || refreshAccessToken();
+}
+
+export async function revokeSession() {
+  await setPendingLogout(true);
+  const refresh = await getRefreshToken();
+  if (Platform.OS !== "web" && !refresh && !(await getAccessToken())) {
+    // After offline cleanup no credential remains to prove server revocation.
+    throw new SessionExpiredError();
+  }
+  await api.post("/auth/logout/", refresh ? { refresh } : {});
+  await setPendingLogout(false);
 }
 
 async function handleSessionExpired(): Promise<never> {
@@ -133,6 +169,9 @@ async function request<T>(
 ): Promise<T> {
   const token = await getAccessToken();
   const headers = new Headers(init?.headers || {});
+  if (Platform.OS === "web" && path.startsWith("/auth/") && init?.method === "POST") {
+    for (const [key, value] of Object.entries(await authHeaders())) headers.set(key, value);
+  }
   if (!isFormData) {
     headers.set("Content-Type", "application/json");
   }
@@ -143,6 +182,7 @@ async function request<T>(
   const response = await safeFetch(`${API_URL}${path}`, {
     ...init,
     headers,
+    credentials: "include",
   });
 
   // 401: tenta renovar o access token uma unica vez e repete a chamada.

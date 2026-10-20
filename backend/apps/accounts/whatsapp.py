@@ -12,7 +12,6 @@ from django.conf import settings
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from rest_framework.exceptions import APIException, ValidationError, Throttled
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Church, User, WhatsAppIdentity, WhatsAppChallenge, WhatsAppSendLimit
 
@@ -112,8 +111,8 @@ def request_code(phone, ip, purpose="login", user=None):
 def tokens_for(user):
     if not user.is_active or not user.church_id or not user.church.active:
         raise ValidationError("Não foi possível acessar esta conta. Procure a secretaria.")
-    refresh = RefreshToken.for_user(user)
-    return {"access": str(refresh.access_token), "refresh": str(refresh)}
+    from .sessions import issue_session
+    return issue_session(user)
 
 
 def verify_code(identifier, code, user=None):

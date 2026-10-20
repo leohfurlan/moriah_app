@@ -1,5 +1,1 @@
--r requirements.txt
-
-# Dependencias de teste
-pytest==9.1.1
-pytest-django==4.12.0
+-r requirements-dev.lock
