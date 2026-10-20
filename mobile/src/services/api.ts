@@ -188,9 +188,10 @@ export const api = {
     const payload = await request<unknown>(`${path}${separator}page=${page}&page_size=${pageSize}`);
     return normalizePage<T>(payload, page, pageSize);
   },
-  post: <T>(path: string, body?: unknown) =>
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>(path, {
       method: "POST",
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     }),
   /** Edicao parcial (PATCH): usado pela gestao de escalas (Fase 4). */

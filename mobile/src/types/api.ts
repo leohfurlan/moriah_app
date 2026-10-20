@@ -26,6 +26,7 @@ export interface MemberUpdateRequest {
 }
 export interface ContributionAttachment { id: number; original_name: string; file_url: string; created_at: string; }
 export interface Contribution {
+  payment_origin?: "cora_pix" | "receipt";
   id: number; member_name?: string; category: string; status: string; amount: string; contribution_date: string;
   notes: string; attachments: ContributionAttachment[]; created_at: string;
   review_notes?: string;

@@ -252,3 +252,15 @@ EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "")
 
 from config import checks  # noqa: E402,F401  (import no fim: depende das settings acima)
+
+
+# Integracao Cora: habilitacao explicita para uma igreja; segredos somente no servidor.
+CORA_ENABLED = env_flag("CORA_ENABLED")
+CORA_CHURCH_ID = int(os.getenv("CORA_CHURCH_ID", "0"))
+CORA_ENVIRONMENT = os.getenv("CORA_ENVIRONMENT", "stage")
+CORA_BASE_URL = os.getenv("CORA_BASE_URL", "https://matls-clients.api.stage.cora.com.br")
+CORA_CLIENT_ID = os.getenv("CORA_CLIENT_ID", "")
+CORA_CERT_PATH = os.getenv("CORA_CERT_PATH", "")
+CORA_KEY_PATH = os.getenv("CORA_KEY_PATH", "")
+CORA_RECIPIENT_NAME = os.getenv("CORA_RECIPIENT_NAME", "")
+CORA_DATA_KEY = os.getenv("CORA_DATA_KEY", "")

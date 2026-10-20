@@ -20,6 +20,7 @@ from apps.events.views import EventAnnouncementViewSet, MyChurchEventsView
 from apps.cells.views import CellMeetingViewSet, LeaderCellMembersView
 from apps.audit.notification_views import MyNotificationViewSet
 from apps.content.views import ContentViewSet
+from apps.finance.pix_views import PixIntentViewSet
 from apps.finance.views import ContributionViewSet, FinancialEntryViewSet, MyStatementView
 from apps.members.views import MemberLinkReviewViewSet, MemberDirectoryViewSet, MyMemberLinkRequestView, MyMemberUpdateRequestViewSet, MyMemberView
 from apps.ministries.views import MinistryListView
@@ -46,6 +47,7 @@ router.register("church/registrations/ministries", MinistryViewSet, basename="ch
 router.register("church/registrations/events", EventViewSet, basename="church-events")
 router.register("church/service-times", ServiceTimeViewSet, basename="service-times")
 router.register("member-link-requests", MemberLinkReviewViewSet, basename="member-link-review")
+router.register("contributions/pix-intents", PixIntentViewSet, basename="pix-intent")
 router.register("contributions", ContributionViewSet, basename="contribution")
 router.register("finance/entries", FinancialEntryViewSet, basename="financial-entry")
 router.register("content", ContentViewSet, basename="content")

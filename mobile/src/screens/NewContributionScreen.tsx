@@ -1,3 +1,4 @@
+import { ContributionPix, ContributionPixIntent } from "@/components/ContributionPix";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRef, useState } from "react";
@@ -66,6 +67,7 @@ export function NewContributionScreen() {
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === "web" && width >= 900;
   const submittingRef = useRef(false);
+  const [pixIntent, setPixIntent] = useState<ContributionPixIntent | null>(null);
   const [amount, setAmount] = useState("100.00");
   const [category, setCategory] = useState<ContributionCategory>("tithe");
   const [date, setDate] = useState(() => formatDateInput(new Date(), "date"));
@@ -137,6 +139,7 @@ export function NewContributionScreen() {
     form.append("category", category);
     form.append("contribution_date", contributionDate);
     form.append("notes", notes);
+    if (pixIntent) form.append("pix_intent_id", pixIntent.id);
     try {
       for (const file of files) {
         form.append("files", await toFormDataValue(file));
@@ -162,7 +165,7 @@ export function NewContributionScreen() {
     <Screen title="Registrar contribuição" headerSubtitle="Registre seu dízimo, oferta ou contribuição">
       <View style={desktop ? styles.desktopContributionForm : undefined}>
       <Text style={styles.sectionTitle}>Valor</Text>
-      <Field value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0,00" />
+      <Field value={amount} onChangeText={(value) => { if (!pixIntent) setAmount(value); }} keyboardType="decimal-pad" placeholder="0,00" />
 
       <Text style={styles.sectionTitle}>Tipo de contribuição</Text>
       <View style={styles.categoryGroup}>
@@ -173,7 +176,7 @@ export function NewContributionScreen() {
               key={item.value}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              disabled={submitting}
+              disabled={submitting || !!pixIntent}
               onPress={() => setCategory(item.value)}
               style={[styles.categoryOption, selected && styles.categoryOptionSelected, submitting && styles.disabledOption]}
             >
@@ -183,6 +186,11 @@ export function NewContributionScreen() {
         })}
       </View>
 
+      <ContributionPix amount={amount} category={category} onSelect={(intent) => {
+        setPixIntent(intent);
+        if (intent) { setAmount(intent.amount); setCategory(intent.category as ContributionCategory); }
+      }} />
+      {pixIntent ? <Text>Comprovante vinculado ao Pix de R$ {pixIntent.amount}. Valor e categoria são os da cobrança.</Text> : null}
       <Text style={styles.sectionTitle}>Data da contribuição</Text>
       <DateTimeField accessibilityLabel="Data da contribuição" mode="date" value={date} onChangeText={setDate} placeholder="dd/mm/aaaa" />
 
@@ -227,7 +235,7 @@ export function NewContributionScreen() {
       {aviso ? (
         <InlineNotice tone={aviso.tone} title={aviso.title} message={aviso.message} onDismiss={() => setAviso(null)} />
       ) : null}
-      <Button disabled={submitting} loading={submitting} onPress={submit}>
+      <Button disabled={submitting || !!pixIntent?.contribution_id} loading={submitting} onPress={submit}>
         {submitting ? "Enviando…" : "Enviar contribuição"}
       </Button>
       </View>
