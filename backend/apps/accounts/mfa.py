@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from .models import MFAChallenge, MFAFactor
-from .sessions import active, digest, issue_session
+from .sessions import active, digest, issue_session, needs_mfa
 
 
 def cipher():
@@ -23,7 +23,7 @@ def locked_challenge(identifier):
         raise AuthenticationFailed("Verificação inválida ou expirada.") from None
     challenge = MFAChallenge.objects.select_for_update(of=("self",)).select_related("user__church").filter(pk=identifier).first()
     if (not challenge or challenge.consumed_at or challenge.attempts >= 5 or challenge.expires_at <= timezone.now()
-            or not active(challenge.user) or not hmac.compare_digest(challenge.password_digest, digest(challenge.user.password))):
+            or not active(challenge.user) or not needs_mfa(challenge.user) or not hmac.compare_digest(challenge.password_digest, digest(challenge.user.password))):
         raise AuthenticationFailed("Verificação inválida ou expirada.")
     return challenge
 

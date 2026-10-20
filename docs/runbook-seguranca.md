@@ -27,7 +27,7 @@ não foram aplicados à VPS. Referência: auditoria/plano de 12/10/2026.
 6. Publicar backend **junto** com web/mobile compatíveis. Todos os JWT antigos
    sem `sid` deixam de funcionar; comunicar novo login obrigatório. Builds
    nativos antigos que não persistem o refresh rotativo precisam ser atualizados.
-7. Ensaiar login comum, igreja suspensa, login com senha/WhatsApp de gestor,
+7. Ensaiar login comum, igreja suspensa, login com senha/WhatsApp de administrador,
    cadastro do autenticador, recuperação, logout e arquivo privado. Guardar os
    oito códigos de recuperação fora do aparelho; cada um funciona uma vez.
    O Django Admin exige fator já cadastrado pelo aplicativo. Não há variável de
@@ -43,10 +43,10 @@ não foram aplicados à VPS. Referência: auditoria/plano de 12/10/2026.
    de limpar credenciais e relogar. Rollback reintroduz riscos do modelo JWT
    anterior e requer decisão operacional; não tratar como correção equivalente.
 
-MFA usa papéis adicionais também: staff/superuser ou qualquer papel operacional
-além de member. Não depende de vínculo `Member`. Elevação de papel torna uma
-sessão sem MFA inválida imediatamente. Alteração de senha, suspensão do usuário
-ou da igreja invalidam sessões e links existentes. Expiração absoluta de sete
+MFA exige papel admin (principal ou adicional), staff ou superuser.
+Secretaria, tesouraria, pastor, coordenador, líder e membro usam login padrão.
+Elevar a administrador invalida imediatamente uma sessão sem MFA.
+Alteração de senha, suspensão do usuário ou da igreja invalidam sessões e links existentes. Expiração absoluta de sete
 dias não é prolongada pelo refresh. Access padrão: dez minutos.
 
 Limite inicial de senha: cinco tentativas por conta+IP e cinquenta por IP em
@@ -62,7 +62,7 @@ Preferir códigos de recuperação. Se todos forem perdidos, operador autorizado
 deve confirmar identidade fora do aplicativo e registrar chamado/justificativa.
 `manage.py reset_mfa --user-id ID --confirm-email EMAIL --reason JUSTIFICATIVA`
 remove o fator, invalida desafios e revoga todas as sessões, gerando AuditLog.
-O próximo login exige senha/WhatsApp e **novo** cadastro MFA. O comando não
+O próximo login de administrador exige senha/WhatsApp e **novo** cadastro MFA. O comando não
 emite token, não cria conta e não concede privilégios. Não incluir segredos
 ou dados pessoais desnecessários na justificativa. Limitar acesso SSH/exec
 que permite executar esse comando.

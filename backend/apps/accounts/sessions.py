@@ -23,7 +23,7 @@ def active(user):
 
 
 def needs_mfa(user):
-    return settings.MFA_REQUIRED and bool(user.is_staff or user.is_superuser or user.assigned_roles() - {User.Role.MEMBER})
+    return settings.MFA_REQUIRED and bool(user.is_staff or user.is_superuser or user.has_role(User.Role.ADMIN))
 
 
 def client_ip(request):

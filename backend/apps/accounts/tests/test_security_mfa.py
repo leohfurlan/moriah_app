@@ -2,6 +2,7 @@ import pytest
 import pyotp
 from urllib.parse import urlsplit, parse_qs
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 from conftest import DEFAULT_PASSWORD
 from apps.accounts.models import User, MFAFactor
@@ -12,7 +13,7 @@ pytestmark = pytest.mark.django_db
 
 @override_settings(MFA_REQUIRED=True)
 def test_privileged_login_requires_totp_then_single_use_recovery(make_user):
-    user = make_user(email="mfa@example.invalid", role=User.Role.TREASURER)
+    user = make_user(email="mfa@example.invalid", role=User.Role.ADMIN)
     client = APIClient()
     challenge = login(client, user).json()
     assert challenge["mfa_required"] and "access" not in challenge
@@ -64,3 +65,35 @@ def test_admin_login_enrollment_recovery_and_logout(make_user):
     sid = client.session["moriah_auth_sid"]
     assert client.post("/admin/logout/").status_code == 200
     assert AuthSession.objects.get(pk=sid).revoked_at is not None
+
+
+@override_settings(MFA_REQUIRED=True)
+@pytest.mark.parametrize("role", [User.Role.MEMBER, User.Role.PASTOR, User.Role.SECRETARY,
+                                 User.Role.TREASURER, User.Role.COORDINATOR, User.Role.CELL_LEADER])
+def test_non_admin_roles_use_standard_login_even_with_existing_factor(make_user, role):
+    user = make_user(email="standard@example.invalid", role=role)
+    MFAFactor.objects.create(user=user, confirmed_at=timezone.now())
+    user.add_role(User.Role.SECRETARY)
+    response = login(APIClient(), user)
+    assert response.status_code == 200
+    assert "access" in response.json() and "mfa_required" not in response.json()
+
+
+@override_settings(MFA_REQUIRED=True)
+@pytest.mark.parametrize("flags", [{"role": User.Role.ADMIN}, {"is_staff": True}, {"is_superuser": True}])
+def test_administrative_accounts_require_mfa(make_user, flags):
+    user = make_user(email="administrative@example.invalid", **flags)
+    response = login(APIClient(), user)
+    assert response.json()["mfa_required"] and "access" not in response.json()
+
+
+@override_settings(MFA_REQUIRED=True)
+def test_removed_admin_role_cannot_enroll_pending_challenge(make_user):
+    user = make_user(email="demoted@example.invalid", role=User.Role.ADMIN)
+    client = APIClient()
+    challenge = login(client, user).json()["challenge"]
+    user.role = User.Role.TREASURER
+    user.save()
+    assert client.post("/api/auth/mfa/enroll/", {"challenge": challenge}).status_code == 401
+    assert client.post("/api/auth/mfa/verify/", {"challenge": challenge, "code": "000000"}).status_code == 401
+    assert "access" in login(client, user).json()

@@ -39,7 +39,7 @@ def test_untrusted_headers_do_not_reset_budget(make_user):
 
 @override_settings(MFA_REQUIRED=True)
 def test_whatsapp_cannot_bypass_mfa(api_client, sender, make_user, church):
-    user = make_user("wa-mfa@example.invalid", role=User.Role.TREASURER)
+    user = make_user("wa-mfa@example.invalid", role=User.Role.ADMIN)
     WhatsAppIdentity.objects.create(user=user, church=church, phone=PHONE)
     identifier, code = challenge(sender)
     response = api_client.post("/api/auth/whatsapp/verify/", {"challenge": str(identifier), "code": code})
@@ -52,7 +52,7 @@ def test_role_elevation_invalidates_session_and_old_admin_session(make_user):
     user = make_user("elevation@example.invalid")
     client = APIClient()
     tokens = login(client, user).json()
-    user.add_role(User.Role.TREASURER)
+    user.add_role(User.Role.ADMIN)
     client.credentials(HTTP_AUTHORIZATION="Bearer " + tokens["access"])
     assert client.get("/api/me/").status_code == 401
     owner = make_user("admin@igrejamoriah.com", role=User.Role.ADMIN, is_staff=True)
@@ -80,3 +80,15 @@ def test_blocked_ip_cannot_grow_account_counter_rows():
     for number in range(2, 7):
         assert client.post("/api/auth/login/", {"email": f"missing{number}@example.invalid", "password": "wrong"}).status_code == 429
     assert AuthAttempt.objects.count() == count
+
+
+@override_settings(MFA_REQUIRED=True)
+@pytest.mark.parametrize("role", [User.Role.SECRETARY, User.Role.TREASURER, User.Role.PASTOR,
+                                 User.Role.COORDINATOR, User.Role.CELL_LEADER, User.Role.MEMBER])
+def test_whatsapp_non_admin_uses_standard_auth(api_client, sender, make_user, church, role):
+    user = make_user("wa-standard@example.invalid", role=role)
+    WhatsAppIdentity.objects.create(user=user, church=church, phone=PHONE)
+    identifier, code = challenge(sender)
+    response = api_client.post("/api/auth/whatsapp/verify/", {"challenge": str(identifier), "code": code})
+    assert response.status_code == 200
+    assert "access" in response.json() and "mfa_required" not in response.json()
