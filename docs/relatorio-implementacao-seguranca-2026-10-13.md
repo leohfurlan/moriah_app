@@ -172,3 +172,25 @@ Pendências preservadas: atualização/distribuição dos binários nativos, cad
 MFA pelos gestores, revisão/merge do PR, CIDRs/operador/console para SSH/firewall,
 destino/custódia/canal para backup externo e tratamento dos alertas residuais
 da cadeia de build. A implantação não equivale a encerrar esses itens.
+
+
+## Ajuste de MFA — 20/10/2026
+
+Publicado o commit `24f972be2670`: MFA permanece obrigatório exclusivamente
+para administradores (papel `admin` principal/adicional, `staff` ou `superuser`).
+Tesouraria, secretaria, pastor, coordenação, liderança e membros seguem com
+senha/WhatsApp sem segunda etapa, mesmo com fator antigo cadastrado. Desafios
+pendentes deixam de ser aceitos após retirada dos privilégios administrativos.
+
+- SQLite: 356 testes aprovados; nove testes exclusivos de PostgreSQL pulados.
+- Cinco jobs de CI aprovados no código publicado, incluindo PostgreSQL:
+  https://github.com/leohfurlan/moriah_app/actions/runs/39415711978
+- Backups pré/pós-deploy verificados: `20261020T113232Z` e `20261020T113536Z`.
+- Apenas backend atualizado para `moriah-backend:24f972be2670`; frontend continua
+  `moriah-web:e8d708246e5c`. Nenhuma migração pendente; guardas de deploy aprovadas.
+- HTTPS `/health/ready/`: `ready`, revisão `24f972be2670`, banco `ok`.
+- Smoke em produção: administrador com MFA; seis outros perfis sem MFA;
+  cookie seguro, refresh e logout. Todos os registros temporários revertidos.
+- Chave MFA preservada. Configuração anterior guardada privadamente em
+  `/var/backups/moriah/security-releases/24f972be2670/` para rollback.
+- PR #14 atualizado e mantido aberto, sem merge.
